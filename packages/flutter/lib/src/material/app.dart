@@ -16,6 +16,8 @@ import 'material_localizations.dart';
 import 'page.dart';
 import 'scaffold.dart' show ScaffoldMessenger, ScaffoldMessengerState;
 import 'scrollbar.dart';
+import 'split_screen_container.dart';
+import 'split_screen_manager.dart';
 import 'theme.dart';
 import 'tooltip.dart';
 
@@ -897,12 +899,23 @@ class MaterialScrollBehavior extends ScrollBehavior {
 class _MaterialAppState extends State<MaterialApp> {
   late HeroController _heroController;
 
+  // 用于存储初始主页的 widget
+  late Widget? _initialHomeCache;
+
+  // 分屏功能开关 - 根据屏幕方向动态控制
+  late bool _enableSplitScreen;
+
   bool get _usesRouter => widget.routerDelegate != null || widget.routerConfig != null;
 
   @override
   void initState() {
     super.initState();
     _heroController = MaterialApp.createMaterialHeroController();
+    _initialHomeCache = widget.home;
+    _enableSplitScreen = false;
+    if (_initialHomeCache != null) {
+      SplitScreenManager().setInitialHome(_initialHomeCache!);
+    }
   }
 
   @override
@@ -990,6 +1003,16 @@ class _MaterialAppState extends State<MaterialApp> {
         child: childWidget,
       );
     }
+
+    // 按需包装分屏容器 - 根据屏幕方向动态决定
+    // 使用 key 保持 widget 的身份一致性，避免屏幕方向改变时出现 element 状态错误
+    childWidget = _SplitScreenWrapper(
+      initialHome: _initialHomeCache,
+      initialRoute: widget.initialRoute,
+      onGenerateRoute: widget.onGenerateRoute,
+      enableSplitScreen: _enableSplitScreen,
+      child: childWidget,
+    );
 
     return ScaffoldMessenger(
       key: widget.scaffoldMessengerKey,
@@ -1079,6 +1102,27 @@ class _MaterialAppState extends State<MaterialApp> {
 
   @override
   Widget build(BuildContext context) {
+    final Size physicalSize = WidgetsBinding.instance.window.physicalSize;
+    final double devicePixelRatio = WidgetsBinding.instance.window.devicePixelRatio;
+    final double logicalWidth = physicalSize.width / devicePixelRatio;
+    final double logicalHeight = physicalSize.height / devicePixelRatio;
+    const double splitScreenWidthThreshold = 600;
+    final Orientation orientation = MediaQuery.of(context).orientation;
+    // 分屏功能开关逻辑：
+    // 1. 屏幕宽高有一个小于阈值（600dp）则不启动分屏
+    // 2. 屏幕为竖屏且高宽比大于等于1.2则不启动分屏
+    // 3. 其他情况均启动分屏，包括pad横屏，三折叠手机展开双屏或展开三屏并横屏时
+    if (logicalWidth > splitScreenWidthThreshold && logicalHeight > splitScreenWidthThreshold) {
+      if (logicalHeight >= logicalWidth && logicalHeight / logicalWidth >= 1.2) {
+        _enableSplitScreen = false;
+      } else {
+        _enableSplitScreen = true;
+      }
+    } else {
+      _enableSplitScreen = false;
+    }
+
+
     Widget result = _buildWidgetApp(context);
     result = Focus(
       canRequestFocus: false,
@@ -1109,6 +1153,39 @@ class _MaterialAppState extends State<MaterialApp> {
         controller: _heroController,
         child: result,
       ),
+    );
+  }
+}
+/// 分屏包装器 - 负责将应用分成左右两个部分
+class _SplitScreenWrapper extends StatefulWidget {
+  final Widget? initialHome;
+  final String? initialRoute;
+  final RouteFactory? onGenerateRoute;
+  final Widget child;
+  final bool enableSplitScreen;
+
+  const _SplitScreenWrapper({
+    Key? key,
+    this.initialHome,
+    this.initialRoute,
+    this.onGenerateRoute,
+    required this.child,
+    this.enableSplitScreen = false,
+  }) : super(key: key);
+
+  @override
+  State<_SplitScreenWrapper> createState() => _SplitScreenWrapperState();
+}
+
+class _SplitScreenWrapperState extends State<_SplitScreenWrapper> {
+  @override
+  Widget build(BuildContext context) {
+    return SplitScreenContainer(
+      enableLeftPanel: widget.enableSplitScreen,
+      leftChild: widget.initialHome,
+      initialRoute: widget.initialRoute,
+      onGenerateRoute: widget.onGenerateRoute,
+      rightChild: widget.child,
     );
   }
 }
