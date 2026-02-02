@@ -2,10 +2,45 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
 
 import 'split_screen_manager.dart';
+
+/// 分屏起始页 - 在右侧面板等待左侧导航时显示
+/// 这是一个全局唯一的 Widget，可以用来判断当前显示的页面是否是分屏起始页
+class SplitStartPage extends StatelessWidget {
+  /// 常量标记，用于识别这个特定的页面
+  static const String routeName = '/split_start_page';
+
+  const SplitStartPage({Key? key}) : super(key: key);
+
+  /// 用于检查给定的 Widget 是否是分屏起始页
+  static bool isSplitStartPage(Widget? widget) {
+    return widget is SplitStartPage;
+  }
+
+  /// 用于检查给定的 RouteSettings 是否对应分屏起始页
+  static bool isSplitStartPageRoute(RouteSettings? settings) {
+    return settings?.name == routeName;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return const Center(
+      child: Text(
+        '分屏起始页',
+        style: TextStyle(
+          fontSize: 16,
+          color: Colors.black,
+          decoration: TextDecoration.none,
+        ),
+      ),
+    );
+  }
+}
 
 /// 分屏容器 - 显示左右两侧的页面
 class SplitScreenContainer extends StatefulWidget {
@@ -77,6 +112,18 @@ class _SplitScreenContainerState extends State<SplitScreenContainer>
     if (rightNavigator != null) {
       if (rightNavigator.canPop()) {
         rightNavigator.pop();
+
+        // 如果左侧面板不启用（竖屏）时，返回到分屏起始页，需要替换为首页
+        if (!widget.enableLeftPanel) {
+          Future.microtask(() {
+            // 检查是否还停留在分屏起始页（初始路由）
+            // 如果是，用 pushNamedAndRemoveUntil 替换为应用首页
+            if (rightNavigator.canPop() == false) {
+              // 无法再 pop，说明已经回到初始路由（分屏起始页）
+              rightNavigator.pushNamedAndRemoveUntil('/', (route) => false);
+            }
+          });
+        }
         return true; // 返回 true 表示已处理，系统不会继续传递给其他 observer
       }
     }
@@ -155,6 +202,7 @@ class _SplitScreenContainerState extends State<SplitScreenContainer>
               child: rightChild,
               initialRoute: widget.initialRoute,
               onGenerateRoute: widget.onGenerateRoute,
+              enableLeftPanel: widget.enableLeftPanel,
             ),
           ),
         ),
@@ -330,12 +378,14 @@ class _RightSideNavigator extends StatefulWidget {
   final Widget child;
   final String? initialRoute;
   final RouteFactory? onGenerateRoute;
+  final bool enableLeftPanel;
 
   const _RightSideNavigator({
     GlobalKey<_RightSideNavigatorState>? key,
     required this.child,
     this.initialRoute,
     this.onGenerateRoute,
+    required this.enableLeftPanel,
   }) : super(key: key);
 
   @override
@@ -351,6 +401,40 @@ class _RightSideNavigatorState extends State<_RightSideNavigator> {
     super.initState();
     _navigatorKey = GlobalKey<NavigatorState>();
     _manager = SplitScreenManager(); // 保存实例引用
+  }
+
+  @override
+  void didUpdateWidget(_RightSideNavigator oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.enableLeftPanel != widget.enableLeftPanel) {
+      if (_navigatorKey.currentState != null && mounted) {
+        // 当从竖屏切换到横屏（enableLeftPanel: false -> true）时
+        if (!oldWidget.enableLeftPanel && widget.enableLeftPanel) {
+          // 检查是否无法继续返回（即只有初始路由）
+          if (!_navigatorKey.currentState!.canPop()) {
+            _navigatorKey.currentState!.pushNamedAndRemoveUntil(
+              SplitStartPage.routeName,
+              (route) => false,
+            );
+          }
+        }
+        // 当从横屏切换到竖屏（enableLeftPanel: true -> false）时
+        else if (oldWidget.enableLeftPanel && !widget.enableLeftPanel) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (_navigatorKey.currentState != null && mounted) {
+              // 检查当前是否显示的是分屏起始页，如果不能 pop，说明只有初始路由，即分屏起始页
+              if (!_navigatorKey.currentState!.canPop()) {
+                // 当前显示的是分屏起始页，替换为首页
+                _navigatorKey.currentState!.pushNamedAndRemoveUntil(
+                  '/',
+                  (route) => false,
+                );
+              }
+            }
+          });
+        }
+      }
+    }
   }
 
   @override
@@ -380,21 +464,17 @@ class _RightSideNavigatorState extends State<_RightSideNavigator> {
           // 如果不是 "/" 说明是新引擎打开了特定页面，显示内容
           final String defaultRouteName =
               WidgetsBinding.instance.window.defaultRouteName;
-          if (defaultRouteName == '/') {
-            // 主应用初始状态，显示起始页
-            return MaterialPageRoute<dynamic>(
-              settings: settings,
-              builder: (BuildContext context) => const Center(
-                child: Text(
-                  '分屏起始页',
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: Colors.black,
-                    decoration: TextDecoration.none,
-                  ),
-                ),
-              ),
-            );
+          if (defaultRouteName == '/' && widget.enableLeftPanel) {
+            // 检查Navigator是否已有历史（即是否已经push过页面）
+            // 如果canPop() == false，说明只有初始路由，显示分屏起始页
+            // 如果canPop() == true，说明已有内容，不显示分屏起始页
+            if (_navigatorKey.currentState != null &&
+                !_navigatorKey.currentState!.canPop()) {
+              return MaterialPageRoute<dynamic>(
+                settings: const RouteSettings(name: SplitStartPage.routeName),
+                builder: (BuildContext context) => const SplitStartPage(),
+              );
+            }
           }
 
           // 新引擎或其他路由，直接返回 widget.child，让其内部的 Navigator 处理路由
@@ -406,11 +486,15 @@ class _RightSideNavigatorState extends State<_RightSideNavigator> {
         onUnknownRoute: (RouteSettings settings) {
           final String defaultRouteName =
               WidgetsBinding.instance.window.defaultRouteName;
-          if (defaultRouteName == '/') {
-            return MaterialPageRoute<dynamic>(
-              settings: const RouteSettings(name: '/'),
-              builder: (BuildContext context) => const SizedBox.expand(),
-            );
+          if (defaultRouteName == '/' && widget.enableLeftPanel) {
+            // 检查Navigator是否已有历史
+            if (_navigatorKey.currentState != null &&
+                !_navigatorKey.currentState!.canPop()) {
+              return MaterialPageRoute<dynamic>(
+                settings: const RouteSettings(name: SplitStartPage.routeName),
+                builder: (BuildContext context) => const SplitStartPage(),
+              );
+            }
           }
           return MaterialPageRoute<dynamic>(
             settings: const RouteSettings(name: '/'),
