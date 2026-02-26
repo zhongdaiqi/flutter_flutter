@@ -1,4 +1,6 @@
 # Changelog
+## 6.1.0.311
+- 修复使用multiply混合模式时，在某些GPU上画面变白/变灰的问题 ([c750b3d0](https://gitcode.com/openharmony-tpc/flutter_engine/commit/c750b3d0ac1ad0e8a35a1a7b2d6bca77f36a56c0?ref=oh-3.22.0-multiply-pr&prId=1215))
 ## 6.1.0.310
 - [Impeller] Fixed an issue where gradient effects on HarmonyOS devices exhibited clipping. With mediump enabled by default, IPOrderedDither8x8 uint(dest.x) and uint(dest.y) might experience precision loss on some GPU chips. ([fb2447c5](https://gitcode.com/openharmony-tpc/flutter_engine/commit/fb2447c52528f6e04bc2fc53441c3e3dccc6e54b?ref=gradient_dithering_issue_322&prId=1222))
 - Frame gate enabled: keep draining producer queue, but do not schedule ([87d51c88](https://gitcode.com/openharmony-tpc/flutter_engine/commit/87d51c88e5161c0257b9c4408e45008040798e04?ref=externalchange_engine3.22&prId=1226))
