@@ -90,11 +90,14 @@ class SplitScreenManager extends ChangeNotifier {
     }
   }
 
-  /// 转发导航到右侧导航器 - pushNamed 操作
-  Future<T?> pushNamedToRight<T extends Object?>(
+  /// 转发导航到右侧导航器 - pushNamed 操作（自动清空右侧栈）
+  Future<T?> pushNamedToRightAndClear<T extends Object?>(
     String routeName, {
     Object? arguments,
   }) {
+    // 先清空右侧栈
+    clearRightStack();
+    // 再导航到新页面
     if (_rightNavigator != null) {
       return _rightNavigator!.pushNamed(routeName, arguments: arguments);
     }
@@ -106,6 +109,26 @@ class SplitScreenManager extends ChangeNotifier {
     if (_rightNavigator != null) {
       _rightNavigator!.pop(result);
     }
+  }
+
+  /// 清空右侧路由栈，仅保留首页
+  void clearRightStack() {
+    if (_rightNavigator != null) {
+      // 使用 popUntil 清空所有页面，只保留第一个（首页）
+      _rightNavigator!.popUntil((route) => route.isFirst);
+    }
+    // 同时清空内部的页面栈
+    _pageStack.clear();
+    _currentPage = _initialHome;
+    notifyListeners();
+  }
+
+  /// 清空右侧路由栈并导航到新页面
+  Future<T?> pushToRightAndClear<T extends Object?>(Route<T> route) {
+    // 先清空右侧栈
+    clearRightStack();
+    // 再导航到新页面
+    return pushToRight<T>(route);
   }
 
   /// 添加页面到栈中

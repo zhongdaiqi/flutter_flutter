@@ -337,11 +337,12 @@ class _ProxyNavigatorObserver extends NavigatorObserver {
 
       if (!isPopupRoute) {
         // 这是真正的页面路由（如 MaterialPageRoute），需要转发到右侧
+        // 同时清空右侧的路由栈，确保右侧只有一个页面
         if (manager.rightNavigator != null) {
           if (route is MaterialPageRoute<dynamic>) {
-            manager.pushToRight(route as MaterialPageRoute<dynamic>);
+            manager.pushToRightAndClear(route as MaterialPageRoute<dynamic>);
           } else {
-            manager.pushToRight(route);
+            manager.pushToRightAndClear(route);
           }
         }
 
@@ -366,9 +367,9 @@ class _ProxyNavigatorObserver extends NavigatorObserver {
 
   @override
   void didReplace({Route<dynamic>? newRoute, Route<dynamic>? oldRoute}) {
-    // 当左侧有 replace 请求时，转发到右侧
+    // 当左侧有 replace 请求时，转发到右侧并清空栈
     if (manager.rightNavigator != null && newRoute?.settings.name != null) {
-      manager.pushNamedToRight(newRoute!.settings.name!);
+      manager.pushNamedToRightAndClear(newRoute!.settings.name!);
     }
   }
 }
