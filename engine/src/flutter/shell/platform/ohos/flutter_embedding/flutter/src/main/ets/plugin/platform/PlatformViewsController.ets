@@ -177,15 +177,43 @@ export default class PlatformViewsController implements PlatformViewsHandler {
     onComplete.run(new PlatformViewBufferSize(physicalWidth, physicalHeight));
   }
 
+  /**
+   * Updates the offset position of a platform view.
+   * @param viewId - The ID of the platform view
+   * @param top - The top offset
+   * @param left - The left offset
+   */
   offset(viewId: number, top: number, left: number): void {
     Log.i(TAG, `Offset is id${viewId}, t:${top}, l:${left}`);
 
     let viewWrapper = this.viewWrappers.get(viewId)
-    if (viewWrapper != undefined) {
-      let params: DVModelParameters | undefined = viewWrapper?.getDvModel()!.params
-      this.setParams(params!, "left", left);
-      this.setParams(params!, "top", top);
+    if (viewWrapper === undefined) {
+      return;
     }
+
+    let params: DVModelParameters | undefined = viewWrapper?.getDvModel()!.params;
+    if (!params) {
+      return;
+    }
+    // When the current value is NaN and the previous value is a normal value,
+    // the platformView is considered to have transitioned from visible to invisible.
+    // Use Number.isNaN; the page is considered invisible in the background
+    // only when both top and left values equal NaN.
+    if (Number.isNaN(top) && Number.isNaN(left)) {
+      let leftPre: number | undefined = this.getParams(params!, "left");
+      let topPre: number | undefined = this.getParams(params!, "top");
+      let compType: string | undefined = viewWrapper?.getDvModel().compType;
+      if ((leftPre !== undefined && !Number.isNaN(leftPre)) &&
+        (topPre !== undefined && !Number.isNaN(topPre)) &&
+        (compType === "NodeContainer")) {
+        const nodeController = (params as Record<string, EmbeddingNodeController>)?.nodeController;
+        if (nodeController instanceof EmbeddingNodeController) {
+          nodeController.notifyPlatformViewInvisible();
+        }
+      }
+    }
+    this.setParams(params!, "left", left);
+    this.setParams(params!, "top", top);
   }
 
   hover(viewId: number) {
