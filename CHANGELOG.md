@@ -1,4 +1,7 @@
 # Changelog
+## 6.1.0.312
+- Fix the issue of keyboard popping up and flickering in PlatformView input box ([ca700305](https://gitcode.com/openharmony-tpc/flutter_engine/commit/ca7003059014a6613fb06483418c2bdc72a28134?ref=dev&prId=1209))
+- 更换3.7流水线的sdk ([c7eedf63](https://gitcode.com/openharmony-tpc/flutter_engine/commit/c7eedf63dab5967ffd80c163f60e32c19d940b25?ref=dev&prId=1234))
 ## 6.1.0.310
 - Frame gate enabled: keep draining producer queue, but do not schedule ([21e1ccb6](https://gitcode.com/openharmony-tpc/flutter_engine/commit/21e1ccb6a454c973e149965d08819a1850f1f16b?ref=externalchange_engine3.7&prId=1228))
 ## 6.1.0.30
