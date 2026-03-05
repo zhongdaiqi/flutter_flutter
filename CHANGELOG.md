@@ -1,4 +1,10 @@
 # Changelog
+## 6.1.0.312
+- [Impeller] match Skia's old VMA default block size. Pick https://github.com/flutter/engine/pull/56368 ([5f71cb95](https://gitcode.com/openharmony-tpc/flutter_engine/commit/5f71cb957277505efad246cea73f2aa8bef2297d?ref=oh-3.22.0&prId=1238))
+- fix: caplock and return keys are not working with keyboard ([df85cd4b](https://gitcode.com/openharmony-tpc/flutter_engine/commit/df85cd4b019ded3fd14d4131dc2da364b66549c2?ref=3_22_caplock_issue&prId=1225))
+- Fixed: onInactive method was not triggered when the WebView became invisible. ([5f986785](https://gitcode.com/openharmony-tpc/flutter_engine/commit/5f9867859a7b606bf7394cb4d350cdc157d2689e?ref=322_platformview_visibility&prId=1232))
+- Fix the issue of keyboard popping up and flickering in PlatformView input box ([3559f700](https://gitcode.com/openharmony-tpc/flutter_engine/commit/3559f700ab78c8de1146f3f7540d902ed623c93a?ref=oh-3.22.0&prId=1210))
+- 修改3.22的流水线sdk的地址 ([d91b0268](https://gitcode.com/openharmony-tpc/flutter_engine/commit/d91b02688c97053834d627cc8fbae3e942059541?ref=oh-3.22.0&prId=1236))
 ## 6.1.0.311
 - 修复使用multiply混合模式时，在某些GPU上画面变白/变灰的问题 ([c750b3d0](https://gitcode.com/openharmony-tpc/flutter_engine/commit/c750b3d0ac1ad0e8a35a1a7b2d6bca77f36a56c0?ref=oh-3.22.0-multiply-pr&prId=1215))
 ## 6.1.0.310
