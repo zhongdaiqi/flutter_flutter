@@ -1,4 +1,6 @@
 # Changelog
+## 6.1.0.313
+- 修复NodeController和PlatformView内存泄漏 ([1e547865](https://gitcode.com/openharmony-tpc/flutter_engine/commit/1e54786597c0698b77540aee8c2beecb05a542c5?ref=dev&prId=1240))
 ## 6.1.0.312
 - Fix the issue of keyboard popping up and flickering in PlatformView input box ([ca700305](https://gitcode.com/openharmony-tpc/flutter_engine/commit/ca7003059014a6613fb06483418c2bdc72a28134?ref=dev&prId=1209))
 - 更换3.7流水线的sdk ([c7eedf63](https://gitcode.com/openharmony-tpc/flutter_engine/commit/c7eedf63dab5967ffd80c163f60e32c19d940b25?ref=dev&prId=1234))
