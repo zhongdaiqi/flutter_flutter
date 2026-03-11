@@ -1,4 +1,7 @@
 # Changelog
+## 6.1.0.313
+- 修复软键盘直接弹起到界面上问题 ([2aadedba](https://gitcode.com/openharmony-tpc/flutter_engine/commit/2aadedba65469d91bc16a3d7555829c30a989078?ref=oh-3.22.0&prId=1245))
+- fix: keyboard home key is not consistent ([75881fc7](https://gitcode.com/openharmony-tpc/flutter_engine/commit/75881fc73b5c31960eba217c2bb7f18f2f3e8715?ref=home_key_issue_22&prId=1244))
 ## 6.1.0.312
 - [Impeller] match Skia's old VMA default block size. Pick https://github.com/flutter/engine/pull/56368 ([5f71cb95](https://gitcode.com/openharmony-tpc/flutter_engine/commit/5f71cb957277505efad246cea73f2aa8bef2297d?ref=oh-3.22.0&prId=1238))
 - fix: caplock and return keys are not working with keyboard ([df85cd4b](https://gitcode.com/openharmony-tpc/flutter_engine/commit/df85cd4b019ded3fd14d4131dc2da364b66549c2?ref=3_22_caplock_issue&prId=1225))
