@@ -1,4 +1,6 @@
 # Changelog
+## 6.1.0.314
+- Addressed the issue where cropping with original dimensions in a transformed coordinate system resulted in a size mismatch. ([57de2bc5](https://gitcode.com/openharmony-tpc/flutter_engine/commit/57de2bc59010c8e3bb5dcf0378d7a55f91489d50?ref=oh-3.22.0))
 ## 6.1.0.313
 - 修复软键盘直接弹起到界面上问题 ([2aadedba](https://gitcode.com/openharmony-tpc/flutter_engine/commit/2aadedba65469d91bc16a3d7555829c30a989078?ref=oh-3.22.0&prId=1245))
 - fix: keyboard home key is not consistent ([75881fc7](https://gitcode.com/openharmony-tpc/flutter_engine/commit/75881fc73b5c31960eba217c2bb7f18f2f3e8715?ref=home_key_issue_22&prId=1244))
