@@ -211,6 +211,50 @@ class _SplitScreenContainerState extends State<SplitScreenContainer>
   }
 }
 
+/// 自定义Navigator - 支持在push时直接拦截PopupRoute到右侧
+class _ProxyNavigatorImpl extends Navigator {
+  final SplitScreenManager manager;
+  final _ProxyNavigatorObserver observer;
+
+  _ProxyNavigatorImpl({
+    required Key key,
+    required this.manager,
+    required this.observer,
+    String? initialRoute,
+    RouteFactory? onGenerateRoute,
+    RouteFactory? onUnknownRoute,
+    required List<NavigatorObserver> observers,
+  }) : super(
+    key: key,
+    initialRoute: initialRoute,
+    onGenerateRoute: onGenerateRoute,
+    onUnknownRoute: onUnknownRoute,
+    observers: observers,
+  );
+
+  @override
+  _ProxyNavigatorStateImpl createState() => _ProxyNavigatorStateImpl();
+}
+
+class _ProxyNavigatorStateImpl extends NavigatorState {
+  late SplitScreenManager _manager;
+
+  @override
+  Future<T?> push<T extends Object?>(Route<T> route) {
+    // ✨ 核心逻辑：拦截PopupRoute，直接转发到右侧
+    if (route is PopupRoute && _manager.rightNavigator != null) {
+      // 直接转发到右侧，不进入左侧的overlay
+      return _manager.rightNavigator!.push(route);
+    }
+    // 其他路由正常处理
+    return super.push(route);
+  }
+
+  void setManager(SplitScreenManager manager) {
+    _manager = manager;
+  }
+}
+
 /// 代理导航器 - 将左侧的导航操作转发到右侧的真实导航器
 class _ProxyNavigator extends StatefulWidget {
   final Widget child;
@@ -231,7 +275,7 @@ class _ProxyNavigator extends StatefulWidget {
 class _ProxyNavigatorState extends State<_ProxyNavigator> {
   late SplitScreenManager _manager;
   late _ProxyNavigatorObserver _observer;
-  late GlobalKey<NavigatorState> _navigatorKey;
+  late GlobalKey<_ProxyNavigatorStateImpl> _navigatorKey;
 
   /// 用于追踪这个State实例的唯一ID
   static int _instanceCounter = 0;
@@ -243,7 +287,7 @@ class _ProxyNavigatorState extends State<_ProxyNavigator> {
     _instanceId = ++_instanceCounter;
     _manager = SplitScreenManager();
     _observer = _ProxyNavigatorObserver(_manager);
-    _navigatorKey = GlobalKey<NavigatorState>();
+    _navigatorKey = GlobalKey<_ProxyNavigatorStateImpl>();
   }
 
   @override
@@ -252,11 +296,14 @@ class _ProxyNavigatorState extends State<_ProxyNavigator> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_navigatorKey.currentState != null) {
         _manager.setLeftNavigator(_navigatorKey.currentState!);
+        _navigatorKey.currentState!.setManager(_manager);
       }
     });
 
-    return Navigator(
+    return _ProxyNavigatorImpl(
       key: _navigatorKey,
+      manager: _manager,
+      observer: _observer,
       initialRoute: widget.initialRoute ?? '/',
       observers: <NavigatorObserver>[
         _observer,
@@ -321,7 +368,40 @@ class _ProxyNavigatorState extends State<_ProxyNavigator> {
   }
 }
 
+/// PopupRoute拦截观察器 - 拦截并阻止PopupRoute在左侧显示
+/// 这个Observer在_ProxyNavigatorObserver之前执行，用于提前处理PopupRoute
+class _PopupRouteInterceptingNavigatorObserver extends NavigatorObserver {
+  final SplitScreenManager manager;
+
+  _PopupRouteInterceptingNavigatorObserver(this.manager);
+
+  @override
+  void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    // 如果是PopupRoute（dialog/overlay），需要特殊处理
+    if (route is PopupRoute && previousRoute != null) {
+      // PopupRoute不应该在左侧显示，转发到右侧
+      if (!route.isFirst && manager.rightNavigator != null) {
+        // 先转发到右侧
+        manager.rightNavigator!.push(route);
+
+        // 然后从左侧移除此PopupRoute
+        // 使用延迟确保route已完全added到左侧navigtor后再移除
+        Future.delayed(const Duration(milliseconds: 10), () {
+          if (manager.leftNavigator != null && manager.leftNavigator!.canPop()) {
+            try {
+              manager.leftNavigator!.pop();
+            } catch (e) {
+              // 忽略pop失败的异常
+            }
+          }
+        });
+      }
+    }
+  }
+}
+
 /// 代理导航观察器 - 监听左侧导航器的事件并转发到右侧
+/// 注意：PopupRoute already handled by _ProxyNavigatorStateImpl.push()
 class _ProxyNavigatorObserver extends NavigatorObserver {
   final SplitScreenManager manager;
 
@@ -329,33 +409,28 @@ class _ProxyNavigatorObserver extends NavigatorObserver {
 
   @override
   void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) {
-    // 对于任何类型的 push（包括直接 push，不仅是 pushNamed）
-    // 如果 previousRoute 不为 null，说明这是在已有路由基础上的 push，需要转发给右侧
-    if (previousRoute != null) {
-      // 判断是否为 PopupRoute（dialog/overlay）
-      final bool isPopupRoute = route is PopupRoute;
-
-      if (!isPopupRoute) {
-        // 这是真正的页面路由（如 MaterialPageRoute），需要转发到右侧
-        // 同时清空右侧的路由栈，确保右侧只有一个页面
-        if (manager.rightNavigator != null) {
-          if (route is MaterialPageRoute<dynamic>) {
-            manager.pushToRightAndClear(route as MaterialPageRoute<dynamic>);
-          } else {
-            manager.pushToRightAndClear(route);
-          }
+    // 仅处理非PopupRoute的情况（页面路由）
+    // PopupRoute已由 _ProxyNavigatorStateImpl.push() 处理
+    if (route is! PopupRoute && previousRoute != null) {
+      // 这是真正的页面路由（如 MaterialPageRoute），需要转发到右侧
+      // 同时清空右侧的路由栈，确保右侧只有一个页面
+      if (manager.rightNavigator != null) {
+        if (route is MaterialPageRoute<dynamic>) {
+          manager.pushToRightAndClear(route as MaterialPageRoute<dynamic>);
+        } else {
+          manager.pushToRightAndClear(route);
         }
-
-        // 立即从左侧弹出，返回到根路由
-        Future.microtask(() {
-          if (manager.leftNavigator != null &&
-              manager.leftNavigator!.canPop()) {
-            manager.leftNavigator!.popUntil((Route<dynamic> route) {
-              return route.isFirst;
-            });
-          }
-        });
       }
+
+      // 立即从左侧弹出，返回到根路由
+      Future.microtask(() {
+        if (manager.leftNavigator != null &&
+            manager.leftNavigator!.canPop()) {
+          manager.leftNavigator!.popUntil((Route<dynamic> route) {
+            return route.isFirst;
+          });
+        }
+      });
     }
   }
 

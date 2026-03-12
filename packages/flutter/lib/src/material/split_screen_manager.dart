@@ -131,6 +131,15 @@ class SplitScreenManager extends ChangeNotifier {
     return pushToRight<T>(route);
   }
 
+  /// 转发 PopupRoute（Dialog/BottomSheet/SnackBar等）到右侧导航器
+  /// 这确保了所有的弹窗都显示在右侧窗口，不受分屏布局约束
+  Future<T?> pushPopupRouteToRight<T extends Object?>(Route<T> route) {
+    if (_rightNavigator != null) {
+      return _rightNavigator!.push(route);
+    }
+    return Future.value(null);
+  }
+
   /// 添加页面到栈中
   void pushPage(Widget page) {
     _pageStack.add(page);
