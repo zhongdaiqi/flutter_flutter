@@ -9,6 +9,9 @@ import 'package:flutter/widgets.dart';
 
 import 'split_screen_manager.dart';
 
+/// 全局已处理的PopupRoute集合，防止左右两侧重复处理
+final Set<Route> _processedPopupRoutes = <Route>{};
+
 /// 分屏起始页 - 在右侧面板等待左侧导航时显示
 /// 这是一个全局唯一的 Widget，可以用来判断当前显示的页面是否是分屏起始页
 class SplitStartPage extends StatelessWidget {
@@ -238,16 +241,53 @@ class _ProxyNavigatorImpl extends Navigator {
 
 class _ProxyNavigatorStateImpl extends NavigatorState {
   late SplitScreenManager _manager;
+  Route? _currentBarrierRoute;
 
   @override
   Future<T?> push<T extends Object?>(Route<T> route) {
-    // ✨ 核心逻辑：拦截PopupRoute，直接转发到右侧
-    if (route is PopupRoute && _manager.rightNavigator != null) {
-      // 直接转发到右侧，不进入左侧的overlay
-      return _manager.rightNavigator!.push(route);
+    // ✨ 核心逻辑：拦截PopupRoute（检查是否已处理）
+    if (route is PopupRoute && !_processedPopupRoutes.contains(route)) {
+      // 获取全局manager实例（SplitScreenManager是单例）
+      final manager = SplitScreenManager();
+
+      // 只有当右侧导航器已初始化时才处理
+      if (manager.rightNavigator != null) {
+        // 标记此route已处理，防止右侧再处理
+        _processedPopupRoutes.add(route);
+
+        // 在左侧创建barrier
+        final barrierRoute = _createBarrierRoute(route as PopupRoute);
+        _currentBarrierRoute = barrierRoute;
+        // 标记barrier为已处理，防止被递归拦截
+        _processedPopupRoutes.add(barrierRoute);
+        super.push(barrierRoute);
+
+        // 在右侧push真实dialog
+        final rightFuture = manager.rightNavigator!.push(route);
+        rightFuture.then((value) {
+          // 右侧dialog关闭时，直接pop左侧的barrier
+          if (canPop() && _currentBarrierRoute != null) {
+            pop();
+            // 清除barrier的已处理标记
+            _processedPopupRoutes.remove(_currentBarrierRoute);
+          }
+          _currentBarrierRoute = null;
+          _processedPopupRoutes.remove(route);
+        });
+
+        return rightFuture;
+      }
     }
     // 其他路由正常处理
     return super.push(route);
+  }
+
+  Route<T> _createBarrierRoute<T>(PopupRoute route) {
+    return _BarrierOnlyRoute<T>(
+      barrierColor: route.barrierColor,
+      barrierDismissible: false,
+      barrierLabel: route.barrierLabel,
+    );
   }
 
   void setManager(SplitScreenManager manager) {
@@ -255,7 +295,69 @@ class _ProxyNavigatorStateImpl extends NavigatorState {
   }
 }
 
-/// 代理导航器 - 将左侧的导航操作转发到右侧的真实导航器
+/// 只显示barrier的Route - 用于在左侧禁用交互，不显示实际内容
+class _BarrierOnlyRoute<T> extends PopupRoute<T> {
+  final Color? barrierColor;
+  final bool barrierDismissible;
+  final String? barrierLabel;
+  final VoidCallback? onBarrierDismissed;
+
+  _BarrierOnlyRoute({
+    this.barrierColor = const Color(0x80000000),
+    this.barrierDismissible = true,
+    this.barrierLabel,
+    this.onBarrierDismissed,
+  });
+
+  @override
+  Color? get barrierColorValue => barrierColor;
+
+  @override
+  bool get opaque => false;
+
+  @override
+  bool get maintainState => false;
+
+  @override
+  Duration get transitionDuration => Duration.zero;
+
+  @override
+  Widget buildPage(
+    BuildContext context,
+    Animation<double> animation,
+    Animation<double> secondaryAnimation,
+  ) {
+    // 不显示任何内容，只显示barrier
+    return const SizedBox.shrink();
+  }
+
+  @override
+  Widget buildTransitions(
+    BuildContext context,
+    Animation<double> animation,
+    Animation<double> secondaryAnimation,
+    Widget child,
+  ) {
+    // 不做任何过渡动画，直接返回child
+    return child;
+  }
+
+  @override
+  void didPopNext(Route nextRoute) {
+    // 当右侧的dialog被关闭时，同时关闭左侧的barrier
+    super.didPopNext(nextRoute);
+  }
+
+  @override
+  bool didPop(T? result) {
+    // barrier被关闭时不需要主动pop右侧
+    // 因为右侧的dialog已经在自己的pop过程中了
+    // 左侧的barrier会跟随右侧dialog的关闭而自动关闭（由push中的then回调处理）
+    return super.didPop(result);
+  }
+}
+
+/// 分屏容器右侧导航器代理 - 确保右侧导航器能正确显示
 class _ProxyNavigator extends StatefulWidget {
   final Widget child;
   final String? initialRoute;
@@ -449,6 +551,88 @@ class _ProxyNavigatorObserver extends NavigatorObserver {
   }
 }
 
+/// 自定义右侧Navigator - 支持在push时直接拦截PopupRoute到左侧显示barrier
+class _RightSideNavigatorImpl extends Navigator {
+  final SplitScreenManager manager;
+  final _RightSideNavigatorObserver observer;
+
+  _RightSideNavigatorImpl({
+    required Key key,
+    required this.manager,
+    required this.observer,
+    String? initialRoute,
+    RouteFactory? onGenerateRoute,
+    RouteFactory? onUnknownRoute,
+    required List<NavigatorObserver> observers,
+  }) : super(
+    key: key,
+    initialRoute: initialRoute,
+    onGenerateRoute: onGenerateRoute,
+    onUnknownRoute: onUnknownRoute,
+    observers: observers,
+  );
+
+  @override
+  _RightSideNavigatorStateImpl createState() => _RightSideNavigatorStateImpl();
+}
+
+class _RightSideNavigatorStateImpl extends NavigatorState {
+  late SplitScreenManager _manager;
+  Route? _currentBarrierRoute;
+
+  @override
+  Future<T?> push<T extends Object?>(Route<T> route) {
+    // ✨ 核心逻辑：拦截PopupRoute（检查是否已处理）
+    if (route is PopupRoute && !_processedPopupRoutes.contains(route)) {
+      // 获取全局manager实例（SplitScreenManager是单例）
+      final manager = SplitScreenManager();
+
+      // 只有当左侧导航器已初始化时才处理
+      if (manager.leftNavigator != null) {
+        // 标记此route已处理，防止左侧再处理
+        _processedPopupRoutes.add(route);
+
+        // 为左侧创建barrier
+        final barrierRoute = _createBarrierRoute(route as PopupRoute);
+        _currentBarrierRoute = barrierRoute;
+        // 标记barrier为已处理，防止被递归拦截
+        _processedPopupRoutes.add(barrierRoute);
+        manager.leftNavigator!.push(barrierRoute);
+
+        // 在右侧正常push dialog
+        final rightFuture = super.push(route);
+        rightFuture.then((value) {
+          // 右侧dialog关闭时，直接pop左侧barrier
+          if (manager.leftNavigator != null &&
+              manager.leftNavigator!.canPop()) {
+            manager.leftNavigator!.pop();
+            // 清除barrier的已处理标记
+            _processedPopupRoutes.remove(_currentBarrierRoute);
+          }
+          _currentBarrierRoute = null;
+          _processedPopupRoutes.remove(route);
+        });
+
+        return rightFuture;
+      }
+    }
+    // 其他路由正常处理
+    return super.push(route);
+  }
+
+  Route<T> _createBarrierRoute<T>(PopupRoute route) {
+    return _BarrierOnlyRoute<T>(
+      barrierColor: route.barrierColor,
+      barrierDismissible: false,
+      barrierLabel: route.barrierLabel,
+    );
+  }
+
+  void setManager(SplitScreenManager manager) {
+    _manager = manager;
+  }
+}
+
 /// 右侧导航器包装器 - 创建真实的Navigator并捕获其引用
 class _RightSideNavigator extends StatefulWidget {
   final Widget child;
@@ -469,14 +653,16 @@ class _RightSideNavigator extends StatefulWidget {
 }
 
 class _RightSideNavigatorState extends State<_RightSideNavigator> {
-  late GlobalKey<NavigatorState> _navigatorKey;
+  late GlobalKey<_RightSideNavigatorStateImpl> _navigatorKey;
   late SplitScreenManager _manager;
+  late _RightSideNavigatorObserver _observer;
 
   @override
   void initState() {
     super.initState();
-    _navigatorKey = GlobalKey<NavigatorState>();
+    _navigatorKey = GlobalKey<_RightSideNavigatorStateImpl>();
     _manager = SplitScreenManager(); // 保存实例引用
+    _observer = _RightSideNavigatorObserver(); // 保存observer实例
   }
 
   @override
@@ -518,16 +704,19 @@ class _RightSideNavigatorState extends State<_RightSideNavigator> {
     // 立即在build中尝试设置 Navigator引用，确保引用始终有效
     if (_navigatorKey.currentState != null) {
       _manager.setRightNavigator(_navigatorKey.currentState!);
+      _navigatorKey.currentState!.setManager(_manager);
     }
 
     // 使用 HeroControllerScope.none 防止多个 Navigator 共享 HeroController
     // 这样外层 Navigator 和内层应用的 Navigator 就不会产生 Hero 动画冲突
     return HeroControllerScope.none(
-      child: Navigator(
+      child: _RightSideNavigatorImpl(
         key: _navigatorKey,
+        manager: _manager,
+        observer: _observer,
         initialRoute: widget.initialRoute, // 这可能是 null 或者 "/"
         observers: <NavigatorObserver>[
-          _RightSideNavigatorObserver(),
+          _observer,  // 保存的observer实例
         ],
         onGenerateRoute: (RouteSettings settings) {
           // 在route生成时也确保引用有效
