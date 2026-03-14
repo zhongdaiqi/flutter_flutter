@@ -17,7 +17,7 @@
 | Flutter 3.44 | 2026/05        | 2026/09          | 4个月    |
 | Flutter 3.47 | 2026/08        | 2026/12          | 4个月    |
 
-*注：以上时间为预估，实际发版可能会根据质量验收情况微调。*
+*注：以上时间为预估，实际发版可能会根据质量验收情况及交付规划微调。*
 
 ------
 
@@ -77,7 +77,7 @@ Flutter 的强大离不开丰富的三方库生态。大量Flutter三方库不�
 - **三方库自规划**：根据三方库使用频度和技术域等，按优先级分批适配，并定期公布适配清单。
 - **开发者驱动**：开发者可通过[开发者联盟工单系统](https://developer.huawei.com/consumer/cn/support/feedback/#/ticketCard)提交库适配需求，我们会高优先级进行评估并排期。
 - **社区共建**：与Flutter SIG成员、高校、开源爱好者合作，共同丰富和繁荣Flutter在鸿蒙系统上的三方库
-
+- **Flutter 三方库鸿蒙化 Skills**：我们将围绕鸿蒙原生能力与 Flutter 插件开发展开技能沉淀，输出可复用、可组合的插件鸿蒙化 Skill 集合。此举有望降低开发者参与鸿蒙适配的门槛，激发社区共建热情，加速 Flutter 插件在鸿蒙生态中的高质量落地。
 ------
 
 ## 持续开源与生态治理
@@ -99,7 +99,7 @@ Flutter-OH 的成长离不开每一位开发者的参与。无论您是贡献代
 **需求与交流**
 
 - 问题反馈：欢迎在[Flutter框架仓库](https://gitcode.com/openharmony-tpc/flutter_flutter/issues)及各个Flutter三方库提交issues
-- 需求反馈：无论是框架功能还是三方库适配，欢迎你在[开发者联盟工单](https://developer.huawei.com/consumer/cn/support/feedback/#/ticketCard)提交需求，方便我们第一时间进行分析与需求排序
+- 需求反馈：无论是框架功能还是三方库适配，欢迎你在[issues](https://gitcode.com/openharmony-tpc/flutter_flutter/issues)或者[开发者联盟工单](https://developer.huawei.com/consumer/cn/support/feedback/#/ticketCard)提交需求，方便我们第一时间进行分析与需求排序
 
 **加入我们：**
 
