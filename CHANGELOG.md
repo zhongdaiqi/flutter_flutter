@@ -1,4 +1,6 @@
 # Changelog
+## 6.1.1.36
+- chore: Run incremental build on CI. ([c54ce542](https://gitcode.com/openharmony-tpc/flutter_engine/commit/c54ce542c058fca460682b9e0a0bc2ca6e28966d?ref=dev&prId=1257))
 ## 6.1.0.313
 - 修复NodeController和PlatformView内存泄漏 ([1e547865](https://gitcode.com/openharmony-tpc/flutter_engine/commit/1e54786597c0698b77540aee8c2beecb05a542c5?ref=dev&prId=1240))
 ## 6.1.0.312
@@ -126,7 +128,7 @@
 - 修改部分场景下顶部状态栏规避高度不对的问题 ([452c4359](https://gitcode.com/openharmony-tpc/flutter_engine/commit/452c4359a250dfc62e2e1ca69677526471258ce1?ref=dev))
 - 无障碍卡顿优化 ([3a064176](https://gitcode.com/openharmony-tpc/flutter_engine/commit/3a064176a0310730ba29e676374d940d6a45b690?ref=dev))
 - fix: 当鼠标离开组件时，传递鼠标离开事件到FlutterEngine ([d1714c06](https://gitcode.com/openharmony-tpc/flutter_engine/commit/d1714c060563df0f4486d2eda124fc9a390df1f0?ref=dev))
-## 5.1.0.204 
+## 5.1.0.204
 - fix: flutter输入框，一次del偶现删除两个字符 ([6cd1b210](https://gitcode.com/openharmony-tpc/flutter_engine/commit/6cd1b210edcd66cb9dfc659fd7affcde69ac634b?ref=mr_0226&prId=649))
 - 修改Flutter输入框输入字符的逻辑,KeyDown事件发生时输入字符 ([9743030e](https://gitcode.com/openharmony-tpc/flutter_engine/commit/9743030e66dfb24faa470df4150ce509ef0376c4?ref=dev))
 - 滑动区间的trace名修复 ([0ee82b4d](https://gitcode.com/openharmony-tpc/flutter_engine/commit/0ee82b4d621597c75b6bb670eb7b1dd1f9841671?ref=dev))
