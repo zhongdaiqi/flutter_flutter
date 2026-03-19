@@ -1,4 +1,7 @@
 # Changelog
+## 6.1.1.36
+- Reduce memory usage during the preloading phase. ([e27b79e1](https://gitcode.com/openharmony-tpc/flutter_engine/commit/e27b79e19dae260c785882a8eecc2d522ff285e2?ref=preload-dma-3.22&prId=1230))
+- chore: Run incremental build on CI. ([91859642](https://gitcode.com/openharmony-tpc/flutter_engine/commit/91859642fd5931fbe4ef5f15b23a53a63a6c1198?ref=oh-3.22.0&prId=1256))
 ## 6.1.0.314
 - Addressed the issue where cropping with original dimensions in a transformed coordinate system resulted in a size mismatch. ([57de2bc5](https://gitcode.com/openharmony-tpc/flutter_engine/commit/57de2bc59010c8e3bb5dcf0378d7a55f91489d50?ref=oh-3.22.0))
 ## 6.1.0.313
