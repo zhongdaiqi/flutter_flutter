@@ -1,246 +1,246 @@
 Flutter SDK Repository
-==============
+======================
 
-Source of the original repository: https://github.com/flutter/flutter
+## Description
 
-## Repository Description
+This repository is the **OpenHarmony** adaptation of the **[Flutter SDK](https://github.com/flutter/flutter)**, maintained by the OpenHarmony-Flutter team. It enables developers to use the familiar Flutter technology stack to build OpenHarmony applications and leverage existing resources from the Flutter ecosystem.
 
-This repository is an extension of the Flutter SDK for compatibility with OpenHarmony. It allows DevEco Studio IDE or terminals to use Flutter Tools instructions to compile and build OpenHarmony applications.
+> This branch is based on Flutter version [3.7.12](https://github.com/flutter/flutter/tree/3.7.12).
+>
+> For information on version planning and branch strategy, see: [Flutter OH Version Planning and Branch Strategy](https://gitcode.com/openharmony-tpc/flutter_flutter/wiki/Flutter-OH%E7%89%88%E6%9C%AC%E6%BC%94%E8%BF%9B%E8%A7%84%E5%88%92%E5%92%8C%E5%88%86%E6%94%AF%E7%AD%96%E7%95%A5.md)
 
-## Flutter OH version evolution planning and branching strategy
+## Development Guides
 
-You can learn more about our adaptation of Flutter for OpenHarmony in the [Flutter OH version evolution planning and branching strategy](https://gitcode.com/openharmony-tpc/flutter_flutter/wiki/Flutter-OH%E7%89%88%E6%9C%AC%E6%BC%94%E8%BF%9B%E8%A7%84%E5%88%92%E5%92%8C%E5%88%86%E6%94%AF%E7%AD%96%E7%95%A5.md).
+- [Flutter OH Development Documentation](https://gitcode.com/openharmony-tpc/flutter_samples/blob/master/README.en.md)
+- [Flutter OH Environment Setup Guide](https://gitcode.com/openharmony-tpc/flutter_samples/blob/master/ohos/docs/03_environment/OpenHarmony-flutter-environment-setup.md)
+- [Flutter OH Application Build Guide](https://gitcode.com/openharmony-tpc/flutter_samples/blob/master/ohos/docs/04_development/OpenHarmony-flutter%E5%BA%94%E7%94%A8%E6%9E%84%E5%BB%BA%E6%8C%87%E5%AF%BC.md)
+- [Flutter OH Third-party Library Adaptation List](https://gitcode.com/OpenHarmony-Flutter/docs/blob/main/ThirdpartyLibrarites.en.md)
+- [Flutter Official Development Guide and API Documentation](https://docs.flutter.dev/)
 
-## Development Documentation
+## Upgrade Guide
 
-[Flutter_samples](https://gitcode.com/openharmony-tpc/flutter_samples/tree/master/ohos/docs)
+[Flutter OH Engine Build Guide](https://gitcode.com/openharmony-tpc/flutter_samples/blob/master/ohos/docs/03_environment/Flutter-OH-engine%E6%9E%84%E5%BB%BA%E6%8C%87%E5%AF%BC.md)
 
-## Environment Dependencies
+## Supported Commands
 
-* Development system
+List of commands adapted for OpenHarmony development:
 
-  Linux, macOS, or Windows that supports the Flutter Tools instructions.
+| Command Name | Command Description              | Usage Instructions                                           |
+| ------------ | -------------------------------- | ------------------------------------------------------------ |
+| doctor       | environment detection            | `flutter doctor`                                             |
+| config       | environment configuration        | `flutter config --<key> <value>`                             |
+| create       | Create a new project             | `flutter create --platforms [ohos,android,ios] --org <org> <appName>` |
+| create       | Create module template           | `flutter create -t module <module_name>`                     |
+| create       | Create plugin template           | `flutter create -t plugin --platforms [ohos,android,ios] <plugin_name>` |
+| create       | Create plugin_ffi template       | `flutter create -t plugin_ffi --platforms [ohos,android,ios] <plugin_name>` |
+| devices      | Connected device discovery       | `flutter devices`                                            |
+| install      | application installation         | `flutter install -t <deviceId> <hap_file_path>`              |
+| assemble     | resource packaging               | `flutter assemble`                                           |
+| build        | Test application build           | `flutter build hap --debug [--target-platform ohos-arm64] [--local-engine=<ohos-compatible debug engine path>]` |
+| build        | Formal application build         | `flutter build hap --release [--target-platform ohos-arm64] [--local-engine=<ohos-compatible release engine path>]` |
+| run          | application run                  | `flutter run [--local-engine=<ohos-compatible engine path>]` |
+| attach       | debug mode                       | `flutter attach`                                             |
+| screenshot   | screenshot                       | `flutter screenshot`                                         |
+| pub          | Obtains the dependencies.        | `flutter pub get`                                            |
+| clean        | Clears the project dependencies. | `flutter clean`                                              |
+| cache        | Clears global cache data.        | `flutter pub cache clean`                                    |
 
-* Development restrictions
+## FAQ
 
-  For Windows, the Flutter project and the dependent plugin project must be in the same disk.
+1. After switching to FLUTTER_STORAGE_BASE_URL, you need to delete the \<flutter\>/bin/cache directory and execute Flutter clean in the project before running it again.
 
-* Environment configuration
-  **Download the supporting development kits from [OpenHarmony SDK](https://developer.huawei.com/consumer/en/develop).**
-  *For Unix-like systems (Linux and macOS), you can refer to the environment variable configuration below. For Windows, set environment variables by following the instructions provided in "Edit System Environment Variables."*
+2. If you encounter the error: `The SDK license agreement is not accepted`, please execute the following command and compile again:
 
-  1. Configure the OpenHarmony SDK and the environment variables.
-   * API 18, DevEco Studio 5.1, or command-line-tools-5.1.
-   * Download JDK 17 and configure environment variables.
-
-    ```sh
-    # macOS environment
-    export JAVA_HOME=<JAVA_HOME path>/Contents/Home
-    export PATH=$JAVA_HOME/bin:$PATH
-  
-    # Windows environment
-    JAVA_HOME = <JAVA_HOME path>
-    PATH=%JAVA_HOME%\bin
-    ```
-
-   * Configure the environment variables (SDK, node, ohpm, and hvigor).
-
-    ```sh
-    # macOS environment
-    export TOOL_HOME=/Applications/DevEco-Studio.app/Contents # macOS environment
-    export DEVECO_SDK_HOME=$TOOL_HOME/sdk # command-line-tools/sdk
-    export PATH=$TOOL_HOME/tools/ohpm/bin:$PATH # command-line-tools/ohpm/bin
-    export PATH=$TOOL_HOME/tools/hvigor/bin:$PATH # command-line-tools/hvigor/bin
-    export PATH=$TOOL_HOME/tools/node/bin:$PATH # command-line-tools/tool/node/bin
-  
-    # Windows environment
-    TOOL_HOME = D:\devecostudio-windows\DevEco Studio
-    DEVECO_SDK_HOME=%TOOL_HOME%\sdk
-    PATH=%TOOL_HOME%\tools\ohpm\bin
-    PATH=%TOOL_HOME%\tools\hvigor\bin
-    PATH=%TOOL_HOME%\tools\node
-    ```
-
-  2. Use a code editor to download the current repository code by running `git clone https://gitcode.com/openharmony-tpc/flutter_flutter.git`, specify the dev or master branch, and set up the environment.
-
-    ```sh
-  export PUB_CACHE=D:/PUB
-  export PATH=<flutter_flutter path>/bin:$PATH
-  export PUB_HOSTED_URL=https://pub.flutter-io.cn
-  export FLUTTER_STORAGE_BASE_URL=https://storage.flutter-io.cn
-    ```
-
-    3. The code snippet below shows how to configure all the preceding environment variables. Use the actual username and code paths in practice.
-
-    ```sh
-    #Dependency cache
-    export PUB_CACHE=D:/PUB (custom path)
-  
-    # Mirror inside China
-    export PUB_HOSTED_URL=https://pub.flutter-io.cn
-    export FLUTTER_STORAGE_BASE_URL=https://storage.flutter-io.cn
-  
-    # flutter_flutter/bin directory pulled from gitcode
-    export PATH=/home/<user>/ohos/flutter_flutter/bin:$PATH
-  
-    # HamonyOS SDK
-    export TOOL_HOME=/Applications/DevEco-Studio.app/Contents # macOS environment
-    export DEVECO_SDK_HOME=$TOOL_HOME/sdk # command-line-tools/sdk
-    export PATH=$TOOL_HOME/tools/ohpm/bin:$PATH # command-line-tools/ohpm/bin
-    export PATH=$TOOL_HOME/tools/hvigor/bin:$PATH # command-line-tools/hvigor/bin
-    export PATH=$TOOL_HOME/tools/node/bin:$PATH # command-line-tools/tool/node/bin
-    ```
-
-## How to Build
-
-1. Run `flutter doctor -v` to check whether the environment variable configuration is correct. The check results for both Flutter and OpenHarmony should be **ok**. If there are any prompts indicating missing environment variable configuration, follow the prompts to configure the environment.
-
-2. Create a project.
-
-   ```
-   # Create a project.
-   flutter create --platforms ohos <projectName>
+   ```shell
+   ./ohsdkmgr install ets:9 js:9 native:9 previewer:9 toolchains:9 --sdk-directory='/home/xc/code/sdk/ohos-sdk/' --accept-license
    ```
 
-3. Build the HAP file. The build product is stored in **\<projectName\>/ohos/entry/build/default/outputs/default/entry-default-signed.hap**.
+3. If you are using the Beta version of DevEco Studio and encounter the error "must have required property 'compatibleSdkVersion', location: demo/ohos/build-profile.json5:17:11" when building the project, please refer to the [DevEco Studio Configuration File](vscode-file://vscode-app/e:/Microsoft VS Code/resources/app/out/vs/code/electron-browser/workbench/workbench.html) documentation, specifically the section [Project-level build-profile.json5 File → products](vscode-file://vscode-app/e:/Microsoft VS Code/resources/app/out/vs/code/electron-browser/workbench/workbench.html), to configure the `compatibleSdkVersion` property.
 
-   ```
-   # Enter the root directory of the project and build the project.
-   # Example: flutter build hap [--target-platform ohos-arm64] --release
-   flutter build hap --release
-   ```
+4. If you are prompted with an installation error: `fail to verify pkcs7 file`, please execute the command
 
-4. Install the application. Execute `flutter devices` instruction to discover a real device and install the application on the real device.
-
-   Method 1: Go to the build product directory and install the application on the device.
-
-   ```sh
-   hdc -t <deviceId> install <hap file path>
+   ```shell
+   hdc shell param set persist.bms.ohCert.verify true
    ```
 
-   Method 2: Go to the project directory and run the application to install it on the device.
+5. Linux virtual machine cannot directly discover OpenHarmony devices through hdc
 
-   ```sh
-   flutter run --debug -d <deviceId>
+   Solution: In the Windows host, open the hdc server.The specific instructions are as follows:
+
+   ```shell
+   hdc kill
+   hdc -s serverIP:8710 -m
    ```
 
-5. Build the application using the following instruction:
+   Configure environment variables in Linux:
 
+   ```shell
+   HDC_SERVER=<serverIP>
+   HDC_SERVER_PORT=8710
    ```
-   # Example: flutter build app --release
-   flutter build app --release
-   ```
 
-## Instruction List Compatible with OpenHarmony
+   After the configuration is completed, the flutter sdk can complete the device connection through the hdc server. You can also refer to [official guidance](https://docs.openharmony.cn/pages/v5.0/zh-cn/device-dev/subsystems/subsys-toolchain -hdc-guide.md/#hdc-client%E5%A6%82%E4%BD%95%E8%BF%9C%E7%A8%8B%E8%AE%BF%E9%97%AEhdc-server) .
 
-| Instruction | Description                      | How to Use                                                   |
-| ----------- | -------------------------------- | ------------------------------------------------------------ |
-| doctor      | Detects the environment.         | flutter doctor                                               |
-| config      | Configures the environment.      | flutter config --\<key\> \<value\>                           |
-| create      | Creates a project.               | flutter create --platforms ohos,android,ios --org \<org\> \<appName\> |
-| create      | Creates a module template.       | flutter create -t module \<module_name\>                     |
-| create      | Creates a plugin template.       | flutter create -t plugin --platforms ohos,android,ios \<plugin_name\> |
-| create      | Creates a plugin_ffi template.   | flutter create -t plugin_ffi --platforms ohos,android,ios \<plugin_name\> |
-| devices     | Searches for connected devices.  | flutter devices                                              |
-| install     | Installs an application.         | flutter install -t \<deviceId\> \<hap file path\>            |
-| assemble    | Pack resources.                  | flutter assemble                                             |
-| build       | Builds the test application.     | flutter build hap --debug [--target-platform ohos-arm64]     |
-| build       | Builds the formal application.   | flutter build hap --release [--target-platform ohos-arm64]   |
-| run         | Runs the application.            | flutter run                                                  |
-| attach      | Enters debug mode.               | flutter attach                                               |
-| screenshot  | Takes a screenshot.              | flutter screenshot                                           |
-| pub         | Obtains the dependencies.        | flutter pub get                                              |
-| clean       | Clears the project dependencies. | flutter clean                                                |
-| cache       | Clears global cache data.        | flutter pub cache clean                                      |
+6. An error occurred when building the Hap task: Error: The hvigor depends on the npmrc file. Configure the npmrc file first.
 
-Appendix: [Flutter Third-Party Library Adaptation Program](https://docs.qq.com/sheet/DVVJDWWt1V09zUFN2)
+   Please create a file `.npmrc` in the user home directory `~`. This configuration can also refer to [DevEco Studio Official Documentation](https://developer.harmonyos.com/cn/docs/documentation/doc-guides-V3/environment_config-0000001052902427-V3). Edit the content as follows:
 
-
-## FAQs
-
-1. The emulator can be only debugged on macOS (ARM64) and Windows (x86).
-
-2. After switching to **FLUTTER_STORAGE_BASE_URL**, you need to delete the **\<flutter\>/bin/cache** directory and execute **flutter clean** in the project before running the project.
-
-3. The message `Error: The hvigor depends on the npmrc file. Configure the npmrc file first.` is displayed when building the HAP.
-
-   Solution: Create the `.npmrc` file in the `~` directory. For details about the configuration, see [DevEco Studio User Guide](https://developer.huawei.com/consumer/en/doc/harmonyos-guides-V2/environment_config-0000001052902427-V2). The file content is as follows:
-
-    ```
+   ```json
    registry=https://repo.huaweicloud.com/repository/npm/
    @ohos:registry=https://repo.harmonyos.com/npm/
-    ```
-
-4. Logs are lost.
-   Solution: Disable global logging and enable logging of your own domain.
-
    ```
-   Step 1: Disable logging in all domains. (Printing for some special logs cannot be disabled.)
+
+7. Symptom Logs are lost during log query.
+   Solution：Disable global logs and enable only logs in your domain
+
+   ```shell
+   # Step 1: Disable log printing for all domains (some special logs cannot be disabled)
    hdc shell hilog -b X
-   Step 2: Enable logging of your own domain.
-   hdc shell hilog <level> -D <domain> 
-   In the preceding instruction, \<level> indicates the log levels such as D, I, W, E, and F; \<domain> indicates the number before tag.
-   Example:
-   To print A00000/XComFlutterOHOS_Native logs, set `hdc shell hilog -b D -D A00000`.
-   Note: The preceding settings become invalid after the device is restarted. If you want to continue using the settings, configure them again.
+   # Step 2: Only enable logs for your own domain
+   hdc shell hilog <level> -D <domain>
+   # Where <level> is the log print level: D/I/W/E/F, <domain> is the number before Tag
+   # Example:
+   # To print logs for A00000/XComFlutterOHOS_Native, set: hdc shell hilog -b D -D A00000
+   # Note: The above settings will be lost after machine restart. If you want to continue using them, you need to set them again.
    ```
 
-5. If the application with the debug signature cannot be started on a device of API 11 Beta1, replace the debug signature with a formal signature or enable the developer mode on the device. (Steps: Go to **Settings** > **General** > **Developer mode**.)
+8. If the debug signature application cannot be started on API 11BETA1, it can be resolved by changing the signature to an official signature or opening the developer mode on the mobile terminal (steps: Settings -> General -> Developer mode).
 
-6. Updated ROM of Beta2 no longer supports anonymous memory with the execution permission. As a result, debugging crashes.
+9. If `Invalid CEN header (invalid zip64 extra data field size)` is abnormal, please replace the JDK version, see [JDK-8313765](https://bugs.openjdk.org/browse/JDK-8313765).
 
-   1. Solution: Update **flutter_flutter** to a version later than a44b8a6d (2024-07-25).
-   2. Key logs:
+10. An error occurs when running a debug version of the Flutter application on a HarmonyOS device (release and profile versions are normal)
 
-    ```
-   #20 at attachToNative (oh_modules/.ohpm/@ohos+flutter_ohos@g8zhdaqwu8gotysbmqcstpfpcpy=/oh_modules/@ohos/flutter_ohos/src/main/ets/embedding/engine/FlutterNapi.ets:78:32)
-   #21 at attachToNapi (oh_modules/.ohpm/@ohos+flutter_ohos@g8zhdaqwu8gotysbmqcstpfpcpy=/oh_modules/@ohos/flutter_ohos/src/main/ets/embedding/engine/FlutterEngine.ets:144:5)
-   #22 at init (oh_modules/.ohpm/@ohos+flutter_ohos@g8zhdaqwu8gotysbmqcstpfpcpy=/oh_modules/@ohos/flutter_ohos/src/main/ets/embedding/engine/FlutterEngine.ets:133:7)
-    ```
+    1. Error message: `Error while initializing the Dart VM: Wrong full snapshot version, expected '8af474944053df1f0a3be6e6165fa7cf' found 'adb4292f3ec25074ca70abcd2d5c7251'`
+    2. Solution: Perform the following actions in sequence
+       1. Set environment variables `export FLUTTER_STORAGE_BASE_URL=https://flutter-ohos.obs.cn-south-1.myhuaweicloud.com`
+       2. Delete the cache in the<Flutter>/bin/cache directory
+       3. Execute `fluent clean` to clear the project compilation cache
+       4. Execute `flutter run -d $DEVICE --debug`
+    3. Additional information: If a similar error occurs while running Android or iOS, you can also try restoring the environment variable FLUTTER_STORAGE_BASE_URL , clearing the cache, and then running again.
 
-7. After the environment is configured, crash occurs when execute the `flutter` instruction.
+11. After the ROM update of Beta 2 version, it no longer supports requesting anonymous memory with execution permission, resulting in debug crashing.
 
-   1. Solution: Add the Git environment variable configuration to the Windows environment.
+    1. Solution: Update flutter_flutter to a version after a44b8a6d (2024-07-25).
 
-   ```
-   export PATH=<git path>/cmd:$PATH
-   ```
+    2. Key logs:
 
-8. The `flutter pub cache clean` instruction is executed successfully, but an error is reported when the `flutter clean` instruction is executed. In this case, executing the `update` instruction according to the error message does not take effect.
+       ```json
+           #20 at attachToNative (oh_modules/.ohpm/@ohos+flutter_ohos@g8zhdaqwu8gotysbmqcstpfpcpy=/oh_modules/@ohos/flutter_ohos/src/main/ets/embedding/engine/FlutterNapi.ets:78:32)
+           #21 at attachToNapi (oh_modules/.ohpm/@ohos+flutter_ohos@g8zhdaqwu8gotysbmqcstpfpcpy=/oh_modules/@ohos/flutter_ohos/src/main/ets/embedding/engine/FlutterEngine.ets:144:5)
+           #22 at init (oh_modules/.ohpm/@ohos+flutter_ohos@g8zhdaqwu8gotysbmqcstpfpcpy=/oh_modules/@ohos/flutter_ohos/src/main/ets/embedding/engine/FlutterEngine.ets:133:7)
+       ```
 
-    1. Solution: Add comment to the configuration in the **build.json5** file. For example, "modules": [{ // Delete the entire object corresponding to the error}].
+12. Build Hap command directly execute `flutter build hap`, no longer need `--local-engine` parameter, directly from the cloud to obtain the compilation product
+
+13. After the environment is configured, the system crashes when the flutter command is executed.
+
+    1. Solution：Add git environment variable configuration in windows environment.
+
+       ```shell
+       export PATH=<git path>/cmd:$PATH
+       ```
+
+14. If `flutter pub cache clean` is executed normally, `flutter clean` will report an error. If update command is executed according to the error message, it has no effect.
+
+    1. Solution：To avoid this problem, comment out the configuration in the build.json5 file.
+
     2. Error message:
 
-    ```
-    #Parse ohos module. json5 error: Exception: Cannot found module.json5 at
-    #D:\pub_cache\git\flutter_packages-b00939bb44d018f0710d1b080d91dcf4c34ed06\packages\video_player\video_player_ohos\ohossrc\main\module.json5.
-    #You need to update the Flutter plugin project structure.
-    #See
-   #https://gitcode.com/openharmony-tpc/flutter_samples/blob/master/ohos/docs/09_specifications/update-flutter-plugin-structure.md
-    ```
+       ```json
+        #Parse ohos module. json5 error: Exception: Can not found module.json5 at
+        #D:\pub_cache\git\flutter_packages-b00939bb44d018f0710d1b080d91dcf4c34ed06\packages\video_player\video_player_ohos\ohossrc\main\module.json5.
+        #You need to update the Flutter plugin project structure.
+        #See
+        #https://gitcode.com/openharmony-tpc/flutter_samples/blob/master/ohos/docs/09_specifications/update-flutter-plugin-structure.md
+       ```
 
-9. In the **.ohos** project, errors are reported when the `flutter clean` and the `flutter pub get` instructions are executed.
+15. An error message indicating path verification occurs when `flutter build hap` is executed.
 
-    1. Solution: Delete the **.ohos** folder and execute the **flutter pub get** instruction again.
+    1. Solution:
+
+       - Open the ohos-project-build-profile-schema.json file in deveco installation path D:\DevEco Studio\tools\hvigor\hvigor-ohos-plugin\res\schemas.
+       - Find the line containing: "pattern": "^(\\./|\\.\\./)[\\s\\S]+$" in the file and delete it.
+
     2. Error message:
 
-    ```
-    Oops; flutter has exited unexpectedly: "PathNotFoundException: Cannot open file, path = 'D:\code\.ohos\build-profile.json5' (OS Error: Specified file not found, error = 2)".
-    A crash report has been written to D:\code\flutter_01.log.
-    ```
+       ```json
+        #hvigor  ERROR: Schema validate failed.
+        #        Detail: Please check the following fields.
+        #instancePath: 'modules[1].scrPath',
+        #keyword: 'pattern'
+        #params: { pattern:'^(\\./|\\.\\./)[\\s\\S]+$' },
+        #message: 'must match pattern "^(\\./|\\.\\./)[\\s\\S]+$"',
+        #location: 'D:/work/videoplayerdemo/video_cannot_stop_at_background/ohos/build-profile.json:42:146'
+       ```
 
-15. In the version on the shelves, a crash occurred with the CppCrash error message: `Reason: Signal: SIGABRT(SI_TKILL)`. 
+16. Execute `flutter build hap` report an error.
 
-The error occurred because the developer used anonymous memory and failed to apply for executable permission for the memory, resulting in an exception. 
+    1. Solution: Open the core-module-model-impl.js file in the DevEco installation path D:\DevEco Studio\tools\hvigor\hvigor-ohos-plugin\src\model\module, and modify the findBelongProjectPath method (requires administrator privileges, you can save as and replace):
 
-Solution: Check whether the code uses mmap or if the plugin uses methods such as Pointer.fromFunction and dart ffi. 
+       ```
+        findBelongProjectPath(e) {
+          if (e === path_1.default.dirname(e)) {
+             return this.parentProject.getProjectDir()
+          }
+        }
+       ```
 
-Error message:
-      ```
-      Reason:Signal:SIGABRT(SI_TKILL)@0x01317b310000fc96 from:64662:20020017
-      LastFatalMessage:../../third_party/dart/runtime/vm/virtual_memory_posix.cc: 74: error: mmap failed: 22 (Invalid argument)
-      Fault thread info:
-      Tid:64662, Name:xxxx
-      ``` 
+    2. Error message:
 
-Reference: [FAQs] (https://gitcode.com/openharmony-tpc/flutter_samples/blob/master/ohos/docs/08_FAQ/README_EN.md)
+       ```json
+       # hvigor  ERROR: Cannot find belonging project path for module at D:\.
+       # hvigor  ERROR:  BUILD FAILED in 2s 556ms.
+       #Running Hvigor task assembleHap...
+       #Oops; flutter has exited unexpectedly: "ProcessException: The command failed
+       #  <Command: hvigorw --mode module -p module=video_player_ohos@default -p product=default assmbleHar --no-daemon"
+       #A crash report has been written to D:\work\videoplayerdemo\video_cannot_stop_at_background\flutter_03.log.
+       ```
+
+17. DevEco-Studio(5.0.3.600 Beta3), Windows version compilation error for Flutter app
+
+    1. Solution: Update flutter_flutter to version after c6fbac2b (2024-08-09).
+
+    2. Key logs:
+
+       ```json
+       hvigor ERROR: Schema validate failed.
+       	Detail: Please check the following fields.
+       	{
+       		instancePath: 'modules[2].srcPath',
+       		keyword: 'pattern',
+       		params: { pattern: '^(\\./|\\.\\./)[\\s\\S]+$' },
+       		message: 'must match pattern "^(\\./|\\.\\./)[\\s\\S]+$"',
+       }
+       ```
+
+18. Executing `flutter clean` in .ohos's project reported an error, and then executing `flutter pub get` also reported an error.
+
+    1. Solution：Delete the .ohos folder and execute `flutter pub get` again
+
+    2. Error message：
+
+       ```json
+          Oops; flutter has exited unexpectedly: "PathNotFoundException: Cannot open file, path = 'D:\code\.ohos\build-profile.json5' (OS Error: The system cannot find the file specified., error = 2)".
+          A crash report has been written to D:\code\flutter_01.log.
+       ```
+
+19. White screen, crashes, or similar issues occur when running the emulator.
+
+    1. The emulator only supports Mac (arm64) and does not yet support Mac (x86) or Windows.
+    2. Since the emulator does not currently support Vulkan, please try following the steps in section 2.1. Disable Impeller and try again.
+
+20. Compilation or runtime failure in Flutter profile mode
+
+    1. Please add the buildModeSet field in the ohos project build_profile.json5. You can refer to [complex_layout](./dev/benchmarks/complex_layout/ohos/build-profile.json5).
+
+    2. Error message:
+
+       ```json
+       hvigor ERROR: Build mode 'profile' used in command line is not declared in buildModeSet in /xxx/example/ohos/build-profile.json5.
+       ```
+
+> [More FAQs](https://gitcode.com/openharmony-tpc/flutter_samples/blob/master/ohos/docs/08_FAQ/README.md)
+
+## Communication
+
+- **Issue Feedback:** Submit issues to the [Flutter Framework Repository](https://gitcode.com/openharmony-tpc/flutter_flutter/issues) or related third-party libraries.
