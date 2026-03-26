@@ -1,4 +1,6 @@
 # Changelog
+## 6.1.1.37
+- Fix the issue where the keyboard collapses when the subwindow pops up ([62761d2b](https://gitcode.com/openharmony-tpc/flutter_engine/commit/62761d2b2b4518f46f4265c093c79644a74b28c8?ref=oh-3.22.0&prId=1262))
 ## 6.1.1.36
 - Reduce memory usage during the preloading phase. ([e27b79e1](https://gitcode.com/openharmony-tpc/flutter_engine/commit/e27b79e19dae260c785882a8eecc2d522ff285e2?ref=preload-dma-3.22&prId=1230))
 - chore: Run incremental build on CI. ([91859642](https://gitcode.com/openharmony-tpc/flutter_engine/commit/91859642fd5931fbe4ef5f15b23a53a63a6c1198?ref=oh-3.22.0&prId=1256))
