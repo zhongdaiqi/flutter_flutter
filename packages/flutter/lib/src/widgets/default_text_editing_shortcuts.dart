@@ -543,6 +543,7 @@ class DefaultTextEditingShortcuts extends StatelessWidget {
         case TargetPlatform.fuchsia:
         case TargetPlatform.windows:
         case TargetPlatform.iOS:
+        case TargetPlatform.ohos:
         case TargetPlatform.macOS:
           return _webDisablingTextShortcuts;
       }
