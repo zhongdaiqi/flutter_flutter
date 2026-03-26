@@ -1,4 +1,6 @@
 # Changelog
+## 6.1.1.37
+- Fix the issue where the keyboard collapses when the subwindow pops up ([a4d5ddc6](https://gitcode.com/openharmony-tpc/flutter_engine/commit/a4d5ddc64ddb2ed875422dff19931e581a0b7d4b?ref=dev&prId=1261))
 ## 6.1.1.36
 - chore: Run incremental build on CI. ([c54ce542](https://gitcode.com/openharmony-tpc/flutter_engine/commit/c54ce542c058fca460682b9e0a0bc2ca6e28966d?ref=dev&prId=1257))
 ## 6.1.0.313
