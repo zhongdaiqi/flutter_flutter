@@ -1949,7 +1949,33 @@ napi_value PlatformViewOHOSNapi::nativeEnableFrameCache(
   NAPI_CALL(env, napi_get_value_int64(env, args[0], &shell_holder));
   NAPI_CALL(env, napi_get_value_bool(env, args[1], &enable));
 
-  OHOS_SHELL_HOLDER->GetPlatformView()->EnableFrameCache(enable);
+  auto platform_view = OHOS_SHELL_HOLDER->GetPlatformView();
+  if (!platform_view) {
+    FML_LOG(ERROR) << "nativeEnableFrameCache platform view is null";
+    return nullptr;
+  }
+
+  platform_view->EnableFrameCache(enable);
+  return nullptr;
+}
+
+napi_value PlatformViewOHOSNapi::nativeSetPipVisible(napi_env env,
+                                                     napi_callback_info info) {
+  size_t argc = 2;
+  napi_value args[2] = {nullptr};
+  int64_t shell_holder;
+  bool visible;
+  NAPI_CALL(env, napi_get_cb_info(env, info, &argc, args, nullptr, nullptr));
+  NAPI_CALL(env, napi_get_value_int64(env, args[0], &shell_holder));
+  NAPI_CALL(env, napi_get_value_bool(env, args[1], &visible));
+
+  auto platform_view = OHOS_SHELL_HOLDER->GetPlatformView();
+  if (!platform_view) {
+    FML_LOG(ERROR) << "nativeSetPipVisible platform view is null";
+    return nullptr;
+  }
+
+  platform_view->SetPipVisible(visible);
   return nullptr;
 }
 
