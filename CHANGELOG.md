@@ -1,4 +1,6 @@
 # Changelog
+## 6.1.1.38
+- fix: dpi setting when navi is not working ([beb52726](https://gitcode.com/openharmony-tpc/flutter_engine/commit/beb52726dee6f478c3120b53976fe8cb2435749a?ref=dpi_issue_dev&prId=1266))
 ## 6.1.1.37
 - Fix the issue where the keyboard collapses when the subwindow pops up ([a4d5ddc6](https://gitcode.com/openharmony-tpc/flutter_engine/commit/a4d5ddc64ddb2ed875422dff19931e581a0b7d4b?ref=dev&prId=1261))
 ## 6.1.1.36
