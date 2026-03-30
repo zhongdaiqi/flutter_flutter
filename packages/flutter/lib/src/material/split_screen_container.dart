@@ -107,6 +107,23 @@ class _SplitScreenContainerState extends State<SplitScreenContainer>
     super.dispose();
   }
 
+  @override
+  void didUpdateWidget(SplitScreenContainer oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    // 检测enableLeftPanel是否改变（横竖屏切换时）
+    if (oldWidget.enableLeftPanel != widget.enableLeftPanel) {
+      // 当flex从0变化且Visibility.visible同时改变时，
+      // 会导致RenderFlex计算和RenderObject创建的timing不同步
+      // 延迟100ms后rebuild可以让各个系统完成处理，确保布局正确
+      Future.delayed(Duration(milliseconds: 100), () {
+        if (mounted) {
+          setState(() {});
+        }
+      });
+    }
+  }
+
   /// 系统返回事件处理 - 优先处理右侧 Navigator
   @override
   Future<bool> didPopRoute() async {
@@ -160,6 +177,8 @@ class _SplitScreenContainerState extends State<SplitScreenContainer>
               : 0,
           child: Visibility(
             visible: widget.enableLeftPanel,
+            maintainState: true,        // 保留State，不触发dispose
+            maintainAnimation: true,    // 保留动画状态
             child: _ProxyNavigator(
               child: leftChild,
               initialRoute: widget.initialRoute,
@@ -794,6 +813,9 @@ class _RightSideNavigatorObserver extends NavigatorObserver {
 
   @override
   void didPop(Route<dynamic> route, Route<dynamic>? previousRoute) {}
+
+  @override
+  void didRemove(Route<dynamic> route, Route<dynamic>? previousRoute) {}
 
   @override
   void didReplace({Route<dynamic>? newRoute, Route<dynamic>? oldRoute}) {}
