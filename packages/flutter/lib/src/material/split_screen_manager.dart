@@ -25,6 +25,12 @@ class SplitScreenManager extends ChangeNotifier {
   /// 左侧导航器的状态引用
   NavigatorState? _leftNavigator;
 
+  /// 全局RouteObserver - 用于通知左侧RouteAware的didPushNext/didPopNext
+  RouteObserver<ModalRoute<dynamic>>? _globalRouteObserver;
+
+  /// 左侧当前的Route - 用于在右侧跳出占位页时通知左侧的RouteAware
+  Route<dynamic>? _leftCurrentRoute;
+
   factory SplitScreenManager() {
     return _instance;
   }
@@ -68,6 +74,23 @@ class SplitScreenManager extends ChangeNotifier {
   NavigatorState? get leftNavigator {
     return _leftNavigator;
   }
+
+  /// 注册全局RouteObserver - 应用在初始化时调用
+  /// 例: SplitScreenManager().setGlobalRouteObserver(globalRouteObserver);
+  void setGlobalRouteObserver(RouteObserver<ModalRoute<dynamic>> observer) {
+    _globalRouteObserver = observer;
+  }
+
+  /// 获取全局RouteObserver
+  RouteObserver<ModalRoute<dynamic>>? get globalRouteObserver => _globalRouteObserver;
+
+  /// 记录左侧当前的Route - 由_ProxyNavigatorObserver调用
+  void setLeftCurrentRoute(Route<dynamic> route) {
+    _leftCurrentRoute = route;
+  }
+
+  /// 获取左侧当前的Route - 由_RightSideNavigatorObserver调用
+  Route<dynamic>? get leftCurrentRoute => _leftCurrentRoute;
 
   /// 转发导航到右侧导航器 - push 操作
   Future<T?> pushToRight<T extends Object?>(Route<T> route) {

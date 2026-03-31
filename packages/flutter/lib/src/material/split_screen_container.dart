@@ -530,6 +530,11 @@ class _ProxyNavigatorObserver extends NavigatorObserver {
 
   @override
   void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    // 记录左侧当前Route - 用于右侧跳出占位页时通知左侧的RouteAware
+    if (previousRoute != null) {
+      manager.setLeftCurrentRoute(previousRoute);
+    }
+
     // 仅处理非PopupRoute的情况（页面路由）
     // PopupRoute已由 _ProxyNavigatorStateImpl.push() 处理
     if (route is! PopupRoute && previousRoute != null) {
@@ -809,14 +814,113 @@ class _RightSideNavigatorState extends State<_RightSideNavigator> {
 /// 右侧导航观察器 - 监听右侧 Navigator 的事件
 class _RightSideNavigatorObserver extends NavigatorObserver {
   @override
-  void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) {}
+  void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    // 检测：右侧从占位页跳出到详情页
+    // previousRoute是占位页 && 新route不是占位页
+    if (previousRoute != null &&
+        SplitStartPage.isSplitStartPageRoute(previousRoute.settings) &&
+        !SplitStartPage.isSplitStartPageRoute(route.settings)) {
+      _notifyLeftSideDidPushNext();
+    }
+  }
 
   @override
-  void didPop(Route<dynamic> route, Route<dynamic>? previousRoute) {}
+  void didPop(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    // 检测：弹出的route不是占位页（且可能返回到占位页）
+    // 这表示从详情页返回（可能回到占位页或更上层）
+    if (!SplitStartPage.isSplitStartPageRoute(route.settings)) {
+      // 检查要返回到的route是否是占位页
+      if (previousRoute != null &&
+          SplitStartPage.isSplitStartPageRoute(previousRoute.settings)) {
+        // 明确返回到占位页
+        _notifyLeftSideDidPopNext();
+      } else if (previousRoute == null) {
+        // previousRoute为null说明返回到栈底，通常也是占位页
+        _notifyLeftSideDidPopNext();
+      }
+    }
+  }
 
   @override
   void didRemove(Route<dynamic> route, Route<dynamic>? previousRoute) {}
 
   @override
   void didReplace({Route<dynamic>? newRoute, Route<dynamic>? oldRoute}) {}
+
+  /// 通知左侧的RouteAware的didPushNext被触发
+  void _notifyLeftSideDidPushNext() {
+    final manager = SplitScreenManager();
+    final observer = manager.globalRouteObserver;
+    final leftCurrentRoute = manager.leftCurrentRoute;
+
+    if (observer == null || leftCurrentRoute == null) {
+      return;
+    }
+
+    // 创建虚拟route用于通知观察者
+    final virtualRoute = _VirtualSplitScreenRoute();
+
+    // 通过观察者通知：有新的route被push到左侧当前route上方
+    // observer.didPush会触发所有订阅leftCurrentRoute的RouteAware的didPushNext
+    try {
+      observer.didPush(virtualRoute, leftCurrentRoute);
+    } catch (e) {
+      debugPrint('[SplitScreen] Error notifying left side didPushNext: $e');
+    }
+  }
+
+  /// 通知左侧的RouteAware的didPopNext被触发
+  void _notifyLeftSideDidPopNext() {
+    final manager = SplitScreenManager();
+    final observer = manager.globalRouteObserver;
+    final leftCurrentRoute = manager.leftCurrentRoute;
+
+    if (observer == null || leftCurrentRoute == null) {
+      return;
+    }
+
+    // 创建虚拟route用于通知观察者
+    final virtualRoute = _VirtualSplitScreenRoute();
+
+    // 通过观察者通知：route被pop了，回到左侧当前route
+    // observer.didPop会触发所有订阅leftCurrentRoute的RouteAware的didPopNext
+    try {
+      observer.didPop(virtualRoute, leftCurrentRoute);
+    } catch (e) {
+      debugPrint('[SplitScreen] Error notifying left side didPopNext: $e');
+    }
+  }
+}
+
+/// 虚拟Route - 用于通知RouteObserver时的占位符
+class _VirtualSplitScreenRoute extends ModalRoute<void> {
+  @override
+  Color? get barrierColor => null;
+
+  @override
+  String? get barrierLabel => null;
+
+  @override
+  bool get barrierDismissible => false;
+
+  @override
+  bool get maintainState => false;
+
+  @override
+  bool get opaque => false;
+
+  @override
+  Duration get transitionDuration => Duration.zero;
+
+  @override
+  Widget buildPage(BuildContext context, Animation<double> animation,
+      Animation<double> secondaryAnimation) {
+    return const SizedBox.shrink();
+  }
+
+  @override
+  Widget buildTransitions(BuildContext context, Animation<double> animation,
+      Animation<double> secondaryAnimation, Widget child) {
+    return const SizedBox.shrink();
+  }
 }
