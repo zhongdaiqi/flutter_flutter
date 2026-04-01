@@ -13,7 +13,7 @@ PROJECT_DIR="$ROOT_DIR/third_party"
 ARCHIVE_DIR="$ROOT_DIR/Archive/out"
 
 # Target branch
-TARGET_FLUTTER_BRANCH="3.22.0-ohos"
+TARGET_FLUTTER_BRANCH="oh-3.22.3-dev"
 TARGET_TESTER_BRANCH="main"
 
 # Check environment
