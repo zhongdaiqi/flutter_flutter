@@ -25,7 +25,6 @@ import FlutterEngineGroup, { Options } from '../engine/FlutterEngineGroup';
 import FlutterNapi from '../engine/FlutterNapi';
 import { FlutterView } from '../../view/FlutterView';
 import FlutterManager from './FlutterManager';
-import PiPVisibilityBridge from './PiPVisibilityBridge';
 import Any from '../../plugin/common/Any';
 import inputMethod from '@ohos.inputMethod';
 import window from '@ohos.window';
@@ -54,10 +53,6 @@ class FlutterAbilityAndEntryDelegate implements ExclusiveAppComponent<UIAbility>
   private inputMethodController: inputMethod.InputMethodController = inputMethod.getController();
   private isPageShow: boolean = false;
   private currentColorMode?: ConfigurationConstant.ColorMode;
-  private readonly pipVisibilityListener = (visible: boolean): void => {
-    this.getFlutterNapi()?.setPipVisible(visible);
-  };
-  private pipVisibilityRegistered: boolean = false;
 
   constructor(host?: Host) {
     this.host = host;
@@ -94,10 +89,6 @@ class FlutterAbilityAndEntryDelegate implements ExclusiveAppComponent<UIAbility>
       this.currentColorMode =
         config.colorMode === resourceManager.ColorMode.DARK ? ConfigurationConstant.ColorMode.COLOR_MODE_DARK :
         ConfigurationConstant.ColorMode.COLOR_MODE_LIGHT;
-    }
-    if (!this.pipVisibilityRegistered) {
-      PiPVisibilityBridge.getInstance().register(this.context, this.pipVisibilityListener);
-      this.pipVisibilityRegistered = true;
     }
     if (this.flutterEngine && this.flutterView && this.host?.attachToEngineAutomatically()) {
       this.flutterView.attachToFlutterEngine(this.flutterEngine!!);
@@ -288,11 +279,6 @@ class FlutterAbilityAndEntryDelegate implements ExclusiveAppComponent<UIAbility>
   }
 
   onDetach() {
-    if (this.pipVisibilityRegistered) {
-      this.getFlutterNapi()?.setPipVisible(false);
-      PiPVisibilityBridge.getInstance().unregister(this.context, this.pipVisibilityListener);
-      this.pipVisibilityRegistered = false;
-    }
     if (this.host?.shouldAttachEngineToAbility()) {
       // Notify plugins that they are no longer attached to an Ability.
       Log.d(TAG, "Detaching FlutterEngine from the Ability");
@@ -382,7 +368,6 @@ class FlutterAbilityAndEntryDelegate implements ExclusiveAppComponent<UIAbility>
     this.ensureAlive();
     this.isPageShow = true;
     this.flutterView?.setActive(true);
-    PiPVisibilityBridge.getInstance().updateAbilityShown(this.context, true);
     if (this.shouldDispatchAppLifecycleState()) {
       this.flutterEngine?.getLifecycleChannel()?.appIsResumed();
     }
@@ -395,14 +380,12 @@ class FlutterAbilityAndEntryDelegate implements ExclusiveAppComponent<UIAbility>
   }
 
   onResumed() {
-    PiPVisibilityBridge.getInstance().updateAbilityShown(this.context, true);
     if (this.shouldDispatchAppLifecycleState()) {
       this.flutterEngine?.getLifecycleChannel()?.appIsResumed();
     }
   }
 
   onHide() {
-    PiPVisibilityBridge.getInstance().updateAbilityShown(this.context, false);
     if (this.shouldDispatchAppLifecycleState()) {
       this.isPageShow = false;
       this.flutterView?.setActive(false);
