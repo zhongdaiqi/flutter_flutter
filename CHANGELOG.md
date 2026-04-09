@@ -1,4 +1,6 @@
 # Changelog
+## 6.1.1.382
+- Fix the issue where the PlatformView page does not refresh when switching to dark mode ([d9b28779](https://gitcode.com/openharmony-tpc/flutter_engine/commit/d9b28779179a5ce4d3e5b7cd27c1c7c3e1df983d?ref=dev&prId=1250))
 ## 6.1.1.38
 - fix: dpi setting when navi is not working ([beb52726](https://gitcode.com/openharmony-tpc/flutter_engine/commit/beb52726dee6f478c3120b53976fe8cb2435749a?ref=dpi_issue_dev&prId=1266))
 ## 6.1.1.37
