@@ -1,4 +1,16 @@
 # Changelog
+## 6.1.1.382
+- Fix the issue where the PlatformView page does not refresh when switching to dark mode ([bd440ace](https://gitcode.com/openharmony-tpc/flutter_engine/commit/bd440acefd20182cdc76c1c74666c35e71de8637?ref=oh-3.22.3-dev&prId=1290))
+- extend timeouts of all targets in .ci.yaml ([a07818ca](https://gitcode.com/openharmony-tpc/flutter_engine/commit/a07818ca302aa4d535ad892dedada04330c59f3d?ref=merge-3.22.3&prId=1285))
+- Flutter stable 3.22.3 Engine Cherrypicks ([4b1fb3e6](https://gitcode.com/openharmony-tpc/flutter_engine/commit/4b1fb3e6336adb046786daeb97738753c99ab6a4?ref=merge-3.22.3&prId=1285))
+- Fix rendering corruption by Flutter and GDK sharing the same OpenGL context ([faf03979](https://gitcode.com/openharmony-tpc/flutter_engine/commit/faf03979c1c4b0ec20b8e7ba4fbb4599352c79fc?ref=merge-3.22.3&prId=1285))
+- [Impeller] Create framebuffer blend vertices based on the snapshot's texture size instead of coverage ([9ce61b0d](https://gitcode.com/openharmony-tpc/flutter_engine/commit/9ce61b0d9e45a63b62f324b1f5d9cff42a81a551?ref=merge-3.22.3&prId=1285))
+- dont segfault when tessellating empty polygons. ([450f6e24](https://gitcode.com/openharmony-tpc/flutter_engine/commit/450f6e24eec1ec2a9dc07659de7dc684fa86c004?ref=merge-3.22.3&prId=1285))
+- [Impeller] relax conditions for SkRRect.isSimple conversion to impell… ([da7762f5](https://gitcode.com/openharmony-tpc/flutter_engine/commit/da7762f520836becd37f78423ff08ca2ebacd4b5?ref=merge-3.22.3&prId=1285))
+- [Impeller] relax conditions for SkRRect.isSimple conversion to impell… ([da7762f5](https://gitcode.com/openharmony-tpc/flutter_engine/commit/da7762f520836becd37f78423ff08ca2ebacd4b5?ref=merge-3.22.3&prId=1285))
+- [Impeller] Round out subpass coverage. ([57ec314c](https://gitcode.com/openharmony-tpc/flutter_engine/commit/57ec314c44cd0102c609628a1dc3a3da37d79114?ref=merge-3.22.3&prId=1285))
+- [Impeller] Fix stroke curves. ([305ceefd](https://gitcode.com/openharmony-tpc/flutter_engine/commit/305ceefdb55dc70b2267a06a99a8001091cb26ba?ref=merge-3.22.3&prId=1285))
+- [Impeller] Intel iOS Simulators must block on GPU completion.([86cc544d](https://gitcode.com/openharmony-tpc/flutter_engine/commit/86cc544db01c68d60b6fa272aa6b8e01419e46cb?ref=merge-3.22.3&prId=1285))
 ## 6.1.1.38
 - fix: dpi setting when navi is not working ([07243d85](https://gitcode.com/openharmony-tpc/flutter_engine/commit/07243d85dcdbf4f6f9c93e319e5d692b2b81a2f2?ref=oh-3.22.0))
 ## 6.1.1.37
