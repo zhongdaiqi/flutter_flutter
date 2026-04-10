@@ -239,6 +239,10 @@ List of commands adapted for OpenHarmony development:
 
 > [More FAQs](https://gitcode.com/openharmony-tpc/flutter_samples/blob/master/ohos/docs/08_FAQ/README.md)
 
+## Contributing
+
+If you would like to contribute code to Flutter-OH, please refer to the [Flutter-OH Contributor PR Guide](./docs/contributing/Flutter-OH-Contributor-PR.md) for detailed contribution steps and guidelines.
+
 ## Communication
 
 - **Issue Feedback:** Submit issues to the [Flutter Framework Repository](https://gitcode.com/openharmony-tpc/flutter_flutter/issues) or related third-party libraries.
