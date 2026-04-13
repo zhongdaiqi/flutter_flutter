@@ -81,42 +81,16 @@ compilation_steps:
     args: ["flutter_flutter/engine"]
     required: true
 
-  - name: Customer Testing
-    script: ci/scripts/customer_testing.sh
-    description: Automated testing
-    required: true
-
-  - name: A11y Assessments
-    script: ci/scripts/a11y_assessments.sh
-    description: Accessibility features
-    required: true
-
-  - name: Tracing Tests
-    script: ci/scripts/tracing_tests.sh
-    description: Tracking Function
-    required:
-
-  - name: Snippets
-    script: ci/scripts/snippets.sh
-    description: Code Snippet Tool
-    required: true
-
-  - name: Tools
-    script: ci/scripts/tools.sh
-    description: Development Tools
-    required:
-
-  - name: Vitool
-    script: ci/scripts/vitool.sh
-    description: Vector Icon Tool
-    required: true
-
-  - name: Gen Defaults
-    script: ci/scripts/gen_defaults.sh
-    description: Default Theme Generation Tool
-    required: true
-
-  - name: Gen Keycodes
-    script: ci/scripts/gen_keycodes.sh
-    description: Keyboard Code Generation Tool
+  - name: Dev Tests
+    script: ci/scripts/run_dev_tests.sh
+    args:
+      - dev/customer_testing,dart test,Customer Testing
+      - dev/a11y_assessments,flutter test,A11y Assessments
+      - dev/tracing_tests,flutter test --enable-vmservice,Tracing Tests
+      - dev/snippets,dart test,Snippets
+      - dev/tools,dart test,Tools
+      - dev/tools/vitool,flutter test,Vitool
+      - dev/tools/gen_defaults,dart test,Gen Defaults
+      - dev/tools/gen_keycodes,dart test,Gen Keycodes
+    description: Run all development tests
     required: true
