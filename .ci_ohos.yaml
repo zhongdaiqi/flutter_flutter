@@ -1,0 +1,93 @@
+# Copyright (c) 2025 Huawei Device Co., Ltd. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE_HW file.
+
+# Configuration for OHOS Flutter CI/CD
+
+# Work directory levels (how many parent directories to go up from root_dir)
+# Default is 2 (go up 2 levels from root_dir)
+work_dir_levels: 2
+
+# Environment variables
+env_vars:
+  TOOL_HOME: /home/tools/command-line-tools
+  DEVECO_SDK_HOME: /home/tools/command-line-tools/sdk
+  PUB_CACHE: /home/tools/Flutter/PUB
+  PUB_HOSTED_URL: https://pub.flutter-io.cn
+  FLUTTER_STORAGE_BASE_URL: https://storage.flutter-io.cn
+  DEPOT_TOOLS_UPDATE: 0
+  GCLIENT_SUPPRESS_GIT_VERSION_WARNING: 1
+  CIPD_CACHE_DIR: /home/tools/cipd_cache
+  CIPD_HTTP_USER_AGENT_PREFIX: offline
+  CIPD_NO_SELF_UPDATE: true
+  # PATH components - appended in order
+  # Note: PATH is handled specially to expand variables and join with colon
+  PATH:
+    - "$WORK_DIR/third_party/flutter_flutter/bin"
+    - "$WORK_DIR/third_party/cipd/bin"
+    - "$DEVECO_SDK_HOME/default/openharmony/toolchains"
+    - "$TOOL_HOME/ohpm/bin"
+    - "$TOOL_HOME/hvigor/bin"
+    - "$TOOL_HOME/tool/node/bin"
+    - "/home/tools/depot_tools"
+    - "$DEVECO_SDK_HOME/default/openharmony/native/llvm/bin"
+    - "$PATH"
+
+# Preparation steps - executed in order
+preparation_steps:
+  - name: Check System Information
+    script: ci/scripts/check_system_info.sh
+    description: Verify system OS and user information
+    required: true
+
+  - name: Check Tool Versions
+    script: ci/scripts/check_tool_versions.sh
+    description: Verify required tools and their versions
+    required: true
+
+  - name: Check Network Connectivity
+    script: ci/scripts/check_network.sh
+    description: Verify network connectivity to required URLs
+    required: true
+
+  - name: Check Project Structure
+    script: ci/scripts/check_project_structure.sh
+    description: Verify project directories exist and create needed folders
+    required: true
+
+  - name: Prepare Flutter
+    script: ci/scripts/prepare_project.sh
+    description: Prepare Flutter project and sync to target branch
+    args: ["flutter_flutter", "dev"]
+    required: true
+
+  - name: Prepare Tester
+    script: ci/scripts/prepare_tester.sh
+    description: Prepare Tester project and sync to target branch
+    args: ["main"]
+    required: true
+
+# Compilation steps - executed in order
+compilation_steps:
+  - name: Pack Flutter
+    script: ci/scripts/pack_flutter.sh
+    description: Pack Flutter SDK
+    args: ["dev"]
+    required: true
+
+  - name: Compile Tester
+    script: ci/scripts/compile_tester.sh
+    description: Compiling Tester
+    args: ["flutter_flutter/engine"]
+    required: true
+
+  - name: Dev Tests
+    script: ci/scripts/run_dev_tests.sh
+    args:
+      - dev/customer_testing,dart test,Customer Testing
+      - dev/tracing_tests,flutter test --enable-vmservice,Tracing Tests
+      - dev/tools,dart test,Tools
+      - dev/tools/gen_defaults,dart test,Gen Defaults
+      - dev/tools/gen_keycodes,dart test,Gen Keycodes
+    description: Run all development tests
+    required: true
