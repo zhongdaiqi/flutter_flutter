@@ -35,6 +35,7 @@ import SettingsChannel from './systemchannels/SettingsChannel';
 import PlatformViewsController from '../../plugin/platform/PlatformViewsController';
 import { FlutterRenderer } from './renderer/FlutterRenderer';
 import NativeVsyncChannel from './systemchannels/NativeVsyncChannel';
+import PiPVisibilityBridge from '../ohos/PiPVisibilityBridge';
 
 const TAG = "FlutterEngine";
 
@@ -65,6 +66,9 @@ export default class FlutterEngine implements EngineLifecycleListener {
   private settingsChannel: SettingsChannel | null = null;
   private platformViewsController: PlatformViewsController;
   private nativeVsyncChannel: NativeVsyncChannel | null = null;
+  private readonly pipVisibilityListener = (visible: boolean): void => {
+    this.flutterNapi?.setPipVisible(visible);
+  };
 
   /**
    * 需要初始化的工作：
@@ -133,6 +137,7 @@ export default class FlutterEngine implements EngineLifecycleListener {
     this.pluginRegistry =
       new FlutterEngineConnectionRegistry(context.getApplicationContext(), this, this.flutterLoader);
     this.localizationPlugin.sendLocaleToFlutter();
+    PiPVisibilityBridge.getInstance().register(this.pipVisibilityListener);
     Log.d(TAG, "Call init finished.")
   }
 
@@ -255,6 +260,8 @@ export default class FlutterEngine implements EngineLifecycleListener {
 
   destroy(): void {
     Log.d(TAG, "Destroying.");
+    this.flutterNapi?.setPipVisible(false);
+    PiPVisibilityBridge.getInstance().unregister(this.pipVisibilityListener);
     this.engineLifecycleListeners.forEach(listener => listener.onEngineWillDestroy())
     this.flutterNapi.removeEngineLifecycleListener(this);
     this.pluginRegistry?.detachFromAbility();
