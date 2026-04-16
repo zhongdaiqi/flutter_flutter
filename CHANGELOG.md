@@ -1,4 +1,10 @@
 # Changelog
+## 6.1.1.383
+- 简化 PiPVisibilityBridge 为单一全局状态 , 修复空 catch / 线程安全注释等问题 ([6a1f1eed](https://gitcode.com/openharmony-tpc/flutter_engine/commit/6a1f1eed149d60405f22591731eb92ccaaf62312?ref=pippoll_3.7&prId=1308))
+- 增加画中画窗口轮询策略，延迟退后台dma清理 ([4e1c2057](https://gitcode.com/openharmony-tpc/flutter_engine/commit/4e1c20574984bab6c397d7103e71e07cb628c129?ref=pippoll_3.7&prId=1308))
+- 无条件设置false，重置cached_native_window_ ([9665f8af](https://gitcode.com/openharmony-tpc/flutter_engine/commit/9665f8afbd235795f0db50bca350b8be48719203?ref=onsurfacefix37&prId=1305))
+- 修复onsurfacecreate的错误判断 ([54f4aaba](https://gitcode.com/openharmony-tpc/flutter_engine/commit/54f4aabaff4abdab09923ff66b454001384fd61d?ref=onsurfacefix37&prId=1305))
+- Fixed incorrect tiltX and tiltY parameter passing in external texture scenarios ([f9c5c6b6](https://gitcode.com/openharmony-tpc/flutter_engine/commit/f9c5c6b656e34bf9f900789a4692c4ecf39e2ce5?ref=3_7_tiltY&prId=1294))
 ## 6.1.1.382
 - Fix the issue where the PlatformView page does not refresh when switching to dark mode ([d9b28779](https://gitcode.com/openharmony-tpc/flutter_engine/commit/d9b28779179a5ce4d3e5b7cd27c1c7c3e1df983d?ref=dev&prId=1250))
 ## 6.1.1.38
