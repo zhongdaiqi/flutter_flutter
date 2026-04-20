@@ -772,9 +772,10 @@ class TextInputCallback implements MethodCallHandler {
         break;
       case "TextInput.setPlatformViewClient":
         try {
-          const argumentsMap = args as Map<String, Any>;
-          const platformViewId = argumentsMap.get("platformViewId") as number;
-          const usesVirtualDisplay = (argumentsMap.get("usesVirtualDisplay") as boolean) ?? false;
+          const platformViewId = call.argument("platformViewId") as number;
+          const usesVirtualDisplay = call.hasArgument("usesVirtualDisplay")
+            ? call.argument("usesVirtualDisplay") as boolean
+            : false;
           this.textInputMethodHandler.setPlatformViewClient(platformViewId, usesVirtualDisplay);
           result.success(null);
         } catch (err) {
