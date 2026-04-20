@@ -151,6 +151,14 @@ export default class PlatformViewsController implements PlatformViewsHandler {
       this.clearFocus(viewId);
       this.focusViewId = -1;
     }
+    // Disposal is a terminal teardown path, not a normal focus transition. If
+    // the embedded node's blur callback is missed while the view is being
+    // removed, release the matching physical PlatformView owner here so stale
+    // keyboard/focus state cannot leak into the next client. In the common
+    // path, the native blur callback has already reset ownership before dispose
+    // reaches this point, so this remains a safety net instead of becoming part
+    // of the steady-state focus handoff.
+    this.textInputPlugin?.clearPlatformViewClientForTeardown(viewId);
     this.platformViews.delete(viewId);
     let textureId = this.viewIdWithTextureId.get(viewId);
 
@@ -296,6 +304,19 @@ export default class PlatformViewsController implements PlatformViewsHandler {
       let params = dvModel.getLayoutParams() as Record<string, Any>;
       // When receiving a DOWN action
       if (touch.action === TouchEventType.ACTION_DOWN) {
+        const platformView = this.platformViews.get(touch.viewId);
+        const shouldHandoffFrameworkFocus = this.textInputPlugin?.isFrameworkTextInputActive() ?? false;
+        const participatesInTextInputHandoff =
+          platformView?.shouldParticipateInTextInputHandoff() ?? false;
+        // Only pre-forward focus while Flutter still owns the active text
+        // client, and only for PlatformViews that explicitly declare themselves
+        // as text-input participants. This keeps the fix scoped to the
+        // original first-tap Flutter -> native text-editor race and avoids
+        // perturbing non-text PlatformViews, which should never become IME
+        // owners just because they can take generic focus.
+        if (shouldHandoffFrameworkFocus && participatesInTextInputHandoff) {
+          this.platformViewsChannel?.invokeViewFocused(touch.viewId);
+        }
         // Set the current touch state to true
         params['down'] = true
         // When first receiving a touch DOWN event, dispatch all events stored in the list
@@ -367,7 +388,10 @@ export default class PlatformViewsController implements PlatformViewsHandler {
       Log.e(TAG, "Setting direction to a null view with id: " + viewId);
       return;
     }
-    // Make the Xcomponent gain focus.
+    // clearFocus only removes focus from the wrapper/XComponent side. Releasing
+    // the text-input owner is intentionally handled by the embedded node's real
+    // onBlur callback below, so native keyboard teardown follows the actual
+    // editor lifecycle instead of controller bookkeeping.
     focusControl.requestFocus("unfocus-xcomponent-node");
   }
 
@@ -495,6 +519,14 @@ export default class PlatformViewsController implements PlatformViewsHandler {
       },
       {},
       undefined));
+    let events = dvModel.events as Record<string, Any>;
+    // Release the physical PlatformView owner only when the embedded native
+    // node actually loses focus. This keeps native blur/release aligned with
+    // the real editor lifecycle instead of using controller-level clearFocus as
+    // a broader proxy.
+    events.onBlur = () => {
+      this.textInputPlugin?.clearPlatformViewClient(request.viewId);
+    };
     let viewWrapper: PlatformViewWrapper = new PlatformViewWrapper();
     viewWrapper.addDvModel(dvModel);
     this.viewWrappers.set(request.viewId, viewWrapper);
@@ -542,6 +574,12 @@ export default class PlatformViewsController implements PlatformViewsHandler {
    * Detaches the controller from the FlutterView.
    */
   public detachFromView(): void {
+    if (this.focusViewId != -1) {
+      // View detachment happens after the live focus path has had a chance to
+      // clear ownership. Keep this as a final guard only, so page teardown does
+      // not widen the normal Flutter/native handoff behavior.
+      this.textInputPlugin?.clearPlatformViewClientForTeardown(this.focusViewId);
+    }
     this.destroyOverlaySurfaces();
     this.removeOverlaySurfaces();
     this.flutterView = null;

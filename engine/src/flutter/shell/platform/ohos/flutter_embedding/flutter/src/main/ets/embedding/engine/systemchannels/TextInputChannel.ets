@@ -771,8 +771,15 @@ class TextInputCallback implements MethodCallHandler {
         result.notImplemented();
         break;
       case "TextInput.setPlatformViewClient":
-      //TODO:
-        result.notImplemented();
+        try {
+          const argumentsMap = args as Map<String, Any>;
+          const platformViewId = argumentsMap.get("platformViewId") as number;
+          const usesVirtualDisplay = (argumentsMap.get("usesVirtualDisplay") as boolean) ?? false;
+          this.textInputMethodHandler.setPlatformViewClient(platformViewId, usesVirtualDisplay);
+          result.success(null);
+        } catch (err) {
+          result.error("error", `${err}`, null);
+        }
         break;
       case "TextInput.setEditingState":
         this.textInputMethodHandler.setEditingState(TextEditState.fromJson(args));

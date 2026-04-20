@@ -106,6 +106,15 @@ export default abstract class PlatformView {
   onInputConnectionUnlocked(): void {
   }
 
+  /**
+   * Whether this PlatformView should participate in the eager Flutter->native
+   * text-input handoff path. Defaults to false so non-text PlatformViews keep
+   * their original focus behavior unless the plugin explicitly opts in.
+   */
+  shouldParticipateInTextInputHandoff(): boolean {
+    return false;
+  }
+
   // Obtain the parameters related to the changes in the visible area of the external texture
   getPlatformViewVisibleAreaEventOptions(): PlatformViewVisibleAreaEventOptions {
     return {
