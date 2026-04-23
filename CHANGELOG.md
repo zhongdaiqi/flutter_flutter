@@ -1,4 +1,9 @@
 # Changelog
+## 7.0.0.21
+- fix: textField preview cannot be displayed normally ([138be6f4](https://gitcode.com/openharmony-tpc/flutter_engine/commit/138be6f47cf6307363369b31a9dbc30c60627be9?ref=3_22_preview&prId=1316))
+## 6.1.1.384
+- fix ReleaseNativeWindowBuffer crash ([f45a347d](https://gitcode.com/openharmony-tpc/flutter_engine/commit/f45a347dc2b112c910210f8e2917b44519128a2e?ref=dev3-22&prId=1314))
+- update DartCallback export ([0a7dde38](https://gitcode.com/openharmony-tpc/flutter_engine/commit/0a7dde380a493b2deeb69c7c1af4ce2070ef4e19?ref=cherry-pick-mr-1309-1776318727519-auto&prId=1310))
 ## 6.1.1.383
 - 简化 PiPVisibilityBridge 为单一全局状态 , 修复空 catch / 线程安全注释等问题 ([ecffe124](https://gitcode.com/openharmony-tpc/flutter_engine/commit/ecffe124f7988d695cec17fba7143e894d80ca52?ref=pippoll_3.22&prId=1307))
 - 增加画中画窗口轮询策略，延迟退后台dma清理 ([af93bc2e](https://gitcode.com/openharmony-tpc/flutter_engine/commit/af93bc2ef208834935ba534c256da38c187c9dae?ref=pippoll_3.22&prId=1307))
