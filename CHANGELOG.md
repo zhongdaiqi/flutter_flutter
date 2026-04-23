@@ -1,4 +1,7 @@
 # Changelog
+## 6.1.1.384
+- Fix DefaultOnFrameAvailable running with crash ([e53bd2a3](https://gitcode.com/openharmony-tpc/flutter_engine/commit/e53bd2a3c038bdeb97079098ac3d84d5c10dbe34?ref=devend&prId=1312))
+- update DartCallback export ([eb651871](https://gitcode.com/openharmony-tpc/flutter_engine/commit/eb651871ebb41ce2fab207c2a4fdea71f31403c7?ref=dev&prId=1309))
 ## 6.1.1.383
 - 简化 PiPVisibilityBridge 为单一全局状态 , 修复空 catch / 线程安全注释等问题 ([6a1f1eed](https://gitcode.com/openharmony-tpc/flutter_engine/commit/6a1f1eed149d60405f22591731eb92ccaaf62312?ref=pippoll_3.7&prId=1308))
 - 增加画中画窗口轮询策略，延迟退后台dma清理 ([4e1c2057](https://gitcode.com/openharmony-tpc/flutter_engine/commit/4e1c20574984bab6c397d7103e71e07cb628c129?ref=pippoll_3.7&prId=1308))
