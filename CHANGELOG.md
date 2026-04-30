@@ -1,4 +1,8 @@
 # Changelog
+## 7.0.0.22
+- Fixed the issue where EventChannel.endOfStream() method did not trigger the onDone event in Dart ([ce468ba9](https://gitcode.com/openharmony-tpc/flutter_engine/commit/ce468ba99a7fdd4d990b2466272295840ff13d11?ref=fix_not_trigger_onDone_dev&prId=1319))
+## 6.1.1.385
+- 解决windowstage可能已经销毁的崩溃 ([007e2fcb](https://gitcode.com/openharmony-tpc/flutter_engine/commit/007e2fcb3152216b9a40332f3f08b36f7cba3cc4?ref=catchwindowoff3.7&prId=1323))
 ## 6.1.1.384
 - Fix DefaultOnFrameAvailable running with crash ([e53bd2a3](https://gitcode.com/openharmony-tpc/flutter_engine/commit/e53bd2a3c038bdeb97079098ac3d84d5c10dbe34?ref=devend&prId=1312))
 - update DartCallback export ([eb651871](https://gitcode.com/openharmony-tpc/flutter_engine/commit/eb651871ebb41ce2fab207c2a4fdea71f31403c7?ref=dev&prId=1309))
