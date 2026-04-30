@@ -1,4 +1,8 @@
 # Changelog
+## 7.0.0.22
+- Fixed the issue where EventChannel.endOfStream() method did not trigger the onDone event in Dart ([bd76bd56](https://gitcode.com/openharmony-tpc/flutter_engine/commit/bd76bd56cec1c51a7cef938df8a49b074764c8bd?ref=fix_not_trigger_onDone_322&prId=1320))
+## 6.1.1.385
+- 解决windowstage可能已经销毁的崩溃 ([919fb3d0](https://gitcode.com/openharmony-tpc/flutter_engine/commit/919fb3d068444c1b5ae5633545b0302b821723a9?ref=catchwindowoff3.22&prId=1322))
 ## 7.0.0.21
 - fix: textField preview cannot be displayed normally ([138be6f4](https://gitcode.com/openharmony-tpc/flutter_engine/commit/138be6f47cf6307363369b31a9dbc30c60627be9?ref=3_22_preview&prId=1316))
 ## 6.1.1.384
