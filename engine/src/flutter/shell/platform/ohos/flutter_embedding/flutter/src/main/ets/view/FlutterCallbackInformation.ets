@@ -30,7 +30,7 @@ export class FlutterCallbackInformation {
    *     `dart:ui`
    * @returns An instance of FlutterCallbackInformation for the provided handle, or null if not found
    */
-  static lookupCallbackInformation(handle: number): FlutterCallbackInformation | null {
+  static lookupCallbackInformation(handle: bigint): FlutterCallbackInformation | null {
     return FlutterNapi.nativeLookupCallbackInformation(handle);
   }
 
