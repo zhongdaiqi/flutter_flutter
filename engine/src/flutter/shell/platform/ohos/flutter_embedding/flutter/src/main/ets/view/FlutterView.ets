@@ -293,6 +293,7 @@ export class FlutterView {
   private wrapBuilder: WrappedBuilder<[Params]> | undefined = undefined;
   private platformView: PlatformView | undefined = undefined;
   private isSurfaceAvailableForRendering: boolean = false
+  private isXComponentAttachedToEngine: boolean = false
   private viewportMetrics = new ViewportMetrics();
   private displayInfo?: display.Display;
   private keyboardManager: KeyboardManager | null = null;
@@ -307,6 +308,8 @@ export class FlutterView {
   private mFirstPreloadFrameListeners: ArrayList<FirstPreloadFrameListener>;
   private isFlutterUiDisplayed: boolean = false;
   private isFlutterUiPreload: boolean = false;
+  private surfaceLifecycleToken: number = 0;
+  private activeSurfaceLifecycleToken: number = 0;
   private surfaceId: string = "0";
   private nodeController: EmbeddingNodeController = new EmbeddingNodeController();
   private platformViewSize: PlatformViewParas = new PlatformViewParas();
@@ -316,6 +319,7 @@ export class FlutterView {
   private checkAiBar: boolean = true;
   private frameCache: boolean = true;
   private paddingTop?: number;
+  private paddingBottom?: number;
   private systemAvoidArea: window.AvoidArea;
   private navigationAvoidArea: window.AvoidArea;
   private gestureAvoidArea: window.AvoidArea;
@@ -364,9 +368,6 @@ export class FlutterView {
 
     // 监听折叠状态的改变
     display?.on('foldStatusChange', this.foldStatusChangeCallback);
-
-    // 监听路由跳转（Flutter跳转鸿蒙原生），软键盘处理
-    uiObserver.on('routerPageUpdate', context as common.UIAbilityContext, this.routerPageUpdateCallback);
 
     // Subscribes to display changes. Example: event that the display size is changed.
     try {
@@ -460,6 +461,21 @@ export class FlutterView {
   private routerPageUpdateCallback = (info: uiObserver.RouterPageInfo) => {
     if (this.getKeyboardHeight() !== 0 && info.state === uiObserver.RouterPageState.ON_PAGE_SHOW) {
       this.flutterEngine?.getTextInputChannel()?.textInputMethodHandler?.hide();
+    }
+  }
+
+  private densityUpdateCallback = (info: uiObserver.DensityInfo) => {
+    try {
+      const sysDensity = display.getDefaultDisplaySync().densityPixels;
+      const customDensity = info.density;
+      if (sysDensity > 0 && customDensity > 0 && Number.isFinite(customDensity)) {
+        const scale = customDensity / sysDensity;
+        Log.i(TAG, "densityUpdateCallback: customDensity=" + customDensity + ", sysDensity=" +
+          sysDensity + ", scale=" + scale);
+        this.onDevicePixelRatioChange(scale);
+      }
+    } catch (e) {
+      Log.e(TAG, "densityUpdateCallback error: " + JSON.stringify(e));
     }
   }
 
@@ -564,6 +580,10 @@ export class FlutterView {
   private foldStatusChangeCallback = (data: display.FoldStatus) => {
     Log.d(TAG, `Fold status change to ${JSON.stringify(data)}`)
     this.buildDisplayFeatures(data);
+  }
+  private windowTitleButtonRectChangeCallback = (data: window.TitleButtonRect) => {
+    Log.i(TAG, "windowTitleButtonRectChangeCallback " + JSON.stringify(data));
+    FlutterManager.getInstance().handleWindowDecorSafeArea(this.id, this.context);
   }
 
   /**
@@ -678,12 +698,14 @@ export class FlutterView {
    */
   onDestroy() {
     try {
-      uiObserver.off('routerPageUpdate', this.context as common.UIAbilityContext, this.routerPageUpdateCallback);
+      uiObserver.off('routerPageUpdate', this.uiContext as UIContext, this.routerPageUpdateCallback);
+      uiObserver.off('densityUpdate', this.uiContext as UIContext, this.densityUpdateCallback);
       this.mainWindow?.off('windowSizeChange', this.windowSizeChangeCallback);
       this.mainWindow?.off('avoidAreaChange', this.avoidAreaChangeCallback);
       this.mainWindow?.off('windowStatusChange', this.windowStatusChangeCallback);
       this.mainWindow?.off('keyboardHeightChange', this.keyboardHeightChangeCallback);
       this.mainWindow?.off('windowRectChange', this.windowRectChangeCallback);
+      this.mainWindow?.off('windowTitleButtonRectChange', this.windowTitleButtonRectChangeCallback);
       accessibility.off('accessibilityStateChange', this.accessibilityStateChangeCallback);
       display.off('foldStatusChange', this.foldStatusChangeCallback);
       this.context.eventHub.off('changeDevicePixelRatio', this.onDevicePixelRatioChange);
@@ -723,6 +745,7 @@ export class FlutterView {
     Log.i(TAG, "attachToFlutterEngine");
     this.flutterEngine = flutterEngine;
     this.flutterEngine?.getFlutterNapi().xComponentAttachFlutterEngine(this.id)
+    this.isXComponentAttachedToEngine = true;
     this.flutterEngine?.getFlutterNapi()?.updateRefreshRate(this.displayInfo!.refreshRate)
     this.flutterEngine?.getFlutterNapi()?.updateSize(this.displayInfo!.width, this.displayInfo!.height)
     this.flutterEngine?.getFlutterNapi()?.updateDensity(this.displayInfo!.densityPixels)
@@ -755,6 +778,7 @@ export class FlutterView {
     this.mouseCursorPlugin = new MouseCursorPlugin(windowId, this.flutterEngine?.getMouseCursorChannel()!);
     this.textInputPlugin = new TextInputPlugin(this.flutterEngine?.getTextInputChannel()!, this.id,
       new KeyEventChannel(this.flutterEngine.dartExecutor));
+    this.flutterEngine.getPlatformViewsController()?.attachTextInputPlugin(this.textInputPlugin);
     this.statusBarClickChannel = new StatusBarClickChannel(flutterEngine.dartExecutor)
     this.keyboardManager = new KeyboardManager(flutterEngine, this.textInputPlugin!);
     this.settings = new Settings(this.flutterEngine.getSettingsChannel()!);
@@ -798,10 +822,15 @@ export class FlutterView {
       Log.d(TAG, "FlutterView not attached to an engine. Not detaching.");
       return;
     }
-    if (this.isSurfaceAvailableForRendering) {
+    if (this.isXComponentAttachedToEngine) {
       this.flutterEngine!!.getFlutterNapi().xComponentDetachFlutterEngine(this.id)
+      this.isXComponentAttachedToEngine = false;
     }
-    this.flutterEngine?.getPlatformViewsController()?.detachFromView();
+    // Keep the controller -> TextInputPlugin link alive until the platform-view
+    // hierarchy has been detached. This lets late blur/teardown callbacks clear
+    // any physical PlatformView owner that is still active during shutdown.
+    this.flutterEngine?.getPlatformViewsController()?.detachFromView(this);
+    this.flutterEngine?.getPlatformViewsController()?.detachTextInputPlugin();
     this.flutterEngine = null;
     this.keyboardManager = null;
     this.textInputPlugin?.destroy();
@@ -816,7 +845,11 @@ export class FlutterView {
     Log.d(TAG, "received onwindowCreated.");
     let _UIContext = this.mainWindow?.getUIContext();
     this.uiContext = _UIContext;
+    // Listen to route navigation (Flutter navigating to HarmonyOS native), soft keyboard management
+    uiObserver.on('routerPageUpdate', this.uiContext as UIContext, this.routerPageUpdateCallback);
+    uiObserver.on('densityUpdate', this.uiContext as UIContext, this.densityUpdateCallback);
     this.sendSettings();
+    this.mainWindow?.on('windowTitleButtonRectChange', this.windowTitleButtonRectChangeCallback);
     Log.d(TAG, "uiContext init and sendSettings finished.");
   }
 
@@ -835,19 +868,40 @@ export class FlutterView {
    * Called when the rendering surface is created.
    * Marks the surface as available and processes pending messages.
    */
-  onSurfaceCreated() {
+  onSurfaceCreated(): number {
+    // XComponent onDestroy can arrive after a replacement XComponent onLoad
+    // during fast ArkUI route changes. Use a generation token so a stale
+    // destroy callback cannot detach the current surface.
+    this.activeSurfaceLifecycleToken = ++this.surfaceLifecycleToken;
+    if (this.isAttachedToFlutterEngine() && !this.isXComponentAttachedToEngine) {
+      this.flutterEngine!!.getFlutterNapi().xComponentAttachFlutterEngine(this.id)
+      this.isXComponentAttachedToEngine = true;
+    }
     this.isSurfaceAvailableForRendering = true;
+    this.flutterEngine?.getPlatformViewsController()?.attachToView(this);
     this.flutterEngine?.processPendingMessages();
+    return this.activeSurfaceLifecycleToken;
   }
 
   /**
    * Called when the rendering surface is destroyed.
    * Marks the surface as unavailable and detaches from the engine.
    */
-  onSurfaceDestroyed() {
+  onSurfaceDestroyed(surfaceLifecycleToken?: number) {
+    if (surfaceLifecycleToken != undefined && surfaceLifecycleToken != this.activeSurfaceLifecycleToken) {
+      return;
+    }
+    if (!this.isSurfaceAvailableForRendering && !this.isXComponentAttachedToEngine) {
+      return;
+    }
     this.isSurfaceAvailableForRendering = false;
-    if (this.isAttachedToFlutterEngine()) {
+    if (this.isAttachedToFlutterEngine() && this.isXComponentAttachedToEngine) {
       this.flutterEngine!!.getFlutterNapi().xComponentDetachFlutterEngine(this.id)
+      this.isXComponentAttachedToEngine = false;
+    }
+    this.flutterEngine?.getPlatformViewsController()?.detachFromView(this);
+    if (surfaceLifecycleToken == this.activeSurfaceLifecycleToken) {
+      this.activeSurfaceLifecycleToken = 0;
     }
   }
 
@@ -874,11 +928,15 @@ export class FlutterView {
         this.viewportMetrics.physicalViewPaddingTop =
           this.systemAvoidArea?.topRect.height ?? this.viewportMetrics.physicalViewPaddingTop;
       }
-      this.viewportMetrics.physicalViewPaddingBottom =
-        this.systemAvoidArea?.bottomRect.height ?? this.viewportMetrics.physicalViewPaddingBottom;
+      if (this.paddingBottom != undefined) {
+        this.viewportMetrics.physicalViewPaddingBottom = this.paddingBottom;
+      } else {
+        this.viewportMetrics.physicalViewPaddingBottom =
+          this.systemAvoidArea?.bottomRect.height ?? this.viewportMetrics.physicalViewPaddingBottom;
+      }
     } else { // 非全屏显示
       this.viewportMetrics.physicalViewPaddingTop = this.paddingTop ?? 0;
-      this.viewportMetrics.physicalViewPaddingBottom = 0;
+      this.viewportMetrics.physicalViewPaddingBottom = this.paddingBottom ?? 0;
     }
 
     this.viewportMetrics.physicalViewPaddingLeft =
@@ -1140,6 +1198,15 @@ export class FlutterView {
    */
   setPaddingTop(paddingTop?: number) {
     this.paddingTop = paddingTop;
+    this.onAreaChange(null);
+  }
+
+  /**
+   * Sets the bottom padding value.
+   * @param paddingBottom - The bottom padding value, or undefined to use default
+   */
+  setPaddingBottom(paddingBottom?: number) {
+    this.paddingBottom = paddingBottom;
     this.onAreaChange(null);
   }
 

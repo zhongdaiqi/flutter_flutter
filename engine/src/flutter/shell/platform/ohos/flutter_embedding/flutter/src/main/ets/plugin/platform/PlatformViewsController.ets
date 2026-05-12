@@ -105,6 +105,7 @@ export default class PlatformViewsController implements PlatformViewsHandler {
   private nextOverlayLayerId: number = 0;
   private focusViewId: number = -1;
   private platformViews: Map<number, PlatformView>;
+  private platformViewParentInfo: Map<number, PlatformViewInfo>;
   private viewIdWithTextureId: Map<number, number>;
   private viewIdWithNodeController: Map<number, EmbeddingNodeController>;
   private viewWrappers: Map<number, PlatformViewWrapper>;
@@ -120,6 +121,7 @@ export default class PlatformViewsController implements PlatformViewsHandler {
     this.currentFrameUsedPlatformViewIds = new HashSet();
     this.viewWrappers = new Map();
     this.platformViews = new Map();
+    this.platformViewParentInfo = new Map();
     this.viewIdWithTextureId = new Map();
     this.viewIdWithNodeController = new Map();
   }
@@ -134,6 +136,10 @@ export default class PlatformViewsController implements PlatformViewsHandler {
 
     let platformView: PlatformView = this.createPlatformView(request);
 
+    // OHOS currently relies on the texture composition path for the
+    // multi-PlatformView direction fix below. The platform-view-layer / hybrid
+    // branch remains a stub, so it is intentionally left outside the scope of
+    // this change.
     this.configureForHybridComposition(platformView, request);
   }
 
@@ -151,7 +157,16 @@ export default class PlatformViewsController implements PlatformViewsHandler {
       this.clearFocus(viewId);
       this.focusViewId = -1;
     }
+    // Disposal is a terminal teardown path, not a normal focus transition. If
+    // the embedded node's blur callback is missed while the view is being
+    // removed, release the matching physical PlatformView owner here so stale
+    // keyboard/focus state cannot leak into the next client. In the common
+    // path, the native blur callback has already reset ownership before dispose
+    // reaches this point, so this remains a safety net instead of becoming part
+    // of the steady-state focus handoff.
+    this.textInputPlugin?.clearPlatformViewClientForTeardown(viewId);
     this.platformViews.delete(viewId);
+    this.platformViewParentInfo.delete(viewId);
     let textureId = this.viewIdWithTextureId.get(viewId);
 
     if (textureId != undefined) {
@@ -296,14 +311,17 @@ export default class PlatformViewsController implements PlatformViewsHandler {
       let params = dvModel.getLayoutParams() as Record<string, Any>;
       // When receiving a DOWN action
       if (touch.action === TouchEventType.ACTION_DOWN) {
+        const shouldHandoffFrameworkFocus = this.textInputPlugin?.isFrameworkTextInputActive() ?? false;
         // Set the current touch state to true
         params['down'] = true
+        params['shouldHandoffFrameworkFocusOnTouch'] = shouldHandoffFrameworkFocus
         // When first receiving a touch DOWN event, dispatch all events stored in the list
         let touchEventArray: Array<CustomTouchEvent> | undefined = params['touchEvent'] as Array<CustomTouchEvent>
         if (touchEventArray !== undefined) {
           let nodeController = params['nodeController'] as EmbeddingNodeController;
           for (let it of touchEventArray) {
             nodeController.postEvent(it)
+            this.invokeTextInputHandoffOnTouch(touch.viewId, shouldHandoffFrameworkFocus, it.type == TouchType.Down);
           }
           // Clear the list after first dispatch
           params['touchEvent'] = undefined
@@ -325,7 +343,39 @@ export default class PlatformViewsController implements PlatformViewsHandler {
         // the final state returned is also ACTION_UP, so we use the UP state to indicate the user
         // is no longer touching the platform view
         params['down'] = false
+        params['shouldHandoffFrameworkFocusOnTouch'] = false
       }
+    }
+  }
+
+  private invokeTextInputHandoffOnTouch(
+    viewId: number,
+    shouldHandoffFrameworkFocus: boolean,
+    canInvokeViewFocused: boolean,
+  ): void {
+    const platformView = this.platformViews.get(viewId);
+    const shouldTriggerTextInputHandoff =
+      platformView?.shouldTriggerTextInputHandoffOnTouch() ?? false;
+    if (!canInvokeViewFocused) {
+      return;
+    }
+    if (!shouldHandoffFrameworkFocus) {
+      return;
+    }
+    // Query the concrete PlatformView after ArkUI receives each touch event.
+    // Composite views can consume a child-editor touch marker here, while only
+    // DOWN is allowed to invoke viewFocused. This prevents a later container tap
+    // from reusing stale state.
+    if (shouldTriggerTextInputHandoff) {
+      this.platformViewsChannel?.invokeViewFocused(viewId);
+    }
+  }
+
+  private attachTextInputHandoffOnTouch(params: Record<string, Any>, viewId: number): void {
+    params['textInputHandoffOnTouch'] = (canInvokeViewFocused: boolean = true) => {
+      const shouldHandoffFrameworkFocus =
+        (params['shouldHandoffFrameworkFocusOnTouch'] as boolean | undefined) ?? false;
+      this.invokeTextInputHandoffOnTouch(viewId, shouldHandoffFrameworkFocus, canInvokeViewFocused);
     }
   }
 
@@ -336,8 +386,14 @@ export default class PlatformViewsController implements PlatformViewsHandler {
    */
   setDirection(viewId: number, direction: Direction): void {
     let nodeController = this.viewIdWithNodeController.get(viewId)
-    if (nodeController != undefined) {
-      nodeController?.setRenderOption(this.flutterView!.getPlatformView()!, this.flutterView!.getSurfaceId(),
+    let platformViewInfo = this.platformViewParentInfo.get(viewId);
+    if (nodeController != undefined && platformViewInfo != undefined) {
+      platformViewInfo.direction = direction;
+      // Rebuild the node with the PlatformView and surface that belong to this
+      // specific viewId. Reusing the latest FlutterView-level references can
+      // redirect updates to the wrong native node when multiple PlatformViews
+      // are alive at the same time.
+      nodeController?.setRenderOption(platformViewInfo.platformView, platformViewInfo.surfaceId,
         NodeRenderType.RENDER_TYPE_TEXTURE, direction)
       nodeController?.rebuild()
     }
@@ -367,7 +423,10 @@ export default class PlatformViewsController implements PlatformViewsHandler {
       Log.e(TAG, "Setting direction to a null view with id: " + viewId);
       return;
     }
-    // Make the Xcomponent gain focus.
+    // clearFocus only removes focus from the wrapper/XComponent side. Releasing
+    // the text-input owner is intentionally handled by the embedded node's real
+    // onBlur callback below, so native keyboard teardown follows the actual
+    // editor lifecycle instead of controller bookkeeping.
     focusControl.requestFocus("unfocus-xcomponent-node");
   }
 
@@ -388,6 +447,7 @@ export default class PlatformViewsController implements PlatformViewsHandler {
   public createForTextureLayer(request: PlatformViewCreationRequest): number {
     Log.i(TAG, "Enter createForTextureLayer");
     this.ensureValidRequest(request);
+    this.ensureFlutterViewAttached("create platform view");
 
     let platformView: PlatformView = this.createPlatformView(request);
     let textureId = this.configureForTextureLayerComposition(platformView, request);
@@ -452,6 +512,8 @@ export default class PlatformViewsController implements PlatformViewsHandler {
    * @private
    */
   private configureForHybridComposition(platformView: PlatformView, request: PlatformViewCreationRequest): void {
+    // This path is not implemented yet on OHOS. Keep that behavior explicit so
+    // future readers do not assume the texture-path fix also covers hybrid.
     Log.i(TAG, "Using hybrid composition for platform view: " + request.viewId);
   }
 
@@ -482,6 +544,20 @@ export default class PlatformViewsController implements PlatformViewsHandler {
 
     let nodeController = new EmbeddingNodeController();
     nodeController.setRenderOption(platformView, surfaceId, NodeRenderType.RENDER_TYPE_TEXTURE, request.direction);
+    // Persist the native view/surface pair per Flutter viewId so later updates
+    // (for example setDirection) always target the correct embedded node.
+    this.platformViewParentInfo.set(
+      request.viewId,
+      new PlatformViewInfo(
+        platformView,
+        surfaceId,
+        physicalWidth,
+        physicalHeight,
+        request.logicalTop,
+        request.logicalLeft,
+        request.direction
+      )
+    );
     this.viewIdWithNodeController.set(request.viewId, nodeController);
 
     let dvModel = createDVModelFromJson(new DVModelJson("NodeContainer",
@@ -495,6 +571,16 @@ export default class PlatformViewsController implements PlatformViewsHandler {
       },
       {},
       undefined));
+    let params = dvModel.getLayoutParams() as Record<string, Any>;
+    this.attachTextInputHandoffOnTouch(params, request.viewId);
+    let events = dvModel.events as Record<string, Any>;
+    // Release the physical PlatformView owner only when the embedded native
+    // node actually loses focus. This keeps native blur/release aligned with
+    // the real editor lifecycle instead of using controller-level clearFocus as
+    // a broader proxy.
+    events.onBlur = () => {
+      this.textInputPlugin?.clearPlatformViewClient(request.viewId);
+    };
     let viewWrapper: PlatformViewWrapper = new PlatformViewWrapper();
     viewWrapper.addDvModel(dvModel);
     this.viewWrappers.set(request.viewId, viewWrapper);
@@ -535,16 +621,93 @@ export default class PlatformViewsController implements PlatformViewsHandler {
    * @param newFlutterView - The FlutterView to attach to
    */
   public attachToView(newFlutterView: FlutterView) {
+    // The same FlutterView can receive multiple XComponent surface generations
+    // during fast ArkUI route changes. PlatformView attach/detach tracks the
+    // FlutterView/DV tree, not each native surface, so same-view surface churn is
+    // handled by FlutterView/XComponent native attach logic instead of notifying
+    // plugins again here.
+    if (this.flutterView == newFlutterView) {
+      return;
+    }
+
+    if (this.flutterView != null) {
+      this.detachFromView();
+    }
+
     this.flutterView = newFlutterView;
+
+    // A FlutterView surface can be destroyed and later recreated while the
+    // engine and PlatformViewsController stay alive. Reattach existing wrapper
+    // DVModels to the new FlutterView so embedded PlatformViews remain visible
+    // after the surface is mounted again.
+    for (let viewId of this.viewWrappers.keys()) {
+      let viewWrapper: PlatformViewWrapper | undefined = this.viewWrappers.get(viewId);
+      if (viewWrapper == undefined) {
+        continue;
+      }
+      let dvModel = viewWrapper.getDvModel();
+      if (this.flutterView.getDVModel().children.indexOf(dvModel) < 0) {
+        this.flutterView.getDVModel().children.push(dvModel);
+      }
+    }
+
+    // Match Android PlatformViewsController semantics: every created PlatformView
+    // is notified when the owning FlutterView attaches, even though only wrapper
+    // DVModels are physically re-added to the FlutterView tree above.
+    for (let viewId of this.platformViews.keys()) {
+      let platformView: PlatformView | undefined = this.platformViews.get(viewId);
+      if (platformView != undefined) {
+        platformView.onFlutterViewAttached(this.flutterView.getDVModel());
+      }
+    }
   }
 
   /**
    * Detaches the controller from the FlutterView.
    */
-  public detachFromView(): void {
+  public detachFromView(detachingFlutterView?: FlutterView): void {
+    if (this.flutterView == null) {
+      return;
+    }
+    if (detachingFlutterView != undefined && this.flutterView != detachingFlutterView) {
+      return;
+    }
+
+    if (this.focusViewId != -1) {
+      // View detachment happens after the live focus path has had a chance to
+      // clear ownership. Keep this as a final guard only, so page teardown does
+      // not widen the normal Flutter/native handoff behavior.
+      this.textInputPlugin?.clearPlatformViewClientForTeardown(this.focusViewId);
+    }
+
+    // Mirror Android's FlutterView detach semantics: remove wrapper DVModels
+    // from the old FlutterView and notify every PlatformView so plugins do not
+    // keep using a stale FlutterView/DynamicView tree after the surface is gone.
+    for (let viewId of this.viewWrappers.keys()) {
+      let viewWrapper: PlatformViewWrapper | undefined = this.viewWrappers.get(viewId);
+      if (viewWrapper == undefined) {
+        continue;
+      }
+      let index = this.flutterView.getDVModel().children.indexOf(viewWrapper.getDvModel());
+      while (index > -1) {
+        this.flutterView.getDVModel().children.splice(index, 1);
+        index = this.flutterView.getDVModel().children.indexOf(viewWrapper.getDvModel());
+      }
+    }
+
     this.destroyOverlaySurfaces();
     this.removeOverlaySurfaces();
     this.flutterView = null;
+
+    // Keep the notification scope symmetric with attachToView and Android:
+    // PlatformView lifecycle callbacks are tied to FlutterView ownership, not to
+    // whether the view currently has a wrapper DVModel.
+    for (let viewId of this.platformViews.keys()) {
+      let platformView: PlatformView | undefined = this.platformViews.get(viewId);
+      if (platformView != undefined) {
+        platformView.onFlutterViewDetached();
+      }
+    }
   }
 
   /**
@@ -734,6 +897,10 @@ export default class PlatformViewsController implements PlatformViewsHandler {
       return;
     }
 
+    if (this.flutterView == null) {
+      Log.w(TAG, "render: FlutterView is detached, skipping render for surfaceId=" + surfaceId);
+      return;
+    }
     this.flutterView!.setSurfaceId(surfaceId.toString());
     let wrappedBuilder: WrappedBuilder<[Params]> = platformView.getView();
     this.flutterView?.setWrappedBuilder(wrappedBuilder);
@@ -756,6 +923,8 @@ export default class PlatformViewsController implements PlatformViewsHandler {
       },
       {},
       undefined));
+    let params = dvModel.getLayoutParams() as Record<string, Any>;
+    this.attachTextInputHandoffOnTouch(params, surfaceId);
 
     let viewWrapper: PlatformViewWrapper = new PlatformViewWrapper();
     viewWrapper.addDvModel(dvModel);
@@ -763,5 +932,11 @@ export default class PlatformViewsController implements PlatformViewsHandler {
     this.flutterView?.getDVModel().children.push(viewWrapper.getDvModel());
     platformView.onFlutterViewAttached(this.flutterView!.getDVModel());
     this.platformViews.set(surfaceId, platformView!);
+  }
+
+  private ensureFlutterViewAttached(action: string): void {
+    if (this.flutterView == null) {
+      throw new Error("Cannot " + action + " while FlutterView is detached from PlatformViewsController.");
+    }
   }
 }

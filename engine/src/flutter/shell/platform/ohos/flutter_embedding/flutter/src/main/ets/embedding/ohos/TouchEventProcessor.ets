@@ -16,6 +16,9 @@ import { EmbeddingNodeController } from './EmbeddingNodeController';
 import Any from '../../plugin/common/Any';
 
 
+type TextInputHandoffOnTouch = (canInvokeViewFocused: boolean) => void;
+
+const OH_NATIVEXCOMPONENT_DOWN = 0;
 const OH_NATIVEXCOMPONENT_UNKNOWN = 4;
 const OH_NATIVEXCOMPONENT_TOOL_TYPE_UNKNOWN = 0;
 
@@ -409,9 +412,18 @@ export default class TouchEventProcessor {
           let touchEvent: CustomTouchEvent = TouchEventProcessor.getInstance().constructCustomTouchEvent(strings, top, left);
           let nodeController = params['nodeController'] as EmbeddingNodeController;
           nodeController.postEvent(touchEvent)
+          // Keep the text-input handoff check on the same path that delivers
+          // touch events to ArkUI. postTouchEvent can run more than once for a
+          // gesture, so non-DOWN events also consume stale child-editor markers
+          // but are not allowed to invoke viewFocused.
+          let textInputHandoffOnTouch =
+            params['textInputHandoffOnTouch'] as TextInputHandoffOnTouch | undefined;
+          if (textInputHandoffOnTouch != undefined) {
+            textInputHandoffOnTouch(touchEvent.type == TouchType.Down);
+          }
         } else {
           //如果触摸事件为OH_NATIVEXCOMPONENT_DOWN=0，且只有一个手指，说明是下一次点击了，这时候需要清空上一次的数据
-          if (strings[6] == '0' && strings[0] == '1') {
+          if (strings[6] == OH_NATIVEXCOMPONENT_DOWN.toString() && strings[0] == '1') {
             params['touchEvent'] = undefined
           }
           //如果触摸事件为OH_NATIVEXCOMPONENT_DOWN=0类型，且在flutter端还没判断当前view是否处于点击区域内，则
