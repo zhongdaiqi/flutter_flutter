@@ -189,6 +189,58 @@ compilation_steps:
     args: ["flutter_flutter/engine"]
     required: true
 
+  - name: Initialize Flutter Test Environment
+    script: ci/scripts/init_flutter_test_env.sh
+    description: Initialize Flutter test environment and pre-download dependencies
+    required: true
+
+  - name: Unit Tests
+    script: ci/scripts/run_unit_tests.sh
+    description: Run all 100% passed unit tests
+    args:
+      - "gate"
+      - "packages/flutter_web_plugins"
+      - "packages/fuchsia_remote_debug_protocol"
+      - "packages/flutter_goldens"
+      - "packages/flutter_localizations"
+      - "packages/flutter:flutter test --no-pub --reporter compact test/physics"
+      - "packages/flutter:flutter test --no-pub --reporter compact test/scheduler"
+      - "packages/flutter:flutter test --no-pub --reporter compact test/animation"
+      - "packages/flutter:flutter test --no-pub --reporter compact test/semantics"
+      - "packages/flutter:flutter test --no-pub --reporter compact test/gestures"
+      - "packages/flutter:flutter test --no-pub --reporter compact test/services"
+      - "packages/flutter:flutter test --no-pub --reporter compact test/rendering"
+      - "packages/flutter:flutter test --no-pub --reporter compact test/painting"
+      - "dev/a11y_assessments"
+      - "dev/customer_testing"
+      - "dev/packages_autoroller"
+      - "dev/tracing_tests:flutter test --no-pub --enable-vmservice --reporter compact"
+      - "dev/manual_tests"
+      - "dev/integration_tests/ui"
+      - "dev/integration_tests/link_hook"
+      - "dev/integration_tests/flutter_gallery"
+    required: true
+
+  - name: Unit Tests (Partial Pass)
+    script: ci/scripts/run_unit_tests.sh
+    description: Run unit tests with partial pass rate
+    args:
+      - "daily"
+      - "packages/flutter_test"
+      - "packages/flutter_driver:flutter test --no-pub --reporter compact --exclude-tags web"
+      - "packages/integration_test:flutter test --no-pub --reporter compact --exclude-tags web"
+      - "packages/flutter_tools"
+      - "packages/flutter:flutter test --no-pub --reporter compact test/foundation"
+      - "packages/flutter:flutter test --no-pub --reporter compact test/cupertino"
+      - "packages/flutter:flutter test --no-pub --reporter compact test/material"
+      - "packages/flutter:flutter test --no-pub --reporter compact test/widgets"
+      - "dev/snippets"
+      - "dev/tools"
+      - "dev/devicelab"
+      - "dev/bots"
+      - "dev/integration_tests/hook_user_defines"
+    required: false
+
   - name: Upload to cloud
     script: ci/scripts/upload_to_cloud.sh
     description: Upload build artifacts to cloud storage
