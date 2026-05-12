@@ -40,6 +40,11 @@ const String BUILD_INFO_JSON_PATH =
 const String BUILD_INFO_JSON_DES_PATH =
     'src/main/resources/rawfile/buildinfo.json5';
 
+const String FRAMES_CFG_JSON_PATH =
+    'src/main/resources/base/profile/framesconfig.json';
+const String FRAMES_CFG_JSON_DES_PATH =
+    'src/main/resources/rawfile/framesconfig.json';
+
 final bool isWindows = globals.platform.isWindows;
 
 String getHvigorwFile() => isWindows ? 'hvigorw.bat' : 'hvigorw';
@@ -116,10 +121,7 @@ Future<void> ohpmInstall(
     {required ProcessUtils processUtils,
     required String workingDirectory,
     Logger? logger}) async {
-  final List<String> cleanCmd = <String>['ohpm', 'clean'];
   final List<String> installCmd = <String>['ohpm', 'install', '--all'];
-  processUtils.runSync(cleanCmd,
-      workingDirectory: workingDirectory, throwOnError: true);
   processUtils.runSync(installCmd,
       workingDirectory: workingDirectory, throwOnError: true);
 }

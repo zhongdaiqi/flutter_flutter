@@ -165,6 +165,13 @@ export const nativeNotifyTextureResizing: (nativeShellHolderId: number, textureI
 
 export const nativeEnableFrameCache: (nativeShellHolderId: number, enable: boolean) => void;
 
+/**
+ * Updates whether PiP content remains visible while the ability is hidden.
+ * @param nativeShellHolderId - The ID of the native shell holder
+ * @param visible - Whether the PiP surface should remain visible
+ */
+export const nativeSetPipVisible: (nativeShellHolderId: number, visible: boolean) => void;
+
 export const nativeLookupCallbackInformation: (callback: FlutterCallbackInformation, handler: number) => number;
 
 export const nativeUnicodeIsEmoji: (code: number) => number;
@@ -211,3 +218,5 @@ export const nativePrefetchFramesCfg: () => void;
 export const nativeCheckLTPOSwitchState: () => number;
 
 export const nativeSetQosOnLowMemory: (nativeShellHolderId: number, lowMemoryLevel: number) => void;
+
+export const nativeSetAnimationStatus: (nativeShellHolderId: number, animationStatus: number) => void;

@@ -311,6 +311,10 @@ class OhosDevice extends Device {
     ProtocolDiscovery? observatoryDiscovery;
 
     if (debuggingOptions.debuggingEnabled) {
+      // Clear hilog buffer before starting the app to ensure ProtocolDiscovery
+      // picks up the NEW VM Service URI, not a stale one from a previous run.
+      clearLogs();
+
       observatoryDiscovery = ProtocolDiscovery.vmService(
         // Avoid using getLogReader, which returns a singleton instance, because the
         // observatory discovery will dipose at the end. creating a new logger here allows
@@ -335,6 +339,9 @@ class OhosDevice extends Device {
       '-b',
       builtPackage.ohosBuildData.appInfo!.bundleName,
     ];
+    if (debuggingOptions.debuggingEnabled && debuggingOptions.startPaused) {
+      cmd.addAll(<String>['--pb', 'start-paused', 'true']);
+    }
     final String result = (await runHdcCheckedAsync(cmd)).stdout;
     // This invocation returns 0 even when it fails.
     if (result.toLowerCase().contains('error')) {
@@ -364,6 +371,23 @@ class OhosDevice extends Device {
           return LaunchResult.failed();
         }
       }
+
+      if (debuggingOptions.buildInfo.isDebug) {
+        try {
+          final List<String> attachCmd = <String>[
+            'shell',
+            'aa',
+            'attach',
+            '-b',
+            builtPackage.ohosBuildData.appInfo!.bundleName,
+          ];
+          await runHdcCheckedAsync(attachCmd);
+          _logger.printStatus('Execute attach command for bundle: ${builtPackage.ohosBuildData.appInfo!.bundleName}');
+        } catch (e) {
+          _logger.printWarning('Failed to execute attach command: $e');
+        }
+      }
+
       return LaunchResult.succeeded(observatoryUri: observatoryUri);
     } on Exception catch (error) {
       _logger.printError('Error waiting for a debug connection: $error');
@@ -404,6 +428,9 @@ class OhosDevice extends Device {
     if (app == null) {
       return false;
     }
+
+    await runHdcCheckedAsync(<String>['shell', 'aa', 'detach', '-b', app.id]);
+
     final RunResult result = _processUtils.runSync(
       hdcCommandForDevice(<String>['shell', 'aa', 'force-stop', app.id]),
     );

@@ -15,15 +15,13 @@
 #include <rawfile/raw_file_manager.h>
 #include <string>
 
-#include "flutter/impeller/renderer/backend/vulkan/context_vk.h"
-#include "impeller/renderer/backend/vulkan/fence_waiter_vk.h"
-#include "impeller/renderer/backend/vulkan/resource_manager_vk.h"
-#include "flutter/shell/platform/ohos/context/ohos_context.h"
 #include "flutter/common/constants.h"
 #include "flutter/fml/make_copyable.h"
 #include "flutter/fml/platform/ohos/hiappevent/ohos_hiappevent.h"
 #include "flutter/fml/platform/ohos/napi_util.h"
+#include "flutter/impeller/renderer/backend/vulkan/context_vk.h"
 #include "flutter/lib/ui/plugins/callback_cache.h"
+#include "flutter/shell/platform/ohos/context/ohos_context.h"
 #include "flutter/shell/platform/ohos/ohos_logging.h"
 #include "flutter/shell/platform/ohos/ohos_main.h"
 #include "flutter/shell/platform/ohos/ohos_shell_holder.h"
@@ -31,7 +29,11 @@
 #include "flutter/shell/platform/ohos/ohos_xcomponent_adapter.h"
 #include "flutter/shell/platform/ohos/surface/ohos_native_window.h"
 #include "flutter/shell/platform/ohos/types.h"
+#include "impeller/renderer/backend/vulkan/fence_waiter_vk.h"
+#include "impeller/renderer/backend/vulkan/resource_manager_vk.h"
 #include "unicode/uchar.h"
+
+#include "flutter/fml/platform/ohos/ohos_trace_event.h"
 
 #define OHOS_SHELL_HOLDER (reinterpret_cast<OHOSShellHolder*>(shell_holder))
 namespace flutter {
@@ -273,6 +275,8 @@ void PlatformViewOHOSNapi::FlutterViewHandlePlatformMessageResponse(
     int reponse_id,
     std::unique_ptr<fml::Mapping> data) {
   FML_DLOG(INFO) << "FlutterViewHandlePlatformMessageResponse";
+  napi_handle_scope scope;
+  napi_open_handle_scope(env_, &scope);
   napi_status status;
   napi_value callbackParam[2];
   status = napi_create_int64(env_, reponse_id, callbackParam);
@@ -287,8 +291,6 @@ void PlatformViewOHOSNapi::FlutterViewHandlePlatformMessageResponse(
         env_, (void*)data->GetMapping(), data->GetSize());
   }
 
-  napi_handle_scope scope;
-  napi_open_handle_scope(env_, &scope);
   status = fml::napi::InvokeJsMethod(
       env_, ref_napi_obj_, "handlePlatformMessageResponse", 2, callbackParam);
   if (status != napi_ok) {
@@ -302,7 +304,8 @@ void PlatformViewOHOSNapi::FlutterViewHandlePlatformMessage(
     std::unique_ptr<flutter::PlatformMessage> message) {
   FML_DLOG(INFO) << "FlutterViewHandlePlatformMessage message channal "
                  << message->channel().c_str();
-
+  napi_handle_scope scope;
+  napi_open_handle_scope(env_, &scope);
   napi_value callbackParam[4];
   napi_status status;
 
@@ -310,6 +313,7 @@ void PlatformViewOHOSNapi::FlutterViewHandlePlatformMessage(
                                    message->channel().size(), callbackParam);
   if (status != napi_ok) {
     FML_DLOG(ERROR) << "napi_create_string_utf8 err " << status;
+    napi_close_handle_scope(env_, scope);
     return;
   }
 
@@ -319,6 +323,7 @@ void PlatformViewOHOSNapi::FlutterViewHandlePlatformMessage(
   status = napi_create_int64(env_, reponse_id, &callbackParam[2]);
   if (status != napi_ok) {
     FML_DLOG(ERROR) << "napi_create_int64 err " << status;
+    napi_close_handle_scope(env_, scope);
     return;
   }
   if (message->hasData()) {
@@ -329,6 +334,10 @@ void PlatformViewOHOSNapi::FlutterViewHandlePlatformMessage(
                                      &callbackParam[3]);
     if (status != napi_ok) {
       FML_DLOG(ERROR) << "napi_create_string_utf8 err " << status;
+      if (mapData) {
+        delete mapData;
+      }
+      napi_close_handle_scope(env_, scope);
       return;
     }
     if (mapData) {
@@ -338,8 +347,6 @@ void PlatformViewOHOSNapi::FlutterViewHandlePlatformMessage(
     callbackParam[3] = nullptr;
   }
 
-  napi_handle_scope scope;
-  napi_open_handle_scope(env_, &scope);
   status = fml::napi::InvokeJsMethod(env_, ref_napi_obj_,
                                      "handlePlatformMessage", 4, callbackParam);
   if (status != napi_ok) {
@@ -350,13 +357,13 @@ void PlatformViewOHOSNapi::FlutterViewHandlePlatformMessage(
 
 void PlatformViewOHOSNapi::FlutterViewOnFirstFrame(bool is_preload) {
   FML_DLOG(INFO) << "FlutterViewOnFirstFrame";
+  napi_handle_scope scope;
+  napi_open_handle_scope(env_, &scope);
   napi_value callbackParam[1];
   napi_status status = napi_create_int64(env_, is_preload, callbackParam);
   if (status != napi_ok) {
     FML_DLOG(ERROR) << "napi_create_int64 firstframe fail ";
   }
-  napi_handle_scope scope;
-  napi_open_handle_scope(env_, &scope);
   status = fml::napi::InvokeJsMethod(env_, ref_napi_obj_, "onFirstFrame", 1,
                                      callbackParam);
   if (status != napi_ok) {
@@ -454,6 +461,8 @@ void PlatformViewOHOSNapi::FlutterViewOnTouchEvent(
     FML_LOG(ERROR) << "Input parameter error";
     return;
   }
+  napi_handle_scope scope;
+  napi_open_handle_scope(env_, &scope);
   napi_value arrayString;
   napi_create_array(env_, &arrayString);
 
@@ -464,8 +473,6 @@ void PlatformViewOHOSNapi::FlutterViewOnTouchEvent(
     napi_set_element(env_, arrayString, i, stringItem);
   }
 
-  napi_handle_scope scope;
-  napi_open_handle_scope(env_, &scope);
   napi_status status = fml::napi::InvokeJsMethod(
       env_, ref_napi_obj_, "onTouchEvent", 1, &arrayString);
   if (status != napi_ok) {
@@ -481,6 +488,8 @@ void PlatformViewOHOSNapi::FlutterViewOnMouseEvent(
     FML_LOG(ERROR) << "Input parameter error";
     return;
   }
+  napi_handle_scope scope;
+  napi_open_handle_scope(env_, &scope);
   napi_value arrayString;
   napi_create_array(env_, &arrayString);
 
@@ -490,8 +499,7 @@ void PlatformViewOHOSNapi::FlutterViewOnMouseEvent(
                             &stringItem);
     napi_set_element(env_, arrayString, i, stringItem);
   }
-  napi_handle_scope scope;
-  napi_open_handle_scope(env_, &scope);
+
   napi_status status = fml::napi::InvokeJsMethod(
       env_, ref_napi_obj_, "onMouseEvent", 1, &arrayString);
   napi_close_handle_scope(env_, scope);
@@ -507,6 +515,8 @@ void PlatformViewOHOSNapi::FlutterViewOnAxisEvent(
     FML_LOG(ERROR) << "Input parameter error";
     return;
   }
+  napi_handle_scope scope;
+  napi_open_handle_scope(env_, &scope);
   napi_value arrayString;
   napi_create_array(env_, &arrayString);
 
@@ -515,8 +525,7 @@ void PlatformViewOHOSNapi::FlutterViewOnAxisEvent(
     napi_create_string_utf8(env_, axisPacketString[i].c_str(), -1, &stringItem);
     napi_set_element(env_, arrayString, i, stringItem);
   }
-  napi_handle_scope scope;
-  napi_open_handle_scope(env_, &scope);
+
   napi_status status = fml::napi::InvokeJsMethod(
       env_, ref_napi_obj_, "onAxisEvent", 1, &arrayString);
   napi_close_handle_scope(env_, scope);
@@ -533,6 +542,8 @@ napi_value PlatformViewOHOSNapi::nativeAttach(napi_env env,
                                               napi_callback_info info) {
   FML_DLOG(INFO) << "PlatformViewOHOSNapi::nativeAttach";
 
+  napi_handle_scope scope;
+  napi_open_handle_scope(env, &scope);
   napi_status status;
   // 获取传入的参数
   size_t argc = 1;
@@ -565,11 +576,13 @@ napi_value PlatformViewOHOSNapi::nativeAttach(napi_env env,
     napi_value id;
     napi_create_int64(env, reinterpret_cast<int64_t>(shell_holder.release()),
                       &id);
+    napi_close_handle_scope(env, scope);
     return id;
   } else {
     FML_DLOG(ERROR) << "shell holder inValid";
     napi_value id;
     napi_create_int64(env, 0, &id);
+    napi_close_handle_scope(env, scope);
     return id;
   }
 }
@@ -715,6 +728,8 @@ napi_value PlatformViewOHOSNapi::nativeSpawn(napi_env env,
     return nullptr;
   }
 
+  napi_handle_scope scope;
+  napi_open_handle_scope(env, &scope);
   std::shared_ptr<PlatformViewOHOSNapi> napi_facade =
       std::make_shared<PlatformViewOHOSNapi>(env);
   napi_create_reference(env, args[5], 1, &(napi_facade->ref_napi_obj_));
@@ -724,6 +739,7 @@ napi_value PlatformViewOHOSNapi::nativeSpawn(napi_env env,
 
   if (spawned_shell_holder == nullptr || !spawned_shell_holder->IsValid()) {
     FML_LOG(ERROR) << "Could not spawn Shell";
+    napi_close_handle_scope(env, scope);
     return nullptr;
   }
 
@@ -731,6 +747,7 @@ napi_value PlatformViewOHOSNapi::nativeSpawn(napi_env env,
   napi_create_int64(env,
                     reinterpret_cast<int64_t>(spawned_shell_holder.release()),
                     &shell_holder_id);
+  napi_close_handle_scope(env, scope);
   return shell_holder_id;
 }
 
@@ -1639,6 +1656,8 @@ napi_value PlatformViewOHOSNapi::nativeRegisterTexture(
   napi_value args[2] = {nullptr};
   int64_t shell_holder;
   int64_t textureId;
+  napi_handle_scope scope;
+  napi_open_handle_scope(env, &scope);
   NAPI_CALL(env, napi_get_cb_info(env, info, &argc, args, nullptr, nullptr));
   NAPI_CALL(env, napi_get_value_int64(env, args[0], &shell_holder));
   NAPI_CALL(env, napi_get_value_int64(env, args[1], &textureId));
@@ -1646,6 +1665,7 @@ napi_value PlatformViewOHOSNapi::nativeRegisterTexture(
       OHOS_SHELL_HOLDER->GetPlatformView()->RegisterExternalTexture(textureId);
   napi_value res;
   napi_create_int64(env, surfaceId, &res);
+  napi_close_handle_scope(env, scope);
   return res;
 }
 
@@ -1672,6 +1692,8 @@ napi_value PlatformViewOHOSNapi::nativeGetTextureWindowId(
   napi_value args[2] = {nullptr};
   int64_t shell_holder;
   int64_t textureId;
+  napi_handle_scope scope;
+  napi_open_handle_scope(env, &scope);
   NAPI_CALL(env, napi_get_cb_info(env, info, &argc, args, nullptr, nullptr));
   NAPI_CALL(env, napi_get_value_int64(env, args[0], &shell_holder));
   NAPI_CALL(env, napi_get_value_int64(env, args[1], &textureId));
@@ -1680,6 +1702,7 @@ napi_value PlatformViewOHOSNapi::nativeGetTextureWindowId(
           textureId);
   napi_value res;
   napi_create_int64(env, windowId, &res);
+  napi_close_handle_scope(env, scope);
   return res;
 }
 
@@ -1691,6 +1714,8 @@ napi_value PlatformViewOHOSNapi::nativeGetTextureWindowPtr(
   napi_value args[2] = {nullptr};
   int64_t shell_holder;
   int64_t textureId;
+  napi_handle_scope scope;
+  napi_open_handle_scope(env, &scope);
   NAPI_CALL(env, napi_get_cb_info(env, info, &argc, args, nullptr, nullptr));
   NAPI_CALL(env, napi_get_value_int64(env, args[0], &shell_holder));
   NAPI_CALL(env, napi_get_value_int64(env, args[1], &textureId));
@@ -1699,6 +1724,7 @@ napi_value PlatformViewOHOSNapi::nativeGetTextureWindowPtr(
           textureId);
   napi_value res;
   napi_create_bigint_uint64(env, windowId, &res);
+  napi_close_handle_scope(env, scope);
   return res;
 }
 
@@ -1751,7 +1777,8 @@ napi_value PlatformViewOHOSNapi::nativeSetExternalNativeImage(
   int64_t shell_holder;
   int64_t textureId;
   int64_t native_image_ptr;
-
+  napi_handle_scope scope;
+  napi_open_handle_scope(env, &scope);
   NAPI_CALL(env, napi_get_cb_info(env, info, &argc, args, nullptr, nullptr));
   NAPI_CALL(env, napi_get_value_int64(env, args[0], &shell_holder));
   NAPI_CALL(env, napi_get_value_int64(env, args[1], &textureId));
@@ -1764,6 +1791,7 @@ napi_value PlatformViewOHOSNapi::nativeSetExternalNativeImage(
       textureId, native_image);
   napi_value res;
   napi_create_int64(env, (int64_t)ret, &res);
+  napi_close_handle_scope(env, scope);
   return res;
 }
 
@@ -1787,7 +1815,8 @@ napi_value PlatformViewOHOSNapi::nativeSetExternalNativeImagePtr(
     napi_throw_error(env, nullptr, "BigInt values have no lossless converted");
     return nullptr;
   }
-
+  napi_handle_scope scope;
+  napi_open_handle_scope(env, &scope);
   OH_NativeImage* native_image =
       (reinterpret_cast<OH_NativeImage*>(native_image_ptr));
 
@@ -1795,6 +1824,7 @@ napi_value PlatformViewOHOSNapi::nativeSetExternalNativeImagePtr(
       textureId, native_image);
   napi_value res;
   napi_create_int64(env, (int64_t)ret, &res);
+  napi_close_handle_scope(env, scope);
   return res;
 }
 
@@ -1807,6 +1837,8 @@ napi_value PlatformViewOHOSNapi::nativeResetExternalTexture(
   int64_t shell_holder;
   int64_t textureId;
   bool need_surfaceId;
+  napi_handle_scope scope;
+  napi_open_handle_scope(env, &scope);
   NAPI_CALL(env, napi_get_cb_info(env, info, &argc, args, nullptr, nullptr));
   NAPI_CALL(env, napi_get_value_int64(env, args[0], &shell_holder));
   NAPI_CALL(env, napi_get_value_int64(env, args[1], &textureId));
@@ -1817,6 +1849,7 @@ napi_value PlatformViewOHOSNapi::nativeResetExternalTexture(
           textureId, need_surfaceId);
   napi_value res;
   napi_create_int64(env, surface_id, &res);
+  napi_close_handle_scope(env, scope);
   return res;
 }
 
@@ -1916,7 +1949,33 @@ napi_value PlatformViewOHOSNapi::nativeEnableFrameCache(
   NAPI_CALL(env, napi_get_value_int64(env, args[0], &shell_holder));
   NAPI_CALL(env, napi_get_value_bool(env, args[1], &enable));
 
-  OHOS_SHELL_HOLDER->GetPlatformView()->EnableFrameCache(enable);
+  auto platform_view = OHOS_SHELL_HOLDER->GetPlatformView();
+  if (!platform_view) {
+    FML_LOG(ERROR) << "nativeEnableFrameCache platform view is null";
+    return nullptr;
+  }
+
+  platform_view->EnableFrameCache(enable);
+  return nullptr;
+}
+
+napi_value PlatformViewOHOSNapi::nativeSetPipVisible(napi_env env,
+                                                     napi_callback_info info) {
+  size_t argc = 2;
+  napi_value args[2] = {nullptr};
+  int64_t shell_holder;
+  bool visible;
+  NAPI_CALL(env, napi_get_cb_info(env, info, &argc, args, nullptr, nullptr));
+  NAPI_CALL(env, napi_get_value_int64(env, args[0], &shell_holder));
+  NAPI_CALL(env, napi_get_value_bool(env, args[1], &visible));
+
+  auto platform_view = OHOS_SHELL_HOLDER->GetPlatformView();
+  if (!platform_view) {
+    FML_LOG(ERROR) << "nativeSetPipVisible platform view is null";
+    return nullptr;
+  }
+
+  platform_view->SetPipVisible(visible);
   return nullptr;
 }
 
@@ -1926,8 +1985,11 @@ void PlatformViewOHOSNapi::SurfaceCreated(int64_t shell_holder,
                                           int height) {
   auto native_window = fml::MakeRefCounted<OHOSNativeWindow>(
       static_cast<OHNativeWindow*>(window));
+
   OHOS_SHELL_HOLDER->GetPlatformView()->UpdateDisplaySize(width, height);
   OHOS_SHELL_HOLDER->GetPlatformView()->NotifyCreate(std::move(native_window));
+  // Notify GPU reclaim policy that surface is created
+  OHOS_SHELL_HOLDER->GetPlatformView()->OnSurfaceCreated();
 }
 
 void PlatformViewOHOSNapi::SurfacePreload(int64_t shell_holder,
@@ -1950,6 +2012,8 @@ void PlatformViewOHOSNapi::SurfaceChanged(int64_t shell_holder,
 }
 
 void PlatformViewOHOSNapi::SurfaceDestroyed(int64_t shell_holder) {
+  // Update surface state for GPU reclaim policy
+  OHOS_SHELL_HOLDER->GetPlatformView()->OnSurfaceDestroyed();
   OHOS_SHELL_HOLDER->GetPlatformView()->NotifyDestroyed();
 
   OHOS_SHELL_HOLDER->GetPlatformView()->RunTask(OhosThreadType::kIO, [] {
@@ -2208,6 +2272,8 @@ napi_value PlatformViewOHOSNapi::nativeEncodeUtf8(napi_env env,
                                                   napi_callback_info info) {
   size_t argc = 1;
   napi_value args[1] = {nullptr};
+  napi_handle_scope scope;
+  napi_open_handle_scope(env, &scope);
   napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
 
   size_t length = 0;
@@ -2226,6 +2292,7 @@ napi_value PlatformViewOHOSNapi::nativeEncodeUtf8(napi_env env,
   napi_value uint8_array;
   napi_create_typedarray(env, napi_uint8_array, length, arraybuffer, 0,
                          &uint8_array);
+  napi_close_handle_scope(env, scope);
   return uint8_array;
 }
 
@@ -2239,6 +2306,8 @@ napi_value PlatformViewOHOSNapi::nativeDecodeUtf8(napi_env env,
                                                   napi_callback_info info) {
   size_t argc = 1;
   napi_value args[1] = {nullptr};
+  napi_handle_scope scope;
+  napi_open_handle_scope(env, &scope);
   napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
 
   size_t size = 0;
@@ -2248,6 +2317,7 @@ napi_value PlatformViewOHOSNapi::nativeDecodeUtf8(napi_env env,
 
   napi_value result;
   napi_create_string_utf8(env, static_cast<char*>(data), size, &result);
+  napi_close_handle_scope(env, scope);
   return result;
 }
 
@@ -2292,10 +2362,14 @@ napi_value PlatformViewOHOSNapi::nativeLookupCallbackInformation(
   napi_value result;
   size_t argc = 2;
   napi_value args[2] = {nullptr};
+
+  napi_handle_scope scope;
+  napi_open_handle_scope(env, &scope);
   napi_status ret = napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
   if (ret != napi_ok) {
     LOGE("nativeLookupCallbackInformation napi_get_cb_info error");
     napi_create_int32(env, -1, &result);
+    napi_close_handle_scope(env, scope);
     return result;
   }
 
@@ -2305,6 +2379,7 @@ napi_value PlatformViewOHOSNapi::nativeLookupCallbackInformation(
   if (ret != napi_ok) {
     LOGE("nativeLookupCallbackInformation napi_get_value_int64 error");
     napi_create_int32(env, -1, &result);
+    napi_close_handle_scope(env, scope);
     return result;
   }
 
@@ -2315,6 +2390,7 @@ napi_value PlatformViewOHOSNapi::nativeLookupCallbackInformation(
         "nativeLookupCallbackInformation DartCallbackCache "
         "GetCallbackInformation nullptr");
     napi_create_int32(env, -1, &result);
+    napi_close_handle_scope(env, scope);
     return result;
   }
 
@@ -2323,6 +2399,7 @@ napi_value PlatformViewOHOSNapi::nativeLookupCallbackInformation(
   if (ret != napi_ok) {
     LOGE("nativeLookupCallbackInformation napi_create_reference error");
     napi_create_int32(env, -1, &result);
+    napi_close_handle_scope(env, scope);
     return result;
   }
 
@@ -2334,18 +2411,17 @@ napi_value PlatformViewOHOSNapi::nativeLookupCallbackInformation(
   napi_create_string_utf8(env, cbInfo->library_path.c_str(), NAPI_AUTO_LENGTH,
                           &callbackParam[2]);
 
-  napi_handle_scope scope;
-  napi_open_handle_scope(env_, &scope);
   ret = fml::napi::InvokeJsMethod(env, callbck_napi_obj, "init", 3,
                                   callbackParam);
   if (ret != napi_ok) {
     FML_DLOG(ERROR) << "nativeLookupCallbackInformation init fail ";
     napi_create_int32(env, -1, &result);
+    napi_close_handle_scope(env, scope);
     return result;
   }
-  napi_close_handle_scope(env_, scope);
   napi_delete_reference(env, callbck_napi_obj);
   napi_create_int32(env, 0, &result);
+  napi_close_handle_scope(env, scope);
   return result;
 }
 
@@ -2353,6 +2429,8 @@ napi_value PlatformViewOHOSNapi::nativeUnicodeIsEmoji(napi_env env,
                                                       napi_callback_info info) {
   size_t argc = 1;
   napi_value args[1] = {nullptr};
+  napi_handle_scope scope;
+  napi_open_handle_scope(env, &scope);
   napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
 
   bool is_emoji = false;
@@ -2361,6 +2439,7 @@ napi_value PlatformViewOHOSNapi::nativeUnicodeIsEmoji(napi_env env,
   if (ret != napi_ok) {
     FML_DLOG(ERROR) << "nativeXComponentAttachFlutterEngine shell_holder "
                        "napi_get_value_int64 error";
+    napi_close_handle_scope(env, scope);
     return nullptr;
   }
 
@@ -2368,6 +2447,7 @@ napi_value PlatformViewOHOSNapi::nativeUnicodeIsEmoji(napi_env env,
 
   napi_value result;
   napi_create_int32(env, (int)is_emoji, &result);
+  napi_close_handle_scope(env, scope);
   return result;
 }
 
@@ -2376,6 +2456,8 @@ napi_value PlatformViewOHOSNapi::nativeUnicodeIsEmojiModifier(
     napi_callback_info info) {
   size_t argc = 1;
   napi_value args[1] = {nullptr};
+  napi_handle_scope scope;
+  napi_open_handle_scope(env, &scope);
   napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
 
   bool is_emoji = false;
@@ -2384,6 +2466,7 @@ napi_value PlatformViewOHOSNapi::nativeUnicodeIsEmojiModifier(
   if (ret != napi_ok) {
     FML_DLOG(ERROR) << "nativeXComponentAttachFlutterEngine shell_holder "
                        "napi_get_value_int64 error";
+    napi_close_handle_scope(env, scope);
     return nullptr;
   }
 
@@ -2391,6 +2474,7 @@ napi_value PlatformViewOHOSNapi::nativeUnicodeIsEmojiModifier(
 
   napi_value result;
   napi_create_int32(env, (int)is_emoji, &result);
+  napi_close_handle_scope(env, scope);
   return result;
 }
 
@@ -2399,6 +2483,8 @@ napi_value PlatformViewOHOSNapi::nativeUnicodeIsEmojiModifierBase(
     napi_callback_info info) {
   size_t argc = 1;
   napi_value args[1] = {nullptr};
+  napi_handle_scope scope;
+  napi_open_handle_scope(env, &scope);
   napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
 
   bool is_emoji = false;
@@ -2407,6 +2493,7 @@ napi_value PlatformViewOHOSNapi::nativeUnicodeIsEmojiModifierBase(
   if (ret != napi_ok) {
     FML_DLOG(ERROR) << "nativeXComponentAttachFlutterEngine shell_holder "
                        "napi_get_value_int64 error";
+    napi_close_handle_scope(env, scope);
     return nullptr;
   }
 
@@ -2415,6 +2502,7 @@ napi_value PlatformViewOHOSNapi::nativeUnicodeIsEmojiModifierBase(
 
   napi_value result;
   napi_create_int32(env, (int)is_emoji, &result);
+  napi_close_handle_scope(env, scope);
   return result;
 }
 
@@ -2423,6 +2511,8 @@ napi_value PlatformViewOHOSNapi::nativeUnicodeIsVariationSelector(
     napi_callback_info info) {
   size_t argc = 1;
   napi_value args[1] = {nullptr};
+  napi_handle_scope scope;
+  napi_open_handle_scope(env, &scope);
   napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
 
   bool is_emoji = false;
@@ -2431,6 +2521,7 @@ napi_value PlatformViewOHOSNapi::nativeUnicodeIsVariationSelector(
   if (ret != napi_ok) {
     FML_DLOG(ERROR) << "nativeXComponentAttachFlutterEngine shell_holder "
                        "napi_get_value_int64 error";
+    napi_close_handle_scope(env, scope);
     return nullptr;
   }
 
@@ -2439,6 +2530,7 @@ napi_value PlatformViewOHOSNapi::nativeUnicodeIsVariationSelector(
 
   napi_value result;
   napi_create_int32(env, (int)is_emoji, &result);
+  napi_close_handle_scope(env, scope);
   return result;
 }
 
@@ -2447,6 +2539,8 @@ napi_value PlatformViewOHOSNapi::nativeUnicodeIsRegionalIndicatorSymbol(
     napi_callback_info info) {
   size_t argc = 1;
   napi_value args[1] = {nullptr};
+  napi_handle_scope scope;
+  napi_open_handle_scope(env, &scope);
   napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
 
   bool is_emoji = false;
@@ -2455,6 +2549,7 @@ napi_value PlatformViewOHOSNapi::nativeUnicodeIsRegionalIndicatorSymbol(
   if (ret != napi_ok) {
     FML_DLOG(ERROR) << "nativeXComponentAttachFlutterEngine shell_holder "
                        "napi_get_value_int64 error";
+    napi_close_handle_scope(env, scope);
     return nullptr;
   }
 
@@ -2463,6 +2558,7 @@ napi_value PlatformViewOHOSNapi::nativeUnicodeIsRegionalIndicatorSymbol(
 
   napi_value result;
   napi_create_int32(env, (int)is_emoji, &result);
+  napi_close_handle_scope(env, scope);
   return result;
 }
 
@@ -2657,10 +2753,13 @@ napi_value PlatformViewOHOSNapi::nativeSetDVsyncSwitch(
   size_t argc = 2;
   napi_value result;
   napi_value args[2] = {nullptr};
+  napi_handle_scope scope;
+  napi_open_handle_scope(env, &scope);
   napi_status ret = napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
   if (ret != napi_ok) {
     LOGE("nativeSetDVsyncSwitch napi_get_cb_info error");
     napi_create_int32(env, -1, &result);
+    napi_close_handle_scope(env, scope);
     return result;
   }
 
@@ -2669,6 +2768,7 @@ napi_value PlatformViewOHOSNapi::nativeSetDVsyncSwitch(
   if (ret != napi_ok) {
     FML_DLOG(ERROR) << "nativeSetDVsyncSwitch shell_holder "
                        "napi_get_value_int64 error";
+    napi_close_handle_scope(env, scope);
     return nullptr;
   }
 
@@ -2677,6 +2777,7 @@ napi_value PlatformViewOHOSNapi::nativeSetDVsyncSwitch(
   if (ret != napi_ok) {
     FML_DLOG(ERROR) << "nativeSetDVsyncSwitch isEnable "
                        "napi_get_value_bool error";
+    napi_close_handle_scope(env, scope);
     return nullptr;
   }
 
@@ -2692,6 +2793,7 @@ napi_value PlatformViewOHOSNapi::nativeSetDVsyncSwitch(
   }
 
   napi_create_int32(env, 0, &result);
+  napi_close_handle_scope(env, scope);
   return result;
 }
 
@@ -2802,8 +2904,11 @@ napi_value PlatformViewOHOSNapi::nativeCheckLTPOSwitchState(
     votingSwitchState = votingMgr->CheckVotingSwitchState();
   }
 
+  napi_open_handle_scope(env, nullptr);
   napi_value napiVotingSwitchState;
-  napi_create_uint32(env, static_cast<uint32_t>(votingSwitchState), &napiVotingSwitchState);
+  napi_create_uint32(env, static_cast<uint32_t>(votingSwitchState),
+                     &napiVotingSwitchState);
+  napi_close_handle_scope(env, nullptr);
   return napiVotingSwitchState;
 }
 
@@ -2819,14 +2924,13 @@ napi_value PlatformViewOHOSNapi::nativeSetQosOnLowMemory(
   NAPI_CALL(env, napi_get_value_int64(env, args[0], &shell_holder));
   NAPI_CALL(env, napi_get_value_int64(env, args[1], &lowMemoryLevel));
 
-  std::shared_ptr<OHOSContext> ohos_context = OHOS_SHELL_HOLDER
-                                                  ->GetPlatformView()
-                                                  ->GetOHOSContext();
-  if(ohos_context == nullptr) {
+  std::shared_ptr<OHOSContext> ohos_context =
+      OHOS_SHELL_HOLDER->GetPlatformView()->GetOHOSContext();
+  if (ohos_context == nullptr) {
     FML_LOG(ERROR) << "nativeSetQosOnLowMemory ohos_context is nullptr";
     return nullptr;
   }
-  if(ohos_context->RenderingApi() != OHOSRenderingAPI::kImpellerVulkan) {
+  if (ohos_context->RenderingApi() != OHOSRenderingAPI::kImpellerVulkan) {
     return nullptr;
   }
 
@@ -2847,6 +2951,58 @@ napi_value PlatformViewOHOSNapi::nativeSetQosOnLowMemory(
       resourceManager->setQosOnLowMemory(lowMemoryLevel);
     }
   }
+  return nullptr;
+}
+
+napi_value PlatformViewOHOSNapi::nativeSetAnimationStatus(
+    napi_env env,
+    napi_callback_info info) {
+  size_t argc = 2;
+  napi_value args[2] = {nullptr};
+
+  napi_status ret = napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+  if (ret != napi_ok) {
+    FML_LOG(ERROR) << "nativeSetAnimationStatus napi_get_cb_info error, "
+                   << ret;
+    return nullptr;
+  }
+
+  int64_t shell_holder;
+  ret = napi_get_value_int64(env, args[0], &shell_holder);
+  if (ret != napi_ok) {
+    FML_DLOG(ERROR) << "PlatformViewOHOSNapi::nativeSetSemanticsEnabled "
+                       "napi_get_value_int64 error:"
+                    << ret;
+    return nullptr;
+  }
+
+  int32_t type;
+  ret = napi_get_value_int32(env, args[1], &type);
+  if (ret != napi_ok) {
+    FML_LOG(ERROR) << "nativeSetAnimationStatus type "
+                      "napi_get_value_int32 error, "
+                   << ret;
+    return nullptr;
+  }
+
+  FML_LOG(INFO) << "nativeSetAnimationStatus type = " << type;
+  auto status = static_cast<fml::hiappevent::ScrollingStatus>(type);
+  switch (status) {
+    case fml::hiappevent::ScrollingStatus::kScrollStart:
+      OHOS_SHELL_HOLDER->GetPlatformView()->RunTask(OhosThreadType::kIO, [] {
+        fml::hiappevent::OhosHiappEventDDL::GetInstance()->OnScrollStart();
+      });
+      break;
+    case fml::hiappevent::ScrollingStatus::kScrollEnd:
+      OHOS_SHELL_HOLDER->GetPlatformView()->RunTask(OhosThreadType::kIO, [] {
+        fml::hiappevent::OhosHiappEventDDL::GetInstance()
+            ->OnScrollEndAndFlush();
+      });
+      break;
+    default:
+      break;
+  }
+
   return nullptr;
 }
 

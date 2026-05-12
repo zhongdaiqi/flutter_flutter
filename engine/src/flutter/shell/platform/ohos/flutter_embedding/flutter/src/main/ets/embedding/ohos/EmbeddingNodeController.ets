@@ -6,7 +6,7 @@
 */
 import { BuilderNode, FrameNode, NodeController, NodeRenderType } from '@kit.ArkUI';
 import Any from '../../plugin/common/Any';
-import PlatformView, { Params } from '../../plugin/platform/PlatformView';
+import PlatformView, { Params, PlatformViewVisibleAreaEventOptions } from '../../plugin/platform/PlatformView';
 import Log from '../../util/Log';
 import { DVModel, DVModelChildren, DynamicView } from '../../view/DynamicView/dynamicView';
 
@@ -31,6 +31,7 @@ export class EmbeddingNodeController extends NodeController {
   private renderType: NodeRenderType = NodeRenderType.RENDER_TYPE_DISPLAY;
   private direction: Direction = Direction.Auto;
   private isDestroy: boolean = false;
+  private platformViewVisibleAreaEventOptions: PlatformViewVisibleAreaEventOptions | null = null;
 
   setRenderOption(platformView: PlatformView, surfaceId: string, renderType: NodeRenderType, direction: Direction) {
     if (platformView == undefined) {
@@ -44,10 +45,83 @@ export class EmbeddingNodeController extends NodeController {
     this.direction = direction;
   }
 
+  /**
+   * Notify the PlatformView that it has entered an invisible state, and animations on it need to be inactive.
+   */
+  notifyPlatformViewInvisible(): void {
+    if (!this.platformView || !this.platformViewVisibleAreaEventOptions ||
+      this.platformViewVisibleAreaEventOptions.enable === false) {
+      return;
+    }
+
+    this.platformView.onInactive();
+  }
+
+  /**
+   * Set up the callback for monitoring changes in the visible area of the external texture.
+   */
+  setPlatformViewVisibleAreaEventCallback(): void {
+    if (!this.platformView) {
+      return;
+    }
+
+    this.platformViewVisibleAreaEventOptions =
+      this.platformView.getPlatformViewVisibleAreaEventOptions();
+    if (!this.platformViewVisibleAreaEventOptions) {
+      return;
+    }
+
+    const options = this.platformViewVisibleAreaEventOptions!;
+
+    Log.i(TAG,
+      "setPlatformViewVisibleAreaEventCallback surfaceId:" + this.surfaceId + 
+      ", enable:" + options.enable + 
+      ", ratios:" + options.ratios +
+      ", expectedUpdateInterval:" + options.expectedUpdateInterval +
+      ", onInactiveThreshold:" + options.onInactiveThreshold +
+      ", onActiveThreshold:" + options.onActiveThreshold);
+    if (options.enable === false) {
+      return;
+    }
+
+    let node: FrameNode | null | undefined = this.builderNode?.getFrameNode();
+    if (!node) {
+      return;
+    }
+
+    node?.commonEvent.setOnVisibleAreaApproximateChange(
+      { ratios: options.ratios,
+        expectedUpdateInterval: options.expectedUpdateInterval },
+
+      (isExpanding: boolean, currentRatio: number) =>
+      {
+        if (!this.platformView) {
+          return;
+        }
+
+        Log.i(TAG,
+          "PlatformViewVisibleAreaEventCallback surfaceId:" + this.surfaceId +
+          ", isExpanding:" + isExpanding +
+          ", currentRatio:" + currentRatio);
+        if (!isExpanding &&
+          currentRatio <= options.onInactiveThreshold) {
+          // Pause the operation of continuous production of textures
+          this.platformView.onInactive();
+        } else if (isExpanding &&
+          currentRatio >= options.onActiveThreshold) {
+          // Resume the operation of continuous production of textures
+          this.platformView.onActive();
+        }
+      }
+    )
+  }
+
   makeNode(uiContext: UIContext): FrameNode | null {
     this.builderNode = new BuilderNode(uiContext, { surfaceId: this.surfaceId, type: this.renderType });
+    
     if (this.platformView) {
       this.builderNode.build(this.wrappedBuilder, { direction: this.direction, platformView: this.platformView });
+      this.setPlatformViewVisibleAreaEventCallback();
     }
     return this.builderNode.getFrameNode();
   }

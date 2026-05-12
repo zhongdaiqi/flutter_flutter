@@ -4,7 +4,7 @@ Flutter Engine
 Source of the original repository: https://github.com/flutter/engine
 
 ## Repository Description
-This repository is an extension of the Flutter engine repository. It enables Flutter engine to run on OpenHarmony devices.
+This branch is an extension of the Flutter engine repository with version 3.32.4. It enables Flutter engine to run on OpenHarmony devices.
 
 ## How to Build
 
@@ -32,14 +32,14 @@ This repository is an extension of the Flutter engine repository. It enables Flu
 
    ```
    solutions = [
-   {
-      "managed": False,
-      "name": "src/flutter",
-      "url": "git@gitcode.com:openharmony-tpc/flutter_engine.git@oh-3.22.0",
-      "custom_deps": {},
-      "deps_file": "DEPS_ohos",
-      "safesync_url": "",
-   },
+     {
+       "managed": False,
+       "name": "src/flutter",
+       "url": "git@gitcode.com:openharmony-tpc/flutter_engine.git@oh-3.22.0",
+       "custom_deps": {},
+       "deps_file": "DEPS_ohos",
+       "safesync_url": "",
+     },
    ]
    ```
 

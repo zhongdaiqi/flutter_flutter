@@ -80,6 +80,7 @@ export default class PlatformViewsController implements PlatformViewsHandler {
   private textInputPlugin: TextInputPlugin | null = null;
   private platformViewsChannel: PlatformViewsChannel | null = null;
   private nextOverlayLayerId: number = 0;
+  private focusViewId: number = -1;
   private platformViews: Map<number, PlatformView>;
   private viewIdWithTextureId: Map<number, number>;
   private viewIdWithNodeController: Map<number, EmbeddingNodeController>;
@@ -112,7 +113,10 @@ export default class PlatformViewsController implements PlatformViewsHandler {
       Log.e(TAG, "Disposing unknown platform view with id: " + viewId);
       return;
     }
-    this.clearFocus(viewId);
+    if (this.focusViewId == viewId) {
+      this.clearFocus(viewId);
+      this.focusViewId = -1;
+    }
     this.platformViews.delete(viewId);
     let textureId = this.viewIdWithTextureId.get(viewId);
 
@@ -173,15 +177,43 @@ export default class PlatformViewsController implements PlatformViewsHandler {
     onComplete.run(new PlatformViewBufferSize(physicalWidth, physicalHeight));
   }
 
+  /**
+   * Updates the offset position of a platform view.
+   * @param viewId - The ID of the platform view
+   * @param top - The top offset
+   * @param left - The left offset
+   */
   offset(viewId: number, top: number, left: number): void {
     Log.i(TAG, `Offset is id${viewId}, t:${top}, l:${left}`);
 
     let viewWrapper = this.viewWrappers.get(viewId)
-    if (viewWrapper != undefined) {
-      let params: DVModelParameters | undefined = viewWrapper?.getDvModel()!.params
-      this.setParams(params!, "left", left);
-      this.setParams(params!, "top", top);
+    if (viewWrapper === undefined) {
+      return;
     }
+
+    let params: DVModelParameters | undefined = viewWrapper?.getDvModel()!.params;
+    if (!params) {
+      return;
+    }
+    // When the current value is NaN and the previous value is a normal value,
+    // the platformView is considered to have transitioned from visible to invisible.
+    // Use Number.isNaN; the page is considered invisible in the background
+    // only when both top and left values equal NaN.
+    if (Number.isNaN(top) && Number.isNaN(left)) {
+      let leftPre: number | undefined = this.getParams(params!, "left");
+      let topPre: number | undefined = this.getParams(params!, "top");
+      let compType: string | undefined = viewWrapper?.getDvModel().compType;
+      if ((leftPre !== undefined && !Number.isNaN(leftPre)) &&
+        (topPre !== undefined && !Number.isNaN(topPre)) &&
+        (compType === "NodeContainer")) {
+        const nodeController = (params as Record<string, EmbeddingNodeController>)?.nodeController;
+        if (nodeController instanceof EmbeddingNodeController) {
+          nodeController.notifyPlatformViewInvisible();
+        }
+      }
+    }
+    this.setParams(params!, "left", left);
+    this.setParams(params!, "top", top);
   }
 
   hover(viewId: number) {
@@ -199,6 +231,7 @@ export default class PlatformViewsController implements PlatformViewsHandler {
 
   onTouch(touch: PlatformViewTouch): void {
     let viewWrapper: undefined | PlatformViewWrapper = this.viewWrappers.get(touch.viewId)
+    this.focusViewId = touch.viewId;
     if (viewWrapper != undefined) {
       let dvModel = viewWrapper.getDvModel()
       let params = dvModel.getLayoutParams() as Record<string, Any>;

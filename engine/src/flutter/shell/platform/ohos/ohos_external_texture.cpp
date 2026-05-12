@@ -16,6 +16,8 @@
 #include <cerrno>
 #include <cstdint>
 #include <string>
+#include <set>
+#include <mutex>
 #include "fml/trace_event.h"
 #include "include/core/SkM44.h"
 #include "include/core/SkMatrix.h"
@@ -25,6 +27,9 @@ namespace flutter {
 
 #define MAX_DELAYED_FRAMES 3
 #define MAX_SIZE_CHANGE_FRAMES 10
+
+std::set<uint64_t> g_external_texture_set;
+std::recursive_mutex g_set_mutex;
 
 static int PixelMapToWindowFormat(PIXEL_FORMAT pixel_format) {
   switch (pixel_format) {
@@ -164,6 +169,7 @@ void OHOSExternalTexture::Paint(PaintContext& context,
     if ((buffer_size_has_changed_ && draw_size_has_changed_) ||
         size_change_frames_ > MAX_SIZE_CHANGE_FRAMES) {
       size_is_changing_ = false;
+      buffer_size_has_changed_ = false;
       if (size_change_frames_ > MAX_SIZE_CHANGE_FRAMES) {
         FML_LOG(INFO) << "stop size change state: frame > "
                       << MAX_SIZE_CHANGE_FRAMES;
@@ -179,6 +185,7 @@ void OHOSExternalTexture::Paint(PaintContext& context,
     DlAutoCanvasRestore auto_restore(context.canvas, true);
     SkM44 new_transform;
     GetNewTransformBound(new_transform, new_bounds);
+    context.canvas->ClipRect(bounds);
     context.canvas->Transform(ToDlMatrix(new_transform));
     context.canvas->DrawImageRect(
         draw_dl_image,                                    // image
@@ -309,8 +316,13 @@ void OHOSExternalTexture::OnGrContextDestroyed() {
   }
   OH_OnFrameAvailableListener listener;
   listener.context = (void*)native_image_source_;
-  listener.onFrameAvailable = &OHOSExternalTexture::DefaultOnFrameAvailable;
-  OH_NativeImage_SetOnFrameAvailableListener(native_image_source_, listener);
+  listener.onFrameAvailable = &OHOSExternalTexture::DefaultOnFrameAvailableWithLock;
+  {
+    std::lock_guard<std::recursive_mutex> lock(g_set_mutex);
+    OH_NativeImage_SetOnFrameAvailableListener(native_image_source_, listener);
+    uint64_t ptexture_id = reinterpret_cast<uint64_t>(native_image_source_);
+    g_external_texture_set.insert(ptexture_id);
+  }
   // when GrContextDestroyed invoking, we just need release gpu resource.
   FML_LOG(INFO) << "OnGrContextDestroyed release gpu resource texture_id "
                 << Id();
@@ -787,6 +799,14 @@ void OHOSExternalTexture::DestroyPixelMapBuffer() {
   pixelmap_native_buffer_ = nullptr;
 }
 
+void OHOSExternalTexture::RemoveFromExternalTextureSet(OH_NativeImage* native_image) {
+  std::lock_guard<std::recursive_mutex> lock(g_set_mutex);
+  uint64_t ptexture_id = reinterpret_cast<uint64_t>(native_image);
+  if (g_external_texture_set.find(ptexture_id) != g_external_texture_set.end()) {
+    g_external_texture_set.erase(ptexture_id);
+  }
+}
+
 void OHOSExternalTexture::DestroyNativeImageSource() {
   if (native_image_source_) {
     if (last_native_window_buffer_ != nullptr) {
@@ -804,12 +824,15 @@ void OHOSExternalTexture::DestroyNativeImageSource() {
     FML_LOG(INFO) << "OH_NativeImage_Destroy " << native_image_source_;
 
     if (!source_is_external_) {
+      OH_NativeImage_UnsetOnFrameAvailableListener(native_image_source_);
+      RemoveFromExternalTextureSet(native_image_source_);
       // producer_nativewindow_ will be destroy and
       // UnsetOnFrameAvailableListener will be invoked in
       // OH_NativeImage_Destroy.
       OH_NativeImage_Destroy(&native_image_source_);
       native_image_source_ = nullptr;
     } else {
+      RemoveFromExternalTextureSet(native_image_source_);
       // When native_image_source_ is set via SetExternalNativeImage, we do not
       // destroy it.
       // Instead, we set the default frame available callback to prevent the
@@ -825,6 +848,16 @@ void OHOSExternalTexture::DestroyNativeImageSource() {
   }
   now_paint_frame_seq_num_ = 0;
   now_new_frame_seq_num_ = 0;
+}
+
+void OHOSExternalTexture::DefaultOnFrameAvailableWithLock(void* native_image_ptr) {
+  std::lock_guard<std::recursive_mutex> lock(g_set_mutex);
+  uint64_t ptexture_id = reinterpret_cast<uint64_t>(native_image_ptr);
+  if (g_external_texture_set.find(ptexture_id) == g_external_texture_set.end()) {
+    FML_LOG(INFO) << "native_image_source is released";
+    return;
+  }
+  DefaultOnFrameAvailable(native_image_ptr);
 }
 
 void OHOSExternalTexture::DefaultOnFrameAvailable(void* native_image_ptr) {

@@ -371,7 +371,7 @@ export class FlutterAbility extends UIAbility implements Host {
       this.getFlutterEngine()?.getLocalizationPlugin()?.sendLocaleToFlutter();
     }
     this?.delegate?.onCheckAndReloadFont();
-
+    this.delegate?.changeColorMode(config.colorMode);
   }
 
   getFlutterEngine(): FlutterEngine | null {
