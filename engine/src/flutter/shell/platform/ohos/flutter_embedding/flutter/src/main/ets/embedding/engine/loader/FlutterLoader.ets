@@ -24,6 +24,7 @@ import { BusinessError } from '@ohos.base';
 import data_preferences from '@ohos.data.preferences';
 import { util } from '@kit.ArkTS';
 import deviceInfo from '@ohos.deviceInfo';
+import { json5Tojson } from '../../../util/Json5ToJson';
 
 const TAG = "FlutterLoader";
 
@@ -99,7 +100,7 @@ export default class FlutterLoader {
         let record = textDecoder.decodeWithStream(rawFile, {
           stream: false
         });
-        let jsonRecord: InfoData = JSON.parse(record);
+        let jsonRecord: InfoData = JSON.parse(json5Tojson(record));
         jsonRecord.string.forEach((item: StringItem) => {
           buildInfoMap.set(item.name, item.value);
         });

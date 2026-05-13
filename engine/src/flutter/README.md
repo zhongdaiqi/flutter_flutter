@@ -3,7 +3,7 @@
 原始仓来源：https://github.com/flutter/engine
 
 ## 仓库说明：
-本仓库是基于flutter官方engine仓库拓展，可构建支持在OpenHarmony设备上运行的flutter engine程序。
+本分支是基于flutter 3.32.4版本官方engine仓库拓展，可构建支持在OpenHarmony设备上运行的flutter engine程序。
 
 ## 构建说明：
 
@@ -49,21 +49,21 @@
 
    c) 编辑 `.gclient` 文件：
    ```
-    solutions = [
-      {
-        "managed": False,
-        "name": "src/flutter",
-        "url": "git@gitcode.com:openharmony-sig/flutter_engine.git@oh-3.22.0",
-        "custom_deps": {},
-        "deps_file": "DEPS_ohos",
-        "safesync_url": "",
-      },
-    ]
+   solutions = [
+     {
+       "managed": False,
+       "name": "src/flutter",
+       "url": "git@gitcode.com:openharmony-sig/flutter_engine.git@oh-3.22.0",
+       "custom_deps": {},
+       "deps_file": "DEPS_ohos",
+       "safesync_url": "",
+     },
+   ]
    ```
 
 3. 同步代码：在 `engine` 目录中执行 `gclient sync` 命令；这里会同步engine源码、官方packages仓，还有执行ohos_setup任务；
 
-4. 下载sdk： 从[鸿蒙SDK](https://developer.huawei.com/consumer/cn/develop)下载配套开发工具，暂不支持非该渠道下载的套件
+4. 下载sdk： 从[OpenHarmony SDK](https://developer.huawei.com/consumer/cn/develop)下载配套开发工具，暂不支持非该渠道下载的套件
 
    ```sh
     # 需要设置的环境变量: HarmonyOS SDK, ohpm, hvigor, node

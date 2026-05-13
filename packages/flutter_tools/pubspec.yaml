@@ -58,7 +58,6 @@ dependencies:
 
   graphs: 2.3.2
   native_assets_builder: 0.13.0
-  native_assets_cli: 0.13.0
 
   # We depend on very specific internal implementation details of the
   # 'test' package, which change between versions, so when upgrading
@@ -125,3 +124,10 @@ dartdoc:
   nodoc: true
 
 # PUBSPEC CHECKSUM: 7396
+
+dependency_overrides:
+  native_assets_cli:
+    git:
+      url: https://gitcode.com/openharmony-sig/fluttertpc_dart_native
+      path: pkgs/native_assets_cli
+      ref: flutter_3.32.4_deps

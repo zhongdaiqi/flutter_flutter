@@ -240,9 +240,6 @@ export class FlutterView {
     // 监听折叠状态的改变
     display?.on('foldStatusChange', this.foldStatusChangeCallback);
 
-    // 监听路由跳转（Flutter跳转鸿蒙原生），软键盘处理
-    uiObserver.on('routerPageUpdate', context as common.UIAbilityContext, this.routerPageUpdateCallback);
-
     // Subscribes to display changes. Example: event that the display size is changed.
     try {
       display.on("change", this.displayChangeCallback);
@@ -309,7 +306,7 @@ export class FlutterView {
         this.gestureAvoidArea = data.area;
         break;
       case window.AvoidAreaType.TYPE_KEYBOARD:
-        if (this.flutterEngine?.getTextInputChannel()?.getKeyboardFocusState()) {
+        if (this.getKeyboardHeight() > 0) {
           this.keyboardAvoidArea = data.area;
         } else {
           this.keyboardAvoidArea.bottomRect = { left: 0, top: 0, width: 0, height: 0 };
@@ -429,7 +426,7 @@ export class FlutterView {
 
   onDestroy() {
     try {
-      uiObserver.off('routerPageUpdate', this.context as common.UIAbilityContext, this.routerPageUpdateCallback);
+      uiObserver.off('routerPageUpdate', this.uiContext as UIContext, this.routerPageUpdateCallback);
       this.mainWindow?.off('windowSizeChange', this.windowSizeChangeCallback);
       this.mainWindow?.off('avoidAreaChange', this.avoidAreaChangeCallback);
       this.mainWindow?.off('windowStatusChange', this.windowStatusChangeCallback);
@@ -549,6 +546,8 @@ export class FlutterView {
     Log.d(TAG, "received onwindowCreated.");
     let _UIContext = this.mainWindow?.getUIContext();
     this.uiContext = _UIContext;
+    // Listen to route navigation (Flutter navigating to HarmonyOS native), soft keyboard management
+    uiObserver.on('routerPageUpdate', this.uiContext as UIContext, this.routerPageUpdateCallback);
     this.sendSettings();
     Log.d(TAG, "uiContext init and sendSettings finished.");
   }

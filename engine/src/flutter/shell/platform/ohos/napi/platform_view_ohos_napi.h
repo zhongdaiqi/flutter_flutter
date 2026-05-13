@@ -199,6 +199,8 @@ class PlatformViewOHOSNapi {
   static napi_value nativeEnableFrameCache(napi_env env,
                                            napi_callback_info info);
 
+  static napi_value nativeSetPipVisible(napi_env env, napi_callback_info info);
+
   // Surface相关，XComponent调用
   static void SurfaceCreated(int64_t shell_holder,
                              void* window,
@@ -288,6 +290,9 @@ class PlatformViewOHOSNapi {
                                                napi_callback_info info);
   static napi_value nativeSetQosOnLowMemory(napi_env env,
                                             napi_callback_info info);
+  static napi_value nativeSetAnimationStatus(napi_env env,
+                                             napi_callback_info info);
+
  private:
   static napi_env env_;
   napi_ref ref_napi_obj_ = nullptr;

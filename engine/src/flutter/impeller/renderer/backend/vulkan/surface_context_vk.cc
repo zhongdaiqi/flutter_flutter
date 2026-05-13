@@ -69,6 +69,7 @@ void SurfaceContextVK::Shutdown() {
 
 bool SurfaceContextVK::SetWindowSurface(vk::UniqueSurfaceKHR surface,
                                         const ISize& size) {
+  parent_->SetIsPreload(is_preload_);
   return SetSwapchain(SwapchainVK::Create(parent_, std::move(surface), size));
 }
 
@@ -116,6 +117,13 @@ void SurfaceContextVK::MarkFrameEnd() {
 int SurfaceContextVK::GetCurrentImageIndex() {
   if (swapchain_) {
     return swapchain_->GetCurrentImageIndex();
+  }
+  return -1;
+}
+
+int SurfaceContextVK::GetImagesCount() {
+  if (swapchain_) {
+    return swapchain_->GetImagesCount();
   }
   return -1;
 }

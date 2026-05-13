@@ -714,6 +714,17 @@ export default class FlutterNapi {
     flutter.nativeEnableFrameCache(this.nativeShellHolderId!, enable);
   }
 
+  setPipVisible(visible: boolean): void {
+    if (!this.nativeShellHolderId) {
+      return;
+    }
+    try {
+      flutter.nativeSetPipVisible(this.nativeShellHolderId!, visible);
+    } catch (error) {
+      Log.w(TAG, "nativeSetPipVisible unavailable: " + JSON.stringify(error));
+    }
+  }
+
   /** Dispatch Touch Event */
   onTouchEvent(strings: Array<string>): void {
     if (this.isAttached()) {
@@ -810,6 +821,10 @@ export default class FlutterNapi {
 
   SetQosOnLowMemory(lowMemoryLevel: number): void {
     flutter.nativeSetQosOnLowMemory(this.nativeShellHolderId!, lowMemoryLevel);
+  }
+
+  SetAnimationStatus(animationStatus: number): void {
+    flutter.nativeSetAnimationStatus(this.nativeShellHolderId!, animationStatus);
   }
 }
 

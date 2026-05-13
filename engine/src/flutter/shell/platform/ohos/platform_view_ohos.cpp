@@ -31,6 +31,7 @@
 #include "shell/common/platform_view.h"
 #include "shell/platform/ohos/accessibility/ohos_semantics_node.h"
 #include "shell/platform/ohos/context/ohos_context.h"
+#include "shell/platform/ohos/background_resource_cleanup.h"
 #include "shell/platform/ohos/ohos_surface_vulkan_impeller.h"
 
 namespace flutter {
@@ -38,6 +39,7 @@ namespace flutter {
 // This global map's key is (texture_id)
 std::map<uint64_t, PlatformViewOHOS*> g_texture_platformview_map;
 std::recursive_mutex g_map_mutex;
+static constexpr char K_FLUTTER_LIFECYCLE[] = "flutter/lifecycle";
 
 OhosSurfaceFactoryImpl::OhosSurfaceFactoryImpl(
     const std::shared_ptr<OHOSContext>& context)
@@ -144,6 +146,10 @@ PlatformViewOHOS::~PlatformViewOHOS() {
 void PlatformViewOHOS::NotifyCreate(
     fml::RefPtr<OHOSNativeWindow> native_window) {
   LOGI("NotifyCreate start");
+
+  // Cache the native window for potential rebuild after aggressive teardown
+  cached_native_window_ = native_window;
+
   if (ohos_surface_) {
     InstallFirstFrameCallback();
     LOGI("NotifyCreate start1");
@@ -165,13 +171,17 @@ void PlatformViewOHOS::NotifyCreate(
         [&, surface = ohos_surface_.get(),
          native_window = std::move(native_window)]() {
           LOGI("NotifyCreate start4");
-          surface->SetDisplayWindow(native_window);
+          bool set_window_result = surface->SetDisplayWindow(native_window);
+          // Mark onscreen context as valid only after successful setup
+          if (set_window_result) {
+            onscreen_context_valid_.store(true, std::memory_order_release);
+          } else {
+            FML_LOG(ERROR) << "NotifyCreate: SetDisplayWindow failed";
+          }
           // Note that NotifyDestroyed will wait raster task, so platformview is
           // not deleted here.
           if (!window_is_preload_) {
-            fml::TaskRunner::RunNowOrPostTask(
-                task_runners_.GetPlatformTaskRunner(),
-                [&] { PlatformView::NotifyCreated(); });
+            PlatformView::NotifyCreated();
           } else if (surface->NeedNewFrame()) {
             PlatformView::ScheduleFrame();
           } else {
@@ -280,6 +290,9 @@ void PlatformViewOHOS::UpdateDisplaySize(int width, int height) {
 void PlatformViewOHOS::NotifyDestroyed() {
   LOGI("PlatformViewOHOS NotifyDestroyed enter");
 
+  // Mark context as invalid to prevent ExecuteReclaimAggressive from running
+  onscreen_context_valid_.store(false, std::memory_order_release);
+
   // Note: NotifyCreate is invoked in raster thread. So we post NotifyDestroyed
   // to raster to avoid latent conflic.
   fml::AutoResetWaitableEvent latch;
@@ -315,6 +328,7 @@ void PlatformViewOHOS::NotifyDestroyed() {
         });
     latch.Wait();
   }
+  cached_native_window_ = nullptr;
   SetSemanticsEnabled(false);
 }
 
@@ -347,6 +361,7 @@ void PlatformViewOHOS::DispatchPlatformMessage(std::string name,
                                                int reponseId) {
   FML_DLOG(INFO) << "DispatchPlatformMessage（" << name << "," << messageLenth
                  << "," << reponseId;
+  HandleLifecyclePlatformMessage(name, message, messageLenth);
   fml::MallocMapping mapMessage =
       fml::MallocMapping::Copy(message, messageLenth);
 
@@ -628,7 +643,26 @@ void PlatformViewOHOS::OnNativeImageFrameAvailable(void* data) {
           return;
         }
         PlatformViewOHOS* platform = g_texture_platformview_map[ptexture_id];
-        uint64_t texture_id = ptexture_id;
+        int64_t texture_id = static_cast<int64_t>(ptexture_id);
+
+        // Frame gate enabled: keep draining producer queue, but do not schedule
+        // UI frames in background.
+        if (platform->IsFrameGateEnabled()) {
+          auto texture_it = platform->all_external_texture_.find(texture_id);
+          if (texture_it == platform->all_external_texture_.end()) {
+            return;
+          }
+          FML_VLOG(1) << "OnNativeImageFrameAvailable: frame gate enabled, "
+                      << "drain-only for texture " << texture_id;
+          auto external_texture = texture_it->second;
+          fml::TaskRunner::RunNowOrPostTask(
+              platform->task_runners_.GetRasterTaskRunner(),
+              [external_texture]() {
+                external_texture->MarkNewFrameAvailable();
+              });
+          return;
+        }
+
         platform->MarkTextureFrameAvailable(texture_id);
       });
 }
@@ -760,7 +794,7 @@ void PlatformViewOHOS::OnTouchEvent(
 
 void PlatformViewOHOS::OnMouseEvent(
     const std::shared_ptr<std::string[]>& mousePacketString,
-    const int& size){
+    const int& size) {
   return napi_facade_->FlutterViewOnMouseEvent(mousePacketString, size);
 }
 
@@ -925,6 +959,374 @@ void PlatformViewOHOS::SimulateTouchEvent(SemanticsNodeExtend* node) {
   pointerData.buttons = 0;
   upPacket->SetPointerData(0, pointerData);
   DispatchPointerDataPacket(std::move(upPacket));
+}
+
+//------------------------------------------------------------------------------
+// GPU Resource Reclaim Policy
+// Reclaims GPU resources (DMA buffers, textures) when app enters background
+// to reduce memory footprint, and rebuilds them when returning to foreground.
+//   Event (Lifecycle/Surface) -> EvaluateReclaimLevel -> ApplyReclaimLevel
+//------------------------------------------------------------------------------
+
+void PlatformViewOHOS::HandleLifecyclePlatformMessage(const std::string& name,
+                                                      const void* message,
+                                                      int message_length) {
+  if (name != K_FLUTTER_LIFECYCLE || message_length <= 0 || message == nullptr) {
+    return;
+  }
+  const auto* bytes = static_cast<const char*>(message);
+  std::string state(bytes, static_cast<size_t>(message_length));
+  OnApplicationStateChange(state);
+}
+
+void PlatformViewOHOS::OnSurfaceCreated() {
+  FML_LOG(INFO) << "GpuReclaim: SurfaceCreated, lifecycle="
+                << LifecycleStateToString(lifecycle_state_);
+
+  // Surface creation (XComponent onLoad) is inherently a foreground event —
+  // the page is being displayed. It must never trigger aggressive teardown.
+  //
+  // Previously this called EvaluateReclaimLevel(lifecycle_state_,
+  // lifecycle_state_) which would return kAggressive when lifecycle_state_ was
+  // kDetached (either the initial value before onPageShow, or the residual
+  // value from a previous close). That caused a TeardownOnScreenContext that
+  // raced with NotifyCreate's raster task, destroying the surface that was
+  // just being set up.
+  //
+  // The fix: unconditionally ensure restore mode here. NotifyCreate() already
+  // handles the actual surface setup on the raster thread.
+  //
+  // Reset frame gate and reclaim level independently to guarantee both states
+  // are correct even if a prior abnormal path left them inconsistent.
+  frame_gate_enabled_.store(false, std::memory_order_release);
+  if (current_reclaim_level_ != GpuReclaimLevel::kRestore) {
+    FML_LOG(INFO) << "GpuReclaim: SurfaceCreated forcing restore from "
+                  << ReclaimLevelToString(current_reclaim_level_);
+    current_reclaim_level_ = GpuReclaimLevel::kRestore;
+  }
+}
+
+void PlatformViewOHOS::OnSurfaceDestroyed() {
+  FML_LOG(INFO) << "GpuReclaim: SurfaceDestroyed, lifecycle="
+                << LifecycleStateToString(lifecycle_state_) << " pip_visible="
+                << (pip_visible_.load(std::memory_order_acquire) ? "yes"
+                                                                 : "no");
+  current_reclaim_level_ = GpuReclaimLevel::kAggressive;
+  // Don't trigger aggressive cleanup here - NotifyDestroyed will handle proper
+  // teardown. Just update the state for future reclaim level evaluation.
+}
+
+void PlatformViewOHOS::SetPipVisible(bool visible) {
+  if (!task_runners_.GetPlatformTaskRunner()->RunsTasksOnCurrentThread()) {
+    auto weak_this = GetWeakPtr();
+    task_runners_.GetPlatformTaskRunner()->PostTask([weak_this, visible]() {
+      auto* self = static_cast<PlatformViewOHOS*>(weak_this.get());
+      if (!self) {
+        return;
+      }
+      self->SetPipVisible(visible);
+    });
+    return;
+  }
+
+  const bool previous =
+      pip_visible_.exchange(visible, std::memory_order_acq_rel);
+  if (previous == visible) {
+    return;
+  }
+
+  FML_LOG(INFO) << "GpuReclaim: PiP visible " << (previous ? "yes" : "no")
+                << " -> " << (visible ? "yes" : "no")
+                << ", lifecycle=" << LifecycleStateToString(lifecycle_state_)
+                << " onscreen_valid="
+                << (onscreen_context_valid_.load(std::memory_order_acquire)
+                        ? "yes"
+                        : "no");
+
+  ApplyReclaimLevel(EvaluateReclaimLevel(lifecycle_state_, lifecycle_state_));
+}
+
+//==============================================================================
+// Layer 1: Policy Decision
+//==============================================================================
+
+void PlatformViewOHOS::OnApplicationStateChange(const std::string& state) {
+  AppLifecycleState new_state;
+  if (!ParseAppLifecycleState(state, new_state)) {
+    FML_LOG(WARNING) << "GpuReclaim: Unknown lifecycle state: " << state;
+    return;
+  }
+
+  const AppLifecycleState old_state = lifecycle_state_;
+  FML_LOG(INFO) << "GpuReclaim: Lifecycle "
+                << LifecycleStateToString(lifecycle_state_) << " -> "
+                << LifecycleStateToString(new_state) << " pip_visible="
+                << (pip_visible_.load(std::memory_order_acquire) ? "yes"
+                                                                 : "no");
+  lifecycle_state_ = new_state;
+  ApplyReclaimLevel(EvaluateReclaimLevel(old_state, new_state));
+}
+
+GpuReclaimDecision PlatformViewOHOS::EvaluateReclaimLevel(
+    AppLifecycleState old_state,
+    AppLifecycleState new_state) const {
+  const bool was_in_background = (old_state == AppLifecycleState::kPaused ||
+                                  old_state == AppLifecycleState::kHidden ||
+                                  old_state == AppLifecycleState::kDetached);
+  const bool is_in_background = (new_state == AppLifecycleState::kPaused ||
+                                 new_state == AppLifecycleState::kHidden ||
+                                 new_state == AppLifecycleState::kDetached);
+  const bool entering_background = is_in_background && !was_in_background;
+  const bool returning_to_foreground = (new_state == AppLifecycleState::kResumed);
+  const bool onscreen_valid = onscreen_context_valid_.load(std::memory_order_acquire);
+  const bool pip_visible = pip_visible_.load(std::memory_order_acquire);
+
+  GpuReclaimLevel target_level = GpuReclaimLevel::kRestore;
+
+  // Rule 0: Same-engine PiP is still visible, keep GPU resources available.
+  if (pip_visible) {
+    target_level = GpuReclaimLevel::kRestore;
+  } else if (!onscreen_valid) {
+    // Rule 1: Onscreen context was torn down - only rebuild when foregrounded.
+    target_level = (new_state == AppLifecycleState::kResumed)
+                       ? GpuReclaimLevel::kRestore
+                       : GpuReclaimLevel::kAggressive;
+  } else if (entering_background || is_in_background) {
+    // Rule 2: Invisible background states -> aggressive cleanup.
+    target_level = GpuReclaimLevel::kAggressive;
+  } else if (returning_to_foreground) {
+    // Rule 3: Foreground -> normal operation.
+    target_level = GpuReclaimLevel::kRestore;
+  } else if (new_state == AppLifecycleState::kInactive) {
+    // Rule 4: Transient inactive -> keep foreground resources.
+    target_level = GpuReclaimLevel::kRestore;
+  } else {
+    FML_LOG(WARNING) << "GpuReclaim: Unhandled lifecycle transition old="
+                     << LifecycleStateToString(old_state)
+                     << " new=" << LifecycleStateToString(new_state)
+                     << " onscreen_valid=" << (onscreen_valid ? "yes" : "no")
+                     << " pip_visible=" << (pip_visible ? "yes" : "no");
+  }
+
+  if (target_level == current_reclaim_level_) {
+    return GpuReclaimDecision::kNoChange;
+  }
+
+  return (target_level == GpuReclaimLevel::kRestore)
+             ? GpuReclaimDecision::kRestore
+             : GpuReclaimDecision::kAggressive;
+}
+
+//==============================================================================
+// Layer 2: Policy Update
+//==============================================================================
+
+void PlatformViewOHOS::ApplyReclaimLevel(GpuReclaimDecision decision) {
+  if (decision == GpuReclaimDecision::kNoChange) {
+    return;
+  }
+
+  // Invalidate any pending deferred aggressive cleanup tasks.
+  ++reclaim_generation_;
+
+  const GpuReclaimLevel level =
+      (decision == GpuReclaimDecision::kRestore)
+          ? GpuReclaimLevel::kRestore
+          : GpuReclaimLevel::kAggressive;
+
+  FML_LOG(INFO) << "GpuReclaim: "
+                << ReclaimLevelToString(current_reclaim_level_) << " -> "
+                << ReclaimLevelToString(level);
+
+  current_reclaim_level_ = level;
+
+  switch (decision) {
+    case GpuReclaimDecision::kRestore:
+      ExecuteReclaimRestore();
+      break;
+    case GpuReclaimDecision::kAggressive:
+      ExecuteReclaimAggressive();
+      break;
+    case GpuReclaimDecision::kNoChange:
+      break;
+    default:
+      FML_DLOG(WARNING) << "GpuReclaim: Unknown reclaim decision";
+      break;
+  }
+}
+
+void PlatformViewOHOS::ExecuteReclaimRestore() {
+  FML_LOG(INFO) << "GpuReclaim: ExecuteRestore - restoring foreground state";
+
+  // 1. Disable frame gate (allow external texture updates)
+  frame_gate_enabled_.store(false, std::memory_order_release);
+
+  // 2. Rebuild onscreen context if it was torn down
+  if (!ShouldRebuildOnscreenContext()) {
+    return;
+  }
+  PostRebuildOnscreenContextTasks();
+}
+
+bool PlatformViewOHOS::ShouldRebuildOnscreenContext() const {
+  return ohos_surface_ && cached_native_window_ && !onscreen_context_valid_.load(std::memory_order_acquire);
+}
+
+void PlatformViewOHOS::PostRebuildOnscreenContextTasks() {
+  FML_LOG(INFO) << "GpuReclaim: Rebuilding onscreen context";
+
+  auto weak_this = GetWeakPtr();
+  auto surface_ptr = ohos_surface_;
+  auto native_window = cached_native_window_;
+  auto task_runners = task_runners_;
+
+  fml::TaskRunner::RunNowOrPostTask(
+      task_runners_.GetRasterTaskRunner(),
+      [weak_this, surface_ptr, native_window, task_runners]() {
+        const bool set_window_result =
+            surface_ptr && surface_ptr->SetDisplayWindow(native_window);
+        if (!set_window_result) {
+          FML_LOG(ERROR)<< "GpuReclaim: [Raster] SetDisplayWindow failed during rebuild";
+          return;
+        }
+        FML_LOG(INFO) << "GpuReclaim: [Raster] Surface REBUILT";
+        fml::TaskRunner::RunNowOrPostTask(
+            task_runners.GetPlatformTaskRunner(),
+            [weak_this]() {
+              auto* ohos_view = static_cast<PlatformViewOHOS*>(weak_this.get());
+              if (!ohos_view) {
+                return;
+              }
+              ohos_view->onscreen_context_valid_.store(
+                  true, std::memory_order_release);
+              ohos_view->ScheduleFrame();
+            });
+      });
+}
+
+// Deferral window (ms) for aggressive cleanup.
+// Allows async PiP detection (e.g. getGlobalWindowMode) to report
+// pip_visible_ before GPU resources are destroyed.
+static constexpr int64_t RECLAIM_DEFERRAL_MS = 1000;
+
+void PlatformViewOHOS::ExecuteReclaimAggressive() {
+  // Skip if already torn down (e.g., NotifyDestroyed was called first)
+  if (!onscreen_context_valid_.load(std::memory_order_acquire)) {
+    FML_LOG(INFO) << "GpuReclaim: ExecuteAggressive skipped - context already invalid";
+    return;
+  }
+
+  FML_LOG(INFO) << "GpuReclaim: ExecuteAggressive - deferring "
+                << RECLAIM_DEFERRAL_MS << "ms for PiP check";
+
+  // 1. Enable frame gate immediately to prevent new frame scheduling
+  frame_gate_enabled_.store(true, std::memory_order_release);
+
+  // 2. Defer actual GPU teardown to allow async PiP detection to complete.
+  //    OHOS has no synchronous PiP API available to the framework here -
+  //    detection relies on async getGlobalWindowMode() that needs time to
+  //    return.
+  //    If PiP is detected during this window, SetPipVisible(true) will trigger
+  //    a kRestore decision that increments reclaim_generation_, causing the
+  //    deferred task below to become stale and skip teardown.
+  const uint32_t gen = reclaim_generation_;
+  auto weak_this = GetWeakPtr();
+
+  task_runners_.GetPlatformTaskRunner()->PostDelayedTask(
+      [weak_this, gen]() {
+        auto* self = static_cast<PlatformViewOHOS*>(weak_this.get());
+        if (!self) {
+          return;
+        }
+
+        // Stale: a newer reclaim decision superseded this one.
+        if (self->reclaim_generation_ != gen) {
+          FML_LOG(INFO) << "GpuReclaim: Deferred aggressive stale (gen " << gen
+                        << " != " << self->reclaim_generation_ << "), skipping";
+          return;
+        }
+
+        if (self->pip_visible_.load(std::memory_order_acquire)) {
+          FML_LOG(INFO)
+              << "GpuReclaim: Deferred aggressive cancelled - PiP visible";
+          self->frame_gate_enabled_.store(false, std::memory_order_release);
+          self->current_reclaim_level_ = GpuReclaimLevel::kRestore;
+          return;
+        }
+
+        self->ExecuteReclaimAggressiveCore();
+      },
+      fml::TimeDelta::FromMilliseconds(RECLAIM_DEFERRAL_MS));
+}
+
+void PlatformViewOHOS::ExecuteReclaimAggressiveCore() {
+  // Re-check: context may have been invalidated by NotifyDestroyed during
+  // the deferral window.
+  if (!onscreen_context_valid_.load(std::memory_order_acquire)) {
+    FML_LOG(INFO)
+        << "GpuReclaim: ExecuteAggressive skipped - context already invalid";
+    return;
+  }
+
+  FML_LOG(INFO) << "GpuReclaim: ExecuteAggressive proceeding";
+
+  // 1. Mark context invalid BEFORE teardown
+  onscreen_context_valid_.store(false, std::memory_order_release);
+
+  // 2. Free GPU resources and teardown onscreen context (on Raster thread,
+  // sync)
+  auto surface_ptr = ohos_surface_;  // shared_ptr copy ensures lifetime
+  if (!surface_ptr) {
+    return;
+  }
+  auto context_ptr = ohos_context_;  // shared_ptr copy ensures lifetime
+  const bool is_skia = (context_ptr && context_ptr->RenderingApi() ==
+                                           OHOSRenderingAPI::kOpenGLES);
+
+  RunOnRasterAndWait([surface_ptr, context_ptr, is_skia]() {
+    if (is_skia) {
+      TryFreeSkiaGpuResources(surface_ptr, context_ptr);
+    }
+    // Always teardown onscreen context to release DMA buffers
+    if (surface_ptr) {
+      surface_ptr->TeardownOnScreenContext();
+      FML_LOG(INFO) << "GpuReclaim: [Raster] Surface torn down";
+    }
+  });
+  FML_LOG(INFO) << "GpuReclaim: ExecuteAggressive completed";
+}
+
+void PlatformViewOHOS::RunOnRasterAndWait(fml::closure task) {
+  fml::AutoResetWaitableEvent latch;
+
+  fml::TaskRunner::RunNowOrPostTask(task_runners_.GetRasterTaskRunner(),
+                                    [&latch, task = std::move(task)]() mutable {
+                                      task();
+                                      latch.Signal();
+                                    });
+
+  latch.Wait();
+}
+
+void PlatformViewOHOS::TryFreeSkiaGpuResources(
+    const std::shared_ptr<OHOSSurface>& surface,
+    const std::shared_ptr<OHOSContext>& context) {
+  if (!surface || !context) {
+    return;
+  }
+
+  auto skia_context = context->GetMainSkiaContext();
+  if (!skia_context) {
+    return;
+  }
+
+  if (surface->ResourceContextMakeCurrent()) {
+    skia_context->freeGpuResources();
+    FML_LOG(INFO) << "GpuReclaim: [Raster] GPU resources freed";
+    return;
+  }
+
+  FML_LOG(WARNING) << "GpuReclaim: [Raster] Make context current fail, skip freeGpuResources";
 }
 
 }  // namespace flutter
