@@ -58,7 +58,7 @@ preparation_steps:
   - name: Prepare Flutter
     script: ci/scripts/prepare_project.sh
     description: Prepare Flutter project and sync to target branch
-    args: ["flutter_flutter", "oh-3.22.3-dev"]
+    args: ["flutter_flutter", "oh-3.22.3-release"]
     required: true
 
   - name: Prepare Tester
@@ -72,7 +72,7 @@ compilation_steps:
   - name: Pack Flutter
     script: ci/scripts/pack_flutter.sh
     description: Pack Flutter SDK
-    args: ["oh-3.22.3-dev"]
+    args: ["oh-3.22.3-release"]
     required: true
 
   - name: Compile Tester

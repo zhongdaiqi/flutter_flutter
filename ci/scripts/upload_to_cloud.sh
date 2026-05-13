@@ -21,8 +21,7 @@ upload_to_cloud() {
     run_cmd "echo $artifacts_url > artifacts.txt"
 
     run_cmd "archive cp artifacts.txt cloud://$target_branch/artifacts.txt"
-    run_cmd "archive cp $ARCHIVE_DIR/engine.ohos.version cloud://$target_branch/engine.ohos.version"
-    run_cmd "archive uninstall"
+    run_cmd "archive cp $ARCHIVE_DIR/engine.ohos.har.version cloud://$target_branch/engine.ohos.har.version"
 }
 
 upload_to_cloud "$@"
