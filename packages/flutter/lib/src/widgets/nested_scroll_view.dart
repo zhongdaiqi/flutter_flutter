@@ -15,6 +15,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/scheduler.dart';
+import 'dart:async';
 
 import 'basic.dart';
 import 'framework.dart';
@@ -29,6 +30,7 @@ import 'scroll_position.dart';
 import 'scroll_view.dart';
 import 'sliver_fill.dart';
 import 'viewport.dart';
+ import 'statusBar.dart';
 
 /// Signature used by [NestedScrollView] for building its header.
 ///
@@ -425,6 +427,8 @@ class NestedScrollViewState extends State<NestedScrollView> {
 
   _NestedScrollCoordinator? _coordinator;
 
+  StreamSubscription? _subscription;
+
   @override
   void initState() {
     super.initState();
@@ -434,6 +438,22 @@ class NestedScrollViewState extends State<NestedScrollView> {
       _handleHasScrolledBodyChanged,
       widget.floatHeaderSlivers,
     );
+
+    if (widget.scrollDirection == Axis.vertical) {
+      ChannelMessageHandler.init();
+      _subscription = ChannelMessageHandler.messageStream.listen((message) {
+        try {
+          _coordinator?.animateTo(
+            0.0,
+            duration: const Duration(milliseconds: 1000),
+            curve: Curves.easeOutCirc,
+          );
+        } catch(err) {
+          print(err);
+        };
+      });
+    }
+
   }
 
   @override
@@ -455,6 +475,7 @@ class NestedScrollViewState extends State<NestedScrollView> {
     _coordinator!.dispose();
     _coordinator = null;
     _absorberHandle.dispose();
+    _subscription?.cancel();
     super.dispose();
   }
 
