@@ -16,7 +16,7 @@ MODES=("debug" "profile" "release")
 BUILD_MODE=${MODES[$RANDOM % ${#MODES[@]}]}
 
 # Target branch
-TARGET_FLUTTER_BRANCH="oh-3.27.4-dev"
+TARGET_FLUTTER_BRANCH="oh-3.27.0-release"
 
 # Check environment
 function check_env() {
