@@ -173,7 +173,8 @@ MultiFrameCodec::State::GetNextFrameImage(
         },
         impeller_context, device_buffer, info,
         std::make_shared<SkBitmap>(bitmap), std::nullopt,
-        gpu_disable_sync_switch);
+        gpu_disable_sync_switch,
+        generator_->GetColorSpace(nextFrameIndex_));
     return std::make_pair(dl_image, error_message);
 #endif
   }

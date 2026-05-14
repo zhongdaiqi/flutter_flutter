@@ -16,6 +16,7 @@ namespace flutter {
 enum ColorSpace {
   kSRGB,
   kExtendedSRGB,
+  kDisplayP3,
 };
 
 class CanvasImage final : public RefCountedDartWrappable<CanvasImage> {
