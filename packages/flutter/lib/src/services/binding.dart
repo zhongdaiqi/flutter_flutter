@@ -559,6 +559,23 @@ mixin ServicesBinding on BindingBase, SchedulerBinding {
   static void unregisterSystemContextMenuClient(SystemContextMenuClient client) {
     instance._systemContextMenuClients.remove(client);
   }
+
+  /// Report the activity executed by the navigator.
+  ///
+  /// @Param Activity :
+  /// [push] or [pop]
+  ///
+  /// @Param status :
+  /// [start] or [finish]
+  void reportNavigatorActivity(String activity, String status) {
+    SystemChannels.navigation.invokeMethod<void>(
+      'reportNavigatorActivity',
+      <String, String>{
+        'activity': activity,
+        'status': status
+      }
+    );
+  }
 }
 
 /// Signature for listening to changes in the [SystemUiMode].
