@@ -565,7 +565,7 @@ void OhosTouchProcessor::PlatformViewOnTouchEvent(
   touchPacket->touchEventInput = touchEvent;
   touchPacket->toolTypeInput = toolType;
   touchPacket->tiltX = tiltX;
-  touchPacket->tiltX = tiltY;
+  touchPacket->tiltY = tiltY;
 
   std::shared_ptr<std::string[]> touchPacketString =
       packagePacketData(std::move(touchPacket));
@@ -790,7 +790,7 @@ void OhosTouchProcessor::HandleVirtualTouchEvent(
   touchPacket->touchEventInput = touchEvent;
   touchPacket->toolTypeInput = toolType;
   touchPacket->tiltX = tiltX;
-  touchPacket->tiltX = tiltY;
+  touchPacket->tiltY = tiltY;
 
   std::shared_ptr<std::string[]> touchPacketString =
       packagePacketData(std::move(touchPacket));
