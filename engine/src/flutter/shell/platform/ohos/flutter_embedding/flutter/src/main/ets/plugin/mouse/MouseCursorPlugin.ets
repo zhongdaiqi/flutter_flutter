@@ -43,20 +43,16 @@ export default class MouseCursorPlugin implements MouseCursorMethodHandler {
    */
   activateSystemCursor(kind: string): void {
     if (this.windowId < 0) {
-      Log.e(TAG, "setPointerStyle failed: windowId is invalid: " + this.windowId);
+      Log.w(TAG, "set point style failed windowId is invalid");
       return;
     }
     let pointStyle: pointer.PointerStyle = this.resolveSystemCursor(kind);
     try {
       pointer.setPointerStyle(this.windowId, pointStyle, (err: Any) => {
-        if (err) {
-          Log.e(TAG, "setPointerStyle callback error: kind=" + kind + ", err=" + JSON.stringify(err));
-        } else {
-          Log.i(TAG, "setPointerStyle success: kind=" + kind);
-        }
+        Log.i(TAG, "set point style success kind : " + kind);
       })
     } catch (e) {
-      Log.e(TAG, "setPointerStyle exception: kind=" + kind + ", error=" + JSON.stringify(e));
+      Log.e(TAG, "set point style failed : " + kind + " " + JSON.stringify(e));
     }
   }
 

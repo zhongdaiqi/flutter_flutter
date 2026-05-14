@@ -94,9 +94,7 @@ struct SemanticsNodeExtend : flutter::SemanticsNode {
   }
 
   ~SemanticsNodeExtend() {
-    if (elementInfoOHOS) {
-      OH_ArkUI_DestoryAccessibilityElementInfo(elementInfoOHOS);
-    }
+    OH_ArkUI_DestoryAccessibilityElementInfo(elementInfoOHOS);
   }
 
   void FillElementInfo(ArkUI_AccessibilityElementInfo* info);

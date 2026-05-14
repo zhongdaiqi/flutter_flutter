@@ -55,7 +55,7 @@ void OHOSExternalTextureVulkan::SetGPUFence(OHNativeWindowBuffer* window_buffer,
   int ret =
       OH_NativeBuffer_FromNativeWindowBuffer(window_buffer, &native_buffer);
   if (ret != 0 || native_buffer == nullptr) {
-    FML_LOG(ERROR) << "OH_NativeBuffer_FromNativeWindowBuffer() failed in SetGPUFence, ret = "
+    FML_LOG(ERROR) << "OHOSExternalTextureVulkan get OH_NativeBuffer error:"
                    << ret;
     return;
   }

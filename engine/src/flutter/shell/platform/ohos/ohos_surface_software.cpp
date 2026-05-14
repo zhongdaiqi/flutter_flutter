@@ -156,7 +156,7 @@ bool OHOSSurfaceSoftware::PresentBackingStore(sk_sp<SkSurface> backing_store) {
       native_window_.get()->Gethandle(), &buffer, &fenceFd);
   if (ret != 0) {
     LOGE(
-        "OH_NativeWindow_NativeWindowRequestBuffer() failed in PresentBackingStore "
+        "PresentBackingStore  OH_NativeWindow_NativeWindowRequestBuffer failed "
         ":%{public}d",
         ret);
     return false;
@@ -166,7 +166,8 @@ bool OHOSSurfaceSoftware::PresentBackingStore(sk_sp<SkSurface> backing_store) {
       OH_NativeWindow_GetBufferHandleFromNative(buffer);
 
   if (bufferHandle == nullptr) {
-    LOGE("OH_NativeWindow_GetBufferHandleFromNative() failed in PresentBackingStore");
+    FML_DLOG(ERROR) << "PresentBackingStore  "
+                       "OH_NativeWindow_GetBufferHandleFromNative failed .";
     OH_NativeWindow_DestroyNativeWindowBuffer(buffer);
     return false;
   }
@@ -232,11 +233,7 @@ bool OHOSSurfaceSoftware::PresentBackingStore(sk_sp<SkSurface> backing_store) {
   LOGI("OH_NativeWindow_NativeWindowFlushBuffer  ....");
   ret = OH_NativeWindow_NativeWindowFlushBuffer(
       native_window_.get()->Gethandle(), buffer, fenceFd, region);
-  if (ret != 0) {
-    LOGE("OH_NativeWindow_NativeWindowFlushBuffer() failed in PresentBackingStore, ret = %{public}d", ret);
-  } else {
-    LOGI("PresentBackingStore flush Buffer :%{public}d", ret);
-  }
+  LOGI("PresentBackingStore flush Buffer :%{public}d", ret);
   OH_NativeWindow_DestroyNativeWindowBuffer(buffer);
   return ret == 0;
 }

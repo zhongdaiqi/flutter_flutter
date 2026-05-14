@@ -155,7 +155,8 @@ bool OhosSurfaceGLSkia::PaintOffscreenData(OHNativeWindowBuffer* buffer,
   int ret =
       OH_NativeWindow_NativeWindowAttachBuffer(onscreen_nativewindow, buffer);
   if (ret != 0) {
-    FML_LOG(ERROR) << "OH_NativeWindow_NativeWindowAttachBuffer() failed in PaintOffscreenData, ret = "
+    FML_LOG(ERROR) << "ohos_surface cannot attach onscreen nativewindow "
+                      "buffer to window: ret error:"
                    << ret;
     return false;
   }
@@ -163,8 +164,8 @@ bool OhosSurfaceGLSkia::PaintOffscreenData(OHNativeWindowBuffer* buffer,
   ret = OH_NativeWindow_NativeWindowFlushBuffer(onscreen_nativewindow, buffer,
                                                 fence_fd, {});
   if (ret != 0) {
-    FML_LOG(ERROR) << "OH_NativeWindow_NativeWindowFlushBuffer() failed in PaintOffscreenData, ret = "
-                   << ret;
+    FML_LOG(INFO) << "ohos_surface flush last nativewindow buffer result: "
+                  << ret;
   }
   FML_LOG(INFO) << "PaintOffscreenData " << buffer;
 

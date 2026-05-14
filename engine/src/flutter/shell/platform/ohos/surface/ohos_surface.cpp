@@ -43,9 +43,6 @@ bool OHOSSurface::PrepareOffscreenWindow(int32_t width, int32_t height) {
   }
 
   offscreen_native_image_ = OH_NativeImage_Create(0, 0);
-  if (offscreen_native_image_ == nullptr) {
-    FML_LOG(ERROR) << "OH_NativeImage_Create() failed in PrepareOffscreenWindow";
-  }
 
   offscreen_height_ = height;
   offscreen_width_ = width;
@@ -53,7 +50,7 @@ bool OHOSSurface::PrepareOffscreenWindow(int32_t width, int32_t height) {
   offscreen_nativewindow_ =
       OH_NativeImage_AcquireNativeWindow(offscreen_native_image_);
   if (offscreen_nativewindow_ == nullptr) {
-    FML_LOG(ERROR) << "OH_NativeImage_AcquireNativeWindow() failed in PrepareOffscreenWindow";
+    FML_LOG(ERROR) << "offscreen OH_NativeImage_AcquireNativeWindow get null";
     return false;
   }
 
@@ -80,7 +77,7 @@ bool OHOSSurface::PrepareOffscreenWindow(int32_t width, int32_t height) {
   ret = OH_NativeImage_SetOnFrameAvailableListener(offscreen_native_image_,
                                                    listener);
   if (ret != 0) {
-    FML_LOG(ERROR) << "OH_NativeImage_SetOnFrameAvailableListener() failed in PrepareOffscreenWindow, ret = " << ret;
+    FML_LOG(ERROR) << "offscreen SetOnFrameAvailableListener err:" << ret;
   }
 
   return true;
@@ -98,7 +95,7 @@ void OHOSSurface::ReleaseOffscreenWindow() {
     if (ret != 0) {
       // Swapchain destroying may clean the buffercache of
       // offscreen_native_image_. In this situation, we need destroy the buffer.
-      FML_LOG(ERROR) << "OH_NativeImage_ReleaseNativeWindowBuffer() failed in ReleaseOffscreenWindow, ret = " << ret;
+      FML_LOG(ERROR) << "ReleaseOffscreenWindow failed err:" << ret;
       OH_NativeWindow_DestroyNativeWindowBuffer(last_nativewindow_buffer_);
     }
     last_nativewindow_buffer_ = nullptr;
@@ -186,7 +183,7 @@ void OHOSSurface::OnFrameAvailable(void* data) {
         surface->last_fence_fd_);
     if (ret != 0) {
       // this cannot hanppen
-      FML_LOG(ERROR) << "OH_NativeImage_ReleaseNativeWindowBuffer() failed in OnFrameAvailable, ret = " << ret;
+      FML_LOG(ERROR) << "release offscreen windowbuffer failed:" << ret;
       OH_NativeWindow_DestroyNativeWindowBuffer(
           surface->last_nativewindow_buffer_);
     }
@@ -198,7 +195,7 @@ void OHOSSurface::OnFrameAvailable(void* data) {
       surface->offscreen_native_image_, &surface->last_nativewindow_buffer_,
       &surface->last_fence_fd_);
   if (surface->last_nativewindow_buffer_ == nullptr || ret != 0) {
-    FML_LOG(ERROR) << "OH_NativeImage_AcquireNativeWindowBuffer() failed in OnFrameAvailable, ret = " << ret;
+    FML_LOG(ERROR) << "acquire offscreen windowbuffer failed: " << ret;
     return;
   }
   return;
