@@ -33,64 +33,8 @@ env_vars:
     - "$DEVECO_SDK_HOME/default/openharmony/native/llvm/bin"
     - "$PATH"
 
-# Publish files
-publish_files:
-  # Incremental
-  incremental:
-    # Array of file objects
-    - file: "artifacts.zip"
-      search_depth: 3
-      search_directory: "out"
-      pub_path: "$version/$build_type/$file"
-    - file: "symbols.zip"
-      search_depth: 3
-      search_directory: "out"
-      pub_path: "$version/$build_type/$file"
-  # Full
-  full:
-    - file: "artifacts.zip"
-      search_depth: 3
-      search_directory: "out"
-      pub_path: "$version/$build_type/$file"
-    - file: "symbols.zip"
-      search_depth: 3
-      search_directory: "out"
-      pub_path: "$version/$build_type/$file"
-    - file: "linux-x64.zip"
-      search_depth: 3
-      search_directory: "out"
-      pub_path: "$version/$build_type/$file"
-    - file: "artifacts.zip"
-      search_depth: 1
-      search_directory: "engine"
-      pub_path: "$version/linux-x64/$file"
-    - file: "dart-sdk-linux-x64.zip"
-      search_depth: 1
-      search_directory: "engine"
-      pub_path: "$version/$file"
-    - file: "sky_engine.zip"
-      search_depth: 1
-      search_directory: "engine"
-      pub_path: "$version/$file"
-    - file: "flutter_patched_sdk.zip"
-      search_depth: 1
-      search_directory: "engine"
-      pub_path: "$version/$file"
-    - file: "flutter_patched_sdk_product.zip"
-      search_depth: 1
-      search_directory: "engine"
-      pub_path: "$version/$file"
-
 # Preparation steps - executed in order
 preparation_steps:
-  - name: Prepare openharmony SDK
-    script: ci/scripts/prepare_openharmony_sdk.sh
-    description: Download openharmony sdk
-    args:
-      - "https://cidownload.openharmony.cn/version/Daily_Version/OpenHarmony_7.0.0.20/20260409_180136/version-Daily_Version-OpenHarmony_7.0.0.20-20260409_180136-ohos-sdk-full.tar.gz"
-      - "53074415265213988aeb159448a5343c0b9108c7eb6d5294643f7f73c9eaa783"
-    required: true
-
   - name: Check System Information
     script: ci/scripts/check_system_info.sh
     description: Verify system OS and user information
@@ -111,26 +55,10 @@ preparation_steps:
     description: Verify project directories exist and create needed folders
     required: true
 
-  - name: Prepare CIPD
-    script: ci/scripts/prepare_cipd.sh
-    description: Patch required cipd packages
-    required: true
-
-  - name: Prepare Repos
-    script: ci/scripts/prepare_repos.sh
-    description: Prepare repository dependencies
-    required: true
-
   - name: Prepare Flutter
     script: ci/scripts/prepare_project.sh
     description: Prepare Flutter project and sync to target branch
     args: ["flutter_flutter", "oh-3.22.3-release"]
-    required: true
-
-  - name: Record Flutter Commit ID
-    script: ci/scripts/record_flutter_commit_id.sh
-    description: Record the current Flutter commit ID
-    args: ["flutter_flutter"]
     required: true
 
   - name: Prepare Tester
@@ -147,56 +75,7 @@ compilation_steps:
     args: ["oh-3.22.3-release"]
     required: true
 
-  - name: Install dependencies
-    script: ci/scripts/gclient_sync.sh
-    description: Install project dependencies
-    args: ["flutter_flutter"]
-    required: true
-
-  - name: Patch sysroot scripts
-    script: ci/scripts/replace_in_file.sh
-    description: Replacing download URL in sysroot scripts
-    args: ["flutter_flutter/engine/src/build/linux/sysroot_scripts/install-sysroot.py", "s|https://commondatastorage.googleapis.com|file:///home/tools/Flutter/repo/binary|g"]
-    required: true
-
-  - name: Running gclient hooks
-    script: ci/scripts/run_hooks.sh
-    description: Running gclient hooks
-    args: ["flutter_flutter"]
-    required: true
-
-  - name: Skip unittests
-    script: ci/scripts/replace_in_file.sh
-    description: Skip running unit tests
-    args: ["flutter_flutter/engine/src/flutter/testing/testing.gni", "s|enable_unittests = current_toolchain == host_toolchain \\|\\| is_fuchsia \\|\\| is_mac|enable_unittests = false|g"]
-    required: true
-
-  - name: Restoring Engine mTimes
-    script: ci/scripts/restore_engine_mtimes.sh
-    description: Restoring Engine Modification Times
-    args: ["flutter_flutter", "flutter_flutter/engine/src", "oh-3.22.3-release"]
-    required: true
-
-  - name: Compile Flutter engine
-    script: ci/scripts/compile_engine.sh
-    description: Compile Flutter engine
-    args: ["flutter_flutter/engine"]
-    required: true
-
   - name: Compile Tester
     script: ci/scripts/compile_tester.sh
     description: Compiling Tester
-    args: ["flutter_flutter/engine"]
-    required: true
-
-  - name: Upload to cloud
-    script: ci/scripts/upload_to_cloud.sh
-    description: Upload build artifacts to cloud storage
-    args: ["oh-3.22.3-release"]
-    required: true
-
-  - name: Publish
-    script: ci/scripts/publish.sh
-    description: Publish build artifacts to cloud storage
-    args: ["flutter_flutter", "flutter_flutter/engine", "flutter_flutter"]
     required: true
