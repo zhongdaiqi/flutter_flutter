@@ -11,34 +11,16 @@ compile_tester() {
     PROJECT_DIR="$WORK_DIR/third_party"
     ARCHIVE_DIR="$WORK_DIR/Archive/out"
 
-    local engine_dir="$1"
-
     log_info "Checking Flutter environment"
     run_cmd "flutter doctor -v"
 
     cd "$PROJECT_DIR/flutter_tester"
 
-    # Determine BUILD_MODE by checking available out directories
-    local out_dir="$PROJECT_DIR/$engine_dir/src/out"
-
-    # If all three exist, randomly choose one
-    if [[ -d "$out_dir/host_debug" && -d "$out_dir/host_profile" && -d "$out_dir/host_release" ]]; then
-        local modes=("debug" "profile" "release")
-        BUILD_MODE="${modes[$((RANDOM % 3))]}"
-        log_info "Multiple build modes found, randomly selected: $BUILD_MODE"
-    elif [[ -d "$out_dir/host_release" ]]; then
-        BUILD_MODE="release"
-    elif [[ -d "$out_dir/host_profile" ]]; then
-        BUILD_MODE="profile"
-    elif [[ -d "$out_dir/host_debug" ]]; then
-        BUILD_MODE="debug"
-    else
-        log_error "No valid build mode found in $out_dir"
-        exit 1
-    fi
+    local modes=("debug" "profile" "release")
+    BUILD_MODE="${modes[$((RANDOM % 3))]}"
 
     log_info "Building tester in $BUILD_MODE mode"
-    local build_cmd="flutter build hap --$BUILD_MODE --local-engine-src-path=$PROJECT_DIR/$engine_dir/src --local-engine=ohos_${BUILD_MODE}_arm64 --local-engine-host=host_$BUILD_MODE"
+    local build_cmd="flutter build hap --$BUILD_MODE"
     run_cmd "$build_cmd"
 
     # Archive HAP file

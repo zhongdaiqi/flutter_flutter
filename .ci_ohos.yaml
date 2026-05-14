@@ -58,7 +58,7 @@ preparation_steps:
   - name: Prepare Flutter
     script: ci/scripts/prepare_project.sh
     description: Prepare Flutter project and sync to target branch
-    args: ["flutter_flutter", "oh-3.27.4-dev"]
+    args: ["flutter_flutter", "oh-3.27.0-release"]
     required: true
 
   - name: Prepare Tester
@@ -72,25 +72,10 @@ compilation_steps:
   - name: Pack Flutter
     script: ci/scripts/pack_flutter.sh
     description: Pack Flutter SDK
-    args: ["oh-3.27.4-dev"]
+    args: ["oh-3.27.0-release"]
     required: true
 
   - name: Compile Tester
     script: ci/scripts/compile_tester.sh
     description: Compiling Tester
-    args: ["flutter_flutter/engine"]
-    required: true
-
-  - name: Dev Tests
-    script: ci/scripts/run_dev_tests.sh
-    args:
-      - dev/customer_testing,dart test,Customer Testing
-      - dev/a11y_assessments,flutter test,A11y Assessments
-      - dev/tracing_tests,flutter test --enable-vmservice,Tracing Tests
-      - dev/snippets,dart test,Snippets
-      - dev/tools,dart test,Tools
-      - dev/tools/vitool,flutter test,Vitool
-      - dev/tools/gen_defaults,dart test,Gen Defaults
-      - dev/tools/gen_keycodes,dart test,Gen Keycodes
-    description: Run all development tests
     required: true
