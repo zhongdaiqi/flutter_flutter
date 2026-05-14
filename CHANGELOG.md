@@ -1,4 +1,6 @@
 # Changelog
+## 6.1.1.388
+- fix napi lookupcallbackinformation parameter type ([82709afd](https://gitcode.com/openharmony-tpc/flutter_engine/commit/82709afd83c35178f319fd6e0141e13b104ef1fa?ref=cherry-pick-mr-1341-1778729325084-auto&prId=1349))
 ## 7.0.0.22
 - Fixed the issue where EventChannel.endOfStream() method did not trigger the onDone event in Dart ([bd76bd56](https://gitcode.com/openharmony-tpc/flutter_engine/commit/bd76bd56cec1c51a7cef938df8a49b074764c8bd?ref=fix_not_trigger_onDone_322&prId=1320))
 ## 6.1.1.385
