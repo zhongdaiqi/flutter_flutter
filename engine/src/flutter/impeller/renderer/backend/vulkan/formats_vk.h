@@ -177,6 +177,8 @@ constexpr vk::Format ToVKImageFormat(PixelFormat format) {
       return vk::Format::eR8Unorm;
     case PixelFormat::kR8G8UNormInt:
       return vk::Format::eR8G8Unorm;
+    case PixelFormat::kB10G10R10A2UNorm:
+ 	    return vk::Format::eA2B10G10R10UnormPack32;
   }
 
   FML_UNREACHABLE();
@@ -208,6 +210,8 @@ constexpr PixelFormat ToPixelFormat(vk::Format format) {
       return PixelFormat::kR8UNormInt;
     case vk::Format::eR8G8Unorm:
       return PixelFormat::kR8G8UNormInt;
+    case vk::Format::eA2B10G10R10UnormPack32:
+      return PixelFormat::kB10G10R10A2UNorm;
     default:
       return PixelFormat::kUnknown;
   }
@@ -432,6 +436,7 @@ constexpr bool PixelFormatIsDepthStencil(PixelFormat format) {
     case PixelFormat::kB10G10R10XR:
     case PixelFormat::kB10G10R10XRSRGB:
     case PixelFormat::kB10G10R10A10XR:
+ 	  case PixelFormat::kB10G10R10A2UNorm:
       return false;
     case PixelFormat::kS8UInt:
     case PixelFormat::kD24UnormS8Uint:
@@ -534,6 +539,7 @@ constexpr vk::ImageAspectFlags ToVKImageAspectFlags(PixelFormat format) {
     case PixelFormat::kB10G10R10XR:
     case PixelFormat::kB10G10R10XRSRGB:
     case PixelFormat::kB10G10R10A10XR:
+    case PixelFormat::kB10G10R10A2UNorm:
       return vk::ImageAspectFlagBits::eColor;
     case PixelFormat::kS8UInt:
       return vk::ImageAspectFlagBits::eStencil;
@@ -612,6 +618,7 @@ constexpr vk::ImageAspectFlags ToImageAspectFlags(PixelFormat format) {
     case PixelFormat::kB10G10R10XR:
     case PixelFormat::kB10G10R10XRSRGB:
     case PixelFormat::kB10G10R10A10XR:
+    case PixelFormat::kB10G10R10A2UNorm:
       return vk::ImageAspectFlagBits::eColor;
     case PixelFormat::kS8UInt:
       return vk::ImageAspectFlagBits::eStencil;
