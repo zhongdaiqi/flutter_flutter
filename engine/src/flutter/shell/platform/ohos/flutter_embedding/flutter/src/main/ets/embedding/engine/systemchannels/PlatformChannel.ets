@@ -91,7 +91,7 @@ export default class PlatformChannel {
       case 0x0a:
         return window.Orientation.AUTO_ROTATION_LANDSCAPE;
       case 0x0b:
-        return window.Orientation.LOCKED;
+        return window.Orientation.AUTO_ROTATION_UNSPECIFIED;
       case 0x0c:
       case 0x0d:
       case 0x0e:
