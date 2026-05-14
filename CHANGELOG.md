@@ -1,4 +1,7 @@
 # Changelog
+## 7.0.0.24
+- fix napi lookupcallbackinformation parameter type ([c4bfee12](https://gitcode.com/openharmony-tpc/flutter_engine/commit/c4bfee12ac10dc01d333654ce2d5ea9f18a6b35b?ref=dev&prId=1343))
+- 解决屏幕旋转问题 ([6c5b6923](https://gitcode.com/openharmony-tpc/flutter_engine/commit/6c5b6923b9c101f7260d90e5f2b3c1638c4934e3?ref=0506&prId=1336))
 ## 7.0.0.22
 - Fixed the issue where EventChannel.endOfStream() method did not trigger the onDone event in Dart ([ce468ba9](https://gitcode.com/openharmony-tpc/flutter_engine/commit/ce468ba99a7fdd4d990b2466272295840ff13d11?ref=fix_not_trigger_onDone_dev&prId=1319))
 ## 6.1.1.385
