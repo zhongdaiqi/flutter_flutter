@@ -15,10 +15,6 @@
 #include "flutter/fml/eintr_wrapper.h"
 #include "flutter/fml/unique_fd.h"
 
-#if defined(FML_OS_OHOS)
-#include "flutter/fml/platform/ohos/restrace.h"
-#endif
-
 namespace fml {
 
 static int ToPosixProtectionFlags(
@@ -84,9 +80,6 @@ FileMapping::FileMapping(const fml::UniqueFD& handle,
   mapping_ = static_cast<uint8_t*>(mapping);
   size_ = stat_buffer.st_size;
   valid_ = true;
-#if defined(FML_OS_OHOS)
-  OH_RESTRACE(mapping_, size_);
-#endif
   if (is_writable) {
     mutable_mapping_ = mapping_;
   }
@@ -94,9 +87,6 @@ FileMapping::FileMapping(const fml::UniqueFD& handle,
 
 FileMapping::~FileMapping() {
   if (mapping_ != nullptr) {
-#if defined(FML_OS_OHOS)
-    OH_RESTRACE_FREE_REGION(mapping_, size_);
-#endif
     ::munmap(mapping_, size_);
   }
 }
