@@ -100,12 +100,6 @@ export struct FlutterPage {
         .backgroundColor(this.firstFrameDisplayed && this.xComponentRenderFit == RenderFit.RESIZE_FILL ?
         this.xComponentColor : Color.Transparent)
         .expandSafeArea(this.safeAreaTypes, this.safeAreaEdges)
-        .onAreaChange((oldValue: Area, newValue: Area) => {
-          // Only handle when Y position changes (window decoration state changed)
-          if (oldValue.globalPosition.y != newValue.globalPosition.y) {
-            FlutterManager.getInstance().handleWindowDecorSafeArea(this.viewId, this.getUIContext().getHostContext());
-          }
-        })
       if (this.showSplashScreen) {
         this.splashScreenView();
       }
@@ -190,12 +184,6 @@ export struct FlutterPage {
         .backgroundColor(this.firstFrameDisplayed && this.xComponentRenderFit == RenderFit.RESIZE_FILL ?
         this.xComponentColor : Color.Transparent)
         .expandSafeArea(this.safeAreaTypes, this.safeAreaEdges)
-        .onAreaChange((oldValue: Area, newValue: Area) => {
-          // Only handle when Y position changes (window decoration state changed)
-          if (oldValue.globalPosition.y != newValue.globalPosition.y) {
-            FlutterManager.getInstance().handleWindowDecorSafeArea(this.viewId, this.getUIContext().getHostContext());
-          }
-        })
 
       if (this.showSplashScreen) {
         this.splashScreenView();
