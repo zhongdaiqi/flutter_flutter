@@ -9,7 +9,6 @@
 #include <rawfile/raw_file_manager.h>
 #include "napi_common.h"
 #include "ohos_logging.h"
-#include "flutter/fml/platform/ohos/restrace.h"
 
 namespace flutter {
 
@@ -25,18 +24,16 @@ class FileDescriptionMapping : public fml::Mapping {
   }
   void* GetBuffer() {
     // TODO 考虑线程安全
+
     if (file_buf_ != nullptr)
       return file_buf_;
-    size_t bufLength = GetSize();
 
-    if (file_handle_ != nullptr && bufLength > 0) {
-      LOGD("FileDescriptionMapping buflength = %{public}ld", bufLength);
-      file_buf_ = malloc(bufLength + 1);
-      if (file_buf_ != nullptr) {
-        allocated_size_ = bufLength + 1;
-        OH_RESTRACE(file_buf_, allocated_size_);
-        memset(file_buf_, 0, bufLength + 1);
-      }
+    size_t bufLenth = GetSize();
+
+    if (file_handle_ != nullptr && bufLenth > 0) {
+      LOGD("FileDescriptionMapping buflenth = %{public}ld", bufLenth);
+      file_buf_ = malloc(bufLenth + 1);
+      memset(file_buf_, 0, bufLenth + 1);
     }
     return file_buf_;
   }
@@ -47,7 +44,6 @@ class FileDescriptionMapping : public fml::Mapping {
     }
     if (file_buf_ != nullptr) {
       free(file_buf_);
-      OH_RESTRACE_FREE_REGION(file_buf_, allocated_size_);
       file_buf_ = nullptr;
     }
   }
@@ -55,6 +51,7 @@ class FileDescriptionMapping : public fml::Mapping {
   size_t GetSize() const override {
     if (file_handle_ == nullptr)
       return 0;
+
     size_t ret = OH_ResourceManager_GetRawFileSize(file_handle_);
     LOGD("GetSize():%{public}zu", ret);
     return ret;
@@ -92,7 +89,6 @@ class FileDescriptionMapping : public fml::Mapping {
   RawFile* file_handle_;
   void* file_buf_ = nullptr;
   bool read_from_file_ = false;
-  size_t allocated_size_ = 0;
   FML_DISALLOW_COPY_AND_ASSIGN(FileDescriptionMapping);
 };
 

@@ -14,8 +14,6 @@
 #include "third_party/skia/include/core/SkSurface.h"
 #include "types.h"
 
-#include "flutter/fml/platform/ohos/restrace.h"
-
 namespace flutter {
 
 bool GetSkColorType(int32_t buffer_format,
@@ -186,7 +184,6 @@ bool OHOSSurfaceSoftware::PresentBackingStore(sk_sp<SkSurface> backing_store) {
     OH_NativeWindow_DestroyNativeWindowBuffer(buffer);
     return false;
   }
-  OH_RESTRACE(virAddr, bufferHandle->size);
 
   {
     SkColorType color_type;
@@ -231,7 +228,6 @@ bool OHOSSurfaceSoftware::PresentBackingStore(sk_sp<SkSurface> backing_store) {
   Region region{nullptr, 0};
   if (virAddr != nullptr) {
     munmap(virAddr, bufferHandle->size);
-    OH_RESTRACE_FREE_REGION(virAddr, bufferHandle->size);
   }
   LOGI("OH_NativeWindow_NativeWindowFlushBuffer  ....");
   ret = OH_NativeWindow_NativeWindowFlushBuffer(
