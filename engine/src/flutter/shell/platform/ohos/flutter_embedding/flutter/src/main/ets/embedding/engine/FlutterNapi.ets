@@ -158,7 +158,7 @@ export default class FlutterNapi {
 
   }
 
-  static nativeLookupCallbackInformation(handle: number): FlutterCallbackInformation | null {
+  static nativeLookupCallbackInformation(handle: bigint): FlutterCallbackInformation | null {
     let callbackInformation = new FlutterCallbackInformation();
     let ret: number = flutter.nativeLookupCallbackInformation(callbackInformation, handle);
     if (ret == 0) {
