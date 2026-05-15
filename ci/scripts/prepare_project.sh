@@ -34,6 +34,7 @@ prepare_project() {
     fi
 
     log_info "Git status after rebase"
+
     run_cmd "git log -10 --pretty=format:'%h - %s'"
     run_cmd "git status"
     run_cmd "git diff"
