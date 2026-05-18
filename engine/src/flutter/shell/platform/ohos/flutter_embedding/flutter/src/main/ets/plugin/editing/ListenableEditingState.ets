@@ -408,6 +408,9 @@ export class ListenableEditingState {
       text += " ";
     }
 
+    // Clamp selection to valid range before substring operations
+    this.clampDocumentSelectionToCache();
+
     let start =
       this.mSelectionStartCache < this.mSelectionEndCache ? this.mSelectionStartCache : this.mSelectionEndCache;
     let end = this.mSelectionStartCache > this.mSelectionEndCache ? this.mSelectionStartCache : this.mSelectionEndCache;
@@ -594,6 +597,9 @@ export class ListenableEditingState {
         this.setSelectionStart(this.mSelectionStartCache - length);
       }
     }
+
+    // Preview span / delta paths can leave mSelection* past mStringCache.length; getOffsetBefore throws RangeError.
+    this.clampDocumentSelectionToCache();
 
     let start =
       this.mSelectionStartCache < this.mSelectionEndCache ? this.mSelectionStartCache : this.mSelectionEndCache;
@@ -851,6 +857,9 @@ export class ListenableEditingState {
    * @param action - The action to perform
    */
   handleExtendActionEvent(action: inputMethod.ExtendAction) : void {
+    // Clamp selection to valid range before any action to prevent logic errors
+    this.clampDocumentSelectionToCache();
+
     switch (action) {
       case inputMethod.ExtendAction.SELECT_ALL:
         // select all text from the start to end, and notify cursor state updating
@@ -943,6 +952,36 @@ export class ListenableEditingState {
     if (isShiftPressed) { // simulate shift-key up
       this.sendSimulatedKeyEvent(new SimulateKeyEvent(KeyCode.KEYCODE_SHIFT_LEFT, SimulatedKeyText.KEY_SHIFT), true);
     }
+  }
+
+  /**
+   * Clamp selection to [0, mStringCache.length]. When IME clears preview the session ends and flush must not write mSelection*
+   * at stale lengths or later TextEditState from syncEditingState throws invalid selection.
+   * Preview span / delta paths can leave mSelection* past mStringCache.length; getOffsetBefore throws RangeError.
+   */
+  private clampDocumentSelectionToCache(): void {
+    const len = this.mStringCache.length;
+    let docSelStart = this.mSelectionStartCache;
+    let docSelEnd = this.mSelectionEndCache;
+    if (docSelStart < 0) {
+      docSelStart = 0;
+    }
+    if (docSelEnd < 0) {
+      docSelEnd = 0;
+    }
+    if (docSelStart > len) {
+      docSelStart = len;
+    }
+    if (docSelEnd > len) {
+      docSelEnd = len;
+    }
+    if (docSelStart > docSelEnd) {
+      const swapHold = docSelStart;
+      docSelStart = docSelEnd;
+      docSelEnd = swapHold;
+    }
+    this.mSelectionStartCache = docSelStart;
+    this.mSelectionEndCache = docSelEnd;
   }
 
   /**
