@@ -348,12 +348,16 @@ export default class TouchEventProcessor {
    */
   public postAxisEvent(strings: Array<string>) {
     FlutterManager.getInstance().getFlutterViewList().forEach((value) => {
+      if (!value.getDVModel()) {
+        return;
+      }
+      // The hidden ones have not ceased event transmission either
       if (!value.getActive()) {
         return
       }
-      let length = value.getDVModel().children.length
+      let length = value.getDVModel()!.children.length;
       for (let index = length - 1; index >= 0; index--) {
-        const dvModel = value.getDVModel().children[index]
+        const dvModel = value.getDVModel()!.children[index];
         const params = dvModel.getLayoutParams() as Record<string, ESObject>;
         if (!params["hover"]) {
           continue;
@@ -397,12 +401,16 @@ export default class TouchEventProcessor {
    */
   public postTouchEvent(strings: Array<string>) {
     FlutterManager.getInstance().getFlutterViewList().forEach((value) => {
+      if (!value.getDVModel()) {
+        return;
+      }
+      // The hidden ones have not ceased event transmission either
       if (!value.getActive()) {
         return
       }
-      let length = value.getDVModel().children.length
+      let length = value.getDVModel()!.children.length;
       for (let index = length - 1; index >= 0; index--) {
-        let dvModel = value.getDVModel().children[index]
+        let dvModel = value.getDVModel()!.children[index];
         let params = dvModel.getLayoutParams() as Record<string, ESObject>;
         let left = params['left'] as number ?? 0;
         let top = params['top'] as number ?? 0;
@@ -502,12 +510,16 @@ export default class TouchEventProcessor {
    */
   public postMouseEvent(strings: Array<string>) {
     FlutterManager.getInstance().getFlutterViewList().forEach((value) => {
+      if (!value.getDVModel()) {
+        return;
+      }
+      // The hidden ones have not ceased event transmission either
       if (!value.getActive()) {
         return
       }
-      let length = value.getDVModel().children.length
+      let length = value.getDVModel()!.children.length;
       for (let index = length - 1; index >= 0; index--) {
-        const dvModel = value.getDVModel().children[index]
+        const dvModel = value.getDVModel()!.children[index];
         const params = dvModel.getLayoutParams() as Record<string, ESObject>;
         const left = params['left'] as number ?? 0;
         const top = params['top'] as number ?? 0;

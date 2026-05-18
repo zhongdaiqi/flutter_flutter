@@ -311,7 +311,7 @@ export struct FlutterPage {
     this.flutterView?.setCheckAiBar(this.checkAiBar)
     this.flutterView?.enableFrameCache(this.enableFrameCacheForSmooth);
 
-    this.rootDvModel = this.flutterView!!.getDVModel().children
+    this.rootDvModel = this.flutterView!!.getDVModel()?.children;
   }
 
   /**
