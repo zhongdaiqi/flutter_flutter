@@ -222,7 +222,7 @@ export default class FlutterNapi {
    * @param handle - The handler number
    * @returns The FlutterCallbackInformation, or null if not found
    */
-  static nativeLookupCallbackInformation(handle: bigint): FlutterCallbackInformation | null {
+  static nativeLookupCallbackInformation(handle: number): FlutterCallbackInformation | null {
     let callbackInformation = new FlutterCallbackInformation();
     let ret: number = flutter.nativeLookupCallbackInformation(callbackInformation, handle);
     if (ret == 0) {
