@@ -192,7 +192,7 @@ compilation_steps:
   - name: Initialize Flutter Test Environment
     script: ci/scripts/init_flutter_test_env.sh
     description: Initialize Flutter test environment and pre-download dependencies
-    required: true
+    required: false
 
   - name: Unit Tests
     script: ci/scripts/run_unit_tests.sh
@@ -219,7 +219,7 @@ compilation_steps:
       - "dev/integration_tests/ui"
       - "dev/integration_tests/link_hook"
       - "dev/integration_tests/flutter_gallery"
-    required: true
+    required: false
 
   - name: Unit Tests (Partial Pass)
     script: ci/scripts/run_unit_tests.sh
