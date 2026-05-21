@@ -1,6 +1,11 @@
 Flutter SDK Repository
 ======================
 
+> [!WARNING]
+> **This branch (oh-3.32.4-dev) has reached End-of-Life (EOL) and will no longer receive updates or maintenance.**
+>
+> Developers are advised to migrate to the mainline version as soon as possible to continue receiving feature updates, performance improvements, and bug fixes.
+
 ## Description
 
 This repository is the **OpenHarmony** adaptation of the **[Flutter SDK](https://github.com/flutter/flutter)** and **[Flutter Engine](https://github.com/flutter/flutter/tree/master/engine)**, maintained by the OpenHarmony-Flutter team. It enables developers to use the familiar Flutter technology stack to build OpenHarmony applications, and to build the Flutter Engine with OpenHarmony support from the included source code.
