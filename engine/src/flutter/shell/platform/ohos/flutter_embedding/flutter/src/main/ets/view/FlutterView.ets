@@ -287,8 +287,7 @@ export class FlutterView {
   private flutterEngine: FlutterEngine | null = null
   private id: string = ""
   private isActive: boolean = true
-  private dVModel: DVModel =
-    new DVModel("Stack", new DVModelParameters(), new DVModelEvents(), new DVModelChildren(), null);
+  private dVModel: DVModel | undefined = undefined;
   /** The wrapped builder for creating the view, or undefined if not set. */
   private wrapBuilder: WrappedBuilder<[Params]> | undefined = undefined;
   private platformView: PlatformView | undefined = undefined;
@@ -310,7 +309,6 @@ export class FlutterView {
   private isFlutterUiPreload: boolean = false;
   private surfaceLifecycleToken: number = 0;
   private activeSurfaceLifecycleToken: number = 0;
-  private surfaceId: string = "0";
   private nodeController: EmbeddingNodeController = new EmbeddingNodeController();
   private platformViewSize: PlatformViewParas = new PlatformViewParas();
   private checkFullScreen: boolean = true;
@@ -611,44 +609,12 @@ export class FlutterView {
   }
 
   /**
-   * Sets the surface ID for rendering.
-   * @param surfaceId - The surface ID
-   */
-  setSurfaceId(surfaceId: string): void {
-    this.surfaceId = surfaceId;
-  }
-
-  /**
-   * Gets the surface ID.
-   * @returns The surface ID
-   */
-  getSurfaceId(): string {
-    return this.surfaceId;
-  }
-  
-  /**
    * Gets the embedding node controller.
    * @deprecated since 3.7
    * @returns The EmbeddingNodeController instance
    */
   getEmbeddingNodeController(): EmbeddingNodeController {
     return this.nodeController;
-  }
-
-  /**
-   * Sets the wrapped builder for platform views.
-   * @param wrappedBuilder - The WrappedBuilder instance
-   */
-  setWrappedBuilder(wrappedBuilder: WrappedBuilder<[Params]>) {
-    this.wrapBuilder = wrappedBuilder;
-  }
-
-  /**
-   * Gets the wrapped builder.
-   * @returns The WrappedBuilder instance, or undefined if not set
-   */
-  getWrappedBuilder(): WrappedBuilder<[Params]> | undefined {
-    return this.wrapBuilder;
   }
 
   /**
@@ -674,6 +640,10 @@ export class FlutterView {
    */
   getPlatformViewSize(): PlatformViewParas {
     return this.platformViewSize;
+  }
+
+  setDVModel(model: DVModel) {
+    this.dVModel = model;
   }
 
   /**
@@ -753,7 +723,7 @@ export class FlutterView {
     if (accessibility.isOpenAccessibilitySync()) {
       this.flutterEngine?.getFlutterNapi()?.accessibilityStateChange(true);
     }
-    flutterEngine.getPlatformViewsController()?.attachToView(this);
+    this.dVModel = this.flutterEngine.getPlatformViewsController()?.getRootDvModel();
 
     let newArea: Area | null = {
       width: px2vp(this.displayInfo!.width),
@@ -829,7 +799,7 @@ export class FlutterView {
     // Keep the controller -> TextInputPlugin link alive until the platform-view
     // hierarchy has been detached. This lets late blur/teardown callbacks clear
     // any physical PlatformView owner that is still active during shutdown.
-    this.flutterEngine?.getPlatformViewsController()?.detachFromView(this);
+    this.flutterEngine?.getPlatformViewsController()?.detachFromView();
     this.flutterEngine?.getPlatformViewsController()?.detachTextInputPlugin();
     this.flutterEngine = null;
     this.keyboardManager = null;
@@ -878,7 +848,6 @@ export class FlutterView {
       this.isXComponentAttachedToEngine = true;
     }
     this.isSurfaceAvailableForRendering = true;
-    this.flutterEngine?.getPlatformViewsController()?.attachToView(this);
     this.flutterEngine?.processPendingMessages();
     return this.activeSurfaceLifecycleToken;
   }
@@ -899,7 +868,7 @@ export class FlutterView {
       this.flutterEngine!!.getFlutterNapi().xComponentDetachFlutterEngine(this.id)
       this.isXComponentAttachedToEngine = false;
     }
-    this.flutterEngine?.getPlatformViewsController()?.detachFromView(this);
+    this.flutterEngine?.getPlatformViewsController()?.detachFromView();
     if (surfaceLifecycleToken == this.activeSurfaceLifecycleToken) {
       this.activeSurfaceLifecycleToken = 0;
     }

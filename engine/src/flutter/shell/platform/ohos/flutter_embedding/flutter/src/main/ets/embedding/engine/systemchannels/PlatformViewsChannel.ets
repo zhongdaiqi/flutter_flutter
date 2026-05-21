@@ -256,8 +256,8 @@ export default class PlatformViewsChannel {
       Log.w(
         TAG,
         "Received unsupported direction value " + directionValue +
-        " for platform view " + newDirectionViewId +
-        ". Falling back to Direction.Ltr."
+          " for platform view " + newDirectionViewId +
+          ". Falling back to Direction.Ltr."
       );
     }
 
