@@ -1,5 +1,27 @@
 # Changelog
-
+## 3.27.4-ohos-1.0.6
+- fix: clamp text selection range to prevent RangeError in IME operations,([ee0cda7f4c](https://gitcode.com/openharmony-tpc/flutter_engine/commit/ee0cda7f4cb0cdaed81523000eddafdd76f32113))
+- 修复鼠标左右键按键异常,([956ecd2d62](https://gitcode.com/openharmony-tpc/flutter_engine/commit/956ecd2d625a622ce079e7904ef2f0e1bd72f170))
+- 解决旋转屏幕锁定问题,([6bb7fc0409](https://gitcode.com/openharmony-tpc/flutter_engine/commit/6bb7fc04097c1fbf695d456dcb4a1b34ff79b643))
+- 解决windowstage可能已经销毁的崩溃,([89a2d0426d](https://gitcode.com/openharmony-tpc/flutter_engine/commit/89a2d0426db6a8e79809b50019b973d4130bcc67))
+- Fixed the issue where EventChannel.endOfStream() method did not trigger the onDone event in Dart,([18c6c77f73](https://gitcode.com/openharmony-tpc/flutter_engine/commit/18c6c77f733b5d1206eaecf2f3949567d3c75845))
+- chang DefaultOnFrameAvailableWithLock,([702a1c8a70](https://gitcode.com/openharmony-tpc/flutter_engine/commit/702a1c8a70e8c71b9d5b66581fe16b6e335ea108))
+- fix ReleaseNativeWindowBuffer crash,([0fcafa4cd2](https://gitcode.com/openharmony-tpc/flutter_engine/commit/0fcafa4cd2b102337ae935342e3d3c7cb42f0152))
+- 无条件设置false，重置cached_native_window_为空,([e059fd87dc](https://gitcode.com/openharmony-tpc/flutter_engine/commit/e059fd87dc56e07dac3999be391cc39da8aabcd7))
+- 无条件设置false，重置cached_native_window_,([6897a74ad1](https://gitcode.com/openharmony-tpc/flutter_engine/commit/6897a74ad12b6d951feb3da4a38290120f625e84))
+- 修复onsurfacecreate的错误判断,([383a61ce7a](https://gitcode.com/openharmony-tpc/flutter_engine/commit/383a61ce7a4529ffe4507847ce26d2b3739f4352))
+- Avoid deleting selected text when finishing preview,([0aff17c786](https://gitcode.com/openharmony-tpc/flutter_engine/commit/0aff17c7869d99751ce739190f0785b411315a22))
+- Fixed incorrect tiltX and tiltY parameter passing in external texture scenarios,([6a0927a953](https://gitcode.com/openharmony-tpc/flutter_engine/commit/6a0927a953bdeefaf7084ce4f0ecce147a633ee5))
+- Add simple occlusion culling for impeller,([8bf201595c](https://gitcode.com/openharmony-tpc/flutter_engine/commit/8bf201595c5735474fb90636b1fb428f4fcddad6))
+- 简化 PiPVisibilityBridge 为单一全局状态 , 修复空 catch / 线程安全注释等问题,([369a320244](https://gitcode.com/openharmony-tpc/flutter_engine/commit/369a320244cfd7b25c15c1a4ea8a3cf9bba1b327))
+- 增加画中画窗口轮询策略，延迟退后台dma清理,([005d2d4502](https://gitcode.com/openharmony-tpc/flutter_engine/commit/005d2d45028fb5ee5cdf5ee824dfb75fc3de0b12))
+- 修复crash，优化ohos_image_generator.cpp代码,([e559fb6c6d](https://gitcode.com/openharmony-tpc/flutter_engine/commit/e559fb6c6d419a52637bcccbfc1a99ad86db5796))
+- Fix the issue where the PlatformView page does not refresh when switching to dark mode,([0081f72a83](https://gitcode.com/openharmony-tpc/flutter_engine/commit/0081f72a8338deb942a8f36b1ef3df3da4f820ac))
+- fix: dpi setting when navi is not working,([ea6c518455](https://gitcode.com/openharmony-tpc/flutter_engine/commit/ea6c5184553c793ed422cf01f25d5bdc2101f486))
+- Fix the issue where the keyboard collapses when the subwindow pops up,([5c27d160df](https://gitcode.com/openharmony-tpc/flutter_engine/commit/5c27d160df24a62e521d12a295c6693c2b23c9b6))
+- Fixed the spelling error in the channel message name 'nativeVsync' within LTPO,([1fa308c12a](https://gitcode.com/openharmony-tpc/flutter_engine/commit/1fa308c12ac207fd6f02b2d310dd496ad0cc26d1))
+- pick pr1097 修复切换输入框时，软键盘类型存在安全类键盘时出现键盘无法唤起的问题,([62229184c9](https://gitcode.com/openharmony-tpc/flutter_engine/commit/62229184c99ac4c3241d300dd7ba9b3e79b2178c))
+- Reduce memory usage during the preloading phase.,([7168a1d83b](https://gitcode.com/openharmony-tpc/flutter_engine/commit/7168a1d83bfc50f1d46665700d8818e074fc923a))
 ## 3.27.4-ohos-1.0.5
 - Addressed the issue where cropping with original dimensions in a transformed coordinate system resulted in a size mismatch.,([5ede2ebc35](https://gitcode.com/openharmony-tpc/flutter_engine/commit/5ede2ebc3590b72b47a5914e779673b4085a08ba))
 - fix: keyboard home key is not consistent,([aa08ef4b08](https://gitcode.com/openharmony-tpc/flutter_engine/commit/aa08ef4b08f5d6ccb51c4ceeb6f0a60088b058c9))
