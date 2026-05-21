@@ -1,6 +1,12 @@
 Flutter SDK & Engine 仓库
 ========================
 
+> [!WARNING]
+>
+> **本分支（oh-3.32.0-release）已进入维护终止（End-of-Life）状态，后续不再提供更新与维护**
+>
+> 建议开发者尽快迁移至主线版本，以获取持续的功能更新、性能优化与问题修复。
+
 ## 仓库说明
 
 本仓库是 **[Flutter SDK](https://github.com/flutter/flutter)** 和 **[Flutter Engine](https://github.com/flutter/flutter/tree/master/engine)** 的 **OpenHarmony** 适配版本，由 OpenHarmony-Flutter 团队维护。开发者可使用熟悉的 Flutter 技术栈开发 OpenHarmony 应用，也可基于本仓库源码构建支持 OpenHarmony 的 Flutter Engine。
