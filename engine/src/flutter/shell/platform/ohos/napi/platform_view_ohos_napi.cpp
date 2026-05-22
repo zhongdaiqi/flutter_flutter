@@ -2405,8 +2405,7 @@ napi_value PlatformViewOHOSNapi::nativeLookupCallbackInformation(
   }
 
   int64_t handle;
-  bool lossless;
-  ret = napi_get_value_bigint_int64(env, args[1], &handle, &lossless);
+  ret = napi_get_value_int64(env, args[1], &handle);
   if (ret != napi_ok) {
     LOGE("nativeLookupCallbackInformation napi_get_value_int64 error");
     napi_create_int32(env, -1, &result);
