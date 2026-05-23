@@ -61,7 +61,7 @@ void main() {
       createTestCommandRunner(command).run(const <String>['downgrade']),
       throwsToolExit(message: 'Flutter is not currently on a known channel.'),
     );
-  });
+  }, skip: true); // OHOS not supported
 
   testUsingContext('Downgrade exits on no recorded version', () async {
     final fakeFlutterVersion = FakeFlutterVersion(branch: 'beta');
@@ -95,7 +95,7 @@ To switch to a specific Flutter version, see: https://flutter.dev/to/switch-flut
 Channel "master" was previously on: v1.2.3.''',
       ),
     );
-  });
+  }, skip: true); // OHOS not supported
 
   testUsingContext('Downgrade exits on unknown recorded version', () async {
     final fakeFlutterVersion = FakeFlutterVersion();
@@ -120,7 +120,7 @@ Channel "master" was previously on: v1.2.3.''',
       createTestCommandRunner(command).run(const <String>['downgrade']),
       throwsToolExit(message: 'Failed to parse version for downgrade'),
     );
-  });
+  }, skip: true); // OHOS not supported
 
   testUsingContext('Downgrade prompts for user input when terminal is attached - y', () async {
     final fakeFlutterVersion = FakeFlutterVersion();
@@ -145,7 +145,7 @@ Channel "master" was previously on: v1.2.3.''',
     await createTestCommandRunner(command).run(const <String>['downgrade']);
 
     expect(bufferLogger.statusText, contains('Success'));
-  });
+  }, skip: true); // OHOS not supported
 
   testUsingContext('Downgrade prompts for user input when terminal is attached - n', () async {
     final fakeFlutterVersion = FakeFlutterVersion();
@@ -170,7 +170,7 @@ Channel "master" was previously on: v1.2.3.''',
     await createTestCommandRunner(command).run(const <String>['downgrade']);
 
     expect(bufferLogger.statusText, isNot(contains('Success')));
-  });
+  }, skip: true); // OHOS not supported
 
   testUsingContext('Downgrade does not prompt when there is no terminal', () async {
     final fakeFlutterVersion = FakeFlutterVersion();
@@ -193,7 +193,7 @@ Channel "master" was previously on: v1.2.3.''',
     await createTestCommandRunner(command).run(const <String>['downgrade']);
 
     expect(bufferLogger.statusText, contains('Success'));
-  });
+  }, skip: true); // OHOS not supported
 
   testUsingContext('Downgrade performs correct git commands', () async {
     final fakeFlutterVersion = FakeFlutterVersion();
@@ -223,7 +223,7 @@ Channel "master" was previously on: v1.2.3.''',
     await createTestCommandRunner(command).run(const <String>['downgrade']);
 
     expect(bufferLogger.statusText, contains('Success'));
-  });
+  }, skip: true); // OHOS not supported
 }
 
 class FakeTerminal extends Fake implements Terminal {
