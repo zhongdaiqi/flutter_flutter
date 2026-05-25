@@ -43,7 +43,7 @@
 
 ### 兼容性与配套
 - OpenHarmony API 20
-- Flutter SDK: 3.22.3-ohos-1.1.2（版本显示为3.22.4-ohos-1.1.2，确保解析兼容）
+- Flutter SDK: 3.22.3-ohos-1.1.3（版本显示为3.22.4-ohos-1.1.3，确保解析兼容）
 
 ---
 
