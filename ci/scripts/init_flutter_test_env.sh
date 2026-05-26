@@ -68,7 +68,17 @@ INIT_PACKAGES=(
     "dev/integration_tests/hook_user_defines"
 )
 
-log_step "Step 2/3: Initialize test packages"
+log_step "Step 2/3: Apply OHOS pubspec and initialize test packages"
+
+OHOS_PUBSPEC="$SCRIPT_DIR/../resources/pubspec_ohos.yaml"
+ROOT_PUBSPEC="$SCRIPT_DIR/../../pubspec.yaml"
+
+if [ -f "$OHOS_PUBSPEC" ]; then
+    cp "$OHOS_PUBSPEC" "$ROOT_PUBSPEC"
+    log_info "Replaced root pubspec.yaml with OHOS version (skipped Android/iOS/macOS/Windows workspace entries)"
+else
+    log_warn "OHOS pubspec not found at $OHOS_PUBSPEC, using original pubspec.yaml"
+fi
 
 for pkg in "${INIT_PACKAGES[@]}"; do
     pkg_path="$SCRIPT_DIR/../../$pkg"
