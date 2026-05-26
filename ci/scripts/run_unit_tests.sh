@@ -21,7 +21,7 @@ if [[ -n "${PR_URL:-}" && "$TEST_MODE" != "gate" ]]; then
 fi
 
 # 配置参数
-UT_TIMEOUT=${UT_TIMEOUT:-900}
+UT_TIMEOUT=${UT_TIMEOUT:-1200}
 UT_DEFAULT_CMD=${UT_DEFAULT_CMD:-"flutter test --no-pub --reporter compact"}
 
 # 获取共享 PUB_CACHE

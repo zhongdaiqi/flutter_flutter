@@ -189,10 +189,24 @@ compilation_steps:
     args: ["flutter_flutter/engine"]
     required: true
 
+  - name: Upload to cloud
+    script: ci/scripts/upload_to_cloud.sh
+    description: Upload build artifacts to cloud storage
+    args: ["oh-3.35.7-dev"]
+    required: true
+
+  - name: Publish
+    script: ci/scripts/publish.sh
+    description: Publish build artifacts to cloud storage
+    args: ["flutter_flutter", "flutter_flutter/engine", "flutter_flutter"]
+    required: true
+
+# Test steps - executed in order
+test_steps:
   - name: Initialize Flutter Test Environment
     script: ci/scripts/init_flutter_test_env.sh
     description: Initialize Flutter test environment and pre-download dependencies
-    required: false
+    required: true
 
   - name: Unit Tests
     script: ci/scripts/run_unit_tests.sh
@@ -219,7 +233,7 @@ compilation_steps:
       - "dev/integration_tests/ui"
       - "dev/integration_tests/link_hook"
       - "dev/integration_tests/flutter_gallery"
-    required: false
+    required: true
 
   - name: Unit Tests (Partial Pass)
     script: ci/scripts/run_unit_tests.sh
@@ -240,15 +254,3 @@ compilation_steps:
       - "dev/bots"
       - "dev/integration_tests/hook_user_defines"
     required: false
-
-  - name: Upload to cloud
-    script: ci/scripts/upload_to_cloud.sh
-    description: Upload build artifacts to cloud storage
-    args: ["oh-3.35.7-dev"]
-    required: true
-
-  - name: Publish
-    script: ci/scripts/publish.sh
-    description: Publish build artifacts to cloud storage
-    args: ["flutter_flutter", "flutter_flutter/engine", "flutter_flutter"]
-    required: true
