@@ -127,6 +127,8 @@ void main() {
     final Set<String> expectedFiles = <String>{
       localFs.path.join('bin', 'cache', 'engine.realm'),
       localFs.path.join('bin', 'cache', 'engine.stamp'),
+      localFs.path.join('bin', 'cache', 'engine.ohos.realm'),
+      localFs.path.join('bin', 'cache', 'engine.ohos.stamp'),
       localFs.path.join(
         'bin',
         'internal',
