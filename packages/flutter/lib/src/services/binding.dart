@@ -330,6 +330,15 @@ mixin ServicesBinding on BindingBase, SchedulerBinding {
     _systemUiChangeCallback = callback;
   }
 
+  void reportNavigatorActivity(String activity, String status) {
+    SystemChannels.navigation.invokeMethod<void>(
+      'reportNavigatorActivity',
+      <String, String>{
+        'activity': activity,
+        'status': status
+      }
+    );
+  }
 }
 
 /// Signature for listening to changes in the [SystemUiMode].
