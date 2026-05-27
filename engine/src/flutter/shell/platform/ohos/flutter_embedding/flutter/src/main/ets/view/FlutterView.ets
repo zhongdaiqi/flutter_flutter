@@ -115,7 +115,7 @@ export class ViewportMetrics {
       this.physicalViewInsetBottom === other.physicalViewInsetBottom &&
       this.physicalViewInsetLeft === other.physicalViewInsetLeft &&
       this.systemGestureInsetTop === other.systemGestureInsetTop &&
-      this.systemGestureInsetRight === other.systemGestureInsetRight &&
+        this.systemGestureInsetRight === other.systemGestureInsetRight &&
       this.systemGestureInsetBottom === other.systemGestureInsetBottom &&
       this.systemGestureInsetLeft === other.systemGestureInsetLeft &&
       this.physicalTouchSlop === other.physicalTouchSlop &&
@@ -470,6 +470,10 @@ export class FlutterView {
         const scale = customDensity / sysDensity;
         Log.i(TAG, "densityUpdateCallback: customDensity=" + customDensity + ", sysDensity=" +
           sysDensity + ", scale=" + scale);
+        const currentUri = this.flutterEngine?.getDisplayMetricsChannel()?.getCurrentUri() ?? '';
+        if (currentUri) {
+          this.flutterEngine?.getDisplayMetricsChannel()?.setCustomDpiActive(true);
+        }
         this.onDevicePixelRatioChange(scale);
       }
     } catch (e) {
