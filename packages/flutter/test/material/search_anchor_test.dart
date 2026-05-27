@@ -3476,6 +3476,7 @@ void main() {
       expect(focusNode.hasPrimaryFocus, isFalse);
     },
     variant: TargetPlatformVariant.mobile(),
+    skip: true, // OHOS not supported.
   );
 
   testWidgets('The default clear button only shows when text input is not empty '

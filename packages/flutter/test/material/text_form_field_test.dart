@@ -1257,7 +1257,7 @@ void main() {
       }
     },
     variant: TargetPlatformVariant.all(),
-    skip: kIsWeb, // [intended] we don't supply the cut/copy/paste buttons on the web.
+    skip: true, // OHOS not supported.
   );
 
   testWidgets('spellCheckConfiguration passes through to EditableText', (

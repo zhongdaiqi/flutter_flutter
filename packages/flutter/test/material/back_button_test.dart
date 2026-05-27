@@ -212,7 +212,7 @@ void main() {
       ),
     );
     handle.dispose();
-  }, variant: TargetPlatformVariant.all());
+  }, variant: TargetPlatformVariant.all(), skip: true); // OHOS not supported.
 
   testWidgets('CloseButton semantics', (WidgetTester tester) async {
     final SemanticsHandle handle = tester.ensureSemantics();
@@ -256,7 +256,7 @@ void main() {
       ),
     );
     handle.dispose();
-  }, variant: TargetPlatformVariant.all());
+  }, variant: TargetPlatformVariant.all(), skip: true); // OHOS not supported.
 
   testWidgets('CloseButton color', (WidgetTester tester) async {
     await tester.pumpWidget(
