@@ -173,6 +173,9 @@ void main() {
         ..cmakeFile = linuxManagedDirectory.parent.childFile('CMakeLists.txt')
         ..generatedPluginCmakeFile = linuxManagedDirectory.childFile('generated_plugins.mk')
         ..exists = false;
+
+      final OhosProject ohosProject = FakeOhosProject();
+      flutterProject.ohos = ohosProject;
     }
 
     setUp(() async {
@@ -671,6 +674,7 @@ dependencies:
                 'dev_dependency': false,
               },
             ],
+            'ohos': <Map<String, Object>>[],
           };
           expect(actualPlugins, expectedPlugins);
         },
@@ -2792,6 +2796,9 @@ class FakeFlutterProject extends Fake implements FlutterProject {
   late WindowsProject windows;
 
   @override
+  late OhosProject ohos;
+
+  @override
   File get packageConfig => directory.childDirectory('.dart_tool').childFile('package_config.json');
 }
 
@@ -2946,6 +2953,16 @@ class FakeLinuxProject extends Fake implements LinuxProject {
 
   @override
   late File generatedPluginCmakeFile;
+  var exists = false;
+
+  @override
+  bool existsSync() => exists;
+}
+
+class FakeOhosProject extends Fake implements OhosProject {
+  @override
+  var pluginConfigKey = 'ohos';
+
   var exists = false;
 
   @override
