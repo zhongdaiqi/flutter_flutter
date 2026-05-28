@@ -390,7 +390,7 @@ export default class TouchEventProcessor {
         } as AxisEvent;
 
         let nodeController = params['nodeController'] as EmbeddingNodeController;
-        nodeController.postAxisEvent(axisEvent)
+        nodeController.postAxisEvent(axisEvent);
       }      
     });
   }
@@ -419,7 +419,7 @@ export default class TouchEventProcessor {
           //如果flutter端判断当前platformView是可点击的，则将事件分发出去
           let touchEvent: CustomTouchEvent = TouchEventProcessor.getInstance().constructCustomTouchEvent(strings, top, left);
           let nodeController = params['nodeController'] as EmbeddingNodeController;
-          nodeController.postEvent(touchEvent)
+          nodeController.postEvent(touchEvent);
           // Keep the text-input handoff check on the same path that delivers
           // touch events to ArkUI. postTouchEvent can run more than once for a
           // gesture, so non-DOWN events also consume stale child-editor markers
@@ -530,11 +530,11 @@ export default class TouchEventProcessor {
           // 如果鼠标事件不是OH_NATIVEXCOMPONENT_MOUSE_PRESS类型或OH_NATIVEXCOMPONENT_MOUSE_RELEASE类型，则
           // 直接分发出去
           let nodeController = params['nodeController'] as EmbeddingNodeController;
-          nodeController.postMouseEvent(mouseEvent)
+          nodeController.postMouseEvent(mouseEvent);
         } else if (down) {
           // 如果flutter端判断当前platformView是可点击的，则将事件分发出去,并结束分发
           let nodeController = params['nodeController'] as EmbeddingNodeController;
-          nodeController.postMouseEvent(mouseEvent)
+          nodeController.postMouseEvent(mouseEvent);
           break;
         } else {
           // 如果鼠标事件为OH_NATIVEXCOMPONENT_MOUSE_PRESS，说明是下一次点击了，这时候需要清空上一次的数据
