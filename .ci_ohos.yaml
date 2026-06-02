@@ -83,14 +83,6 @@ publish_files:
 
 # Preparation steps - executed in order
 preparation_steps:
-  - name: Prepare openharmony SDK
-    script: ci/scripts/prepare_openharmony_sdk.sh
-    description: Download openharmony sdk
-    args: 
-      - "https://cidownload.openharmony.cn/version/Daily_Version/OpenHarmony_7.0.0.20/20260409_180136/version-Daily_Version-OpenHarmony_7.0.0.20-20260409_180136-ohos-sdk-full.tar.gz"
-      - "53074415265213988aeb159448a5343c0b9108c7eb6d5294643f7f73c9eaa783"
-    required: true
-
   - name: Check System Information
     script: ci/scripts/check_system_info.sh
     description: Verify system OS and user information
