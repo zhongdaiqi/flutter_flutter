@@ -10,7 +10,7 @@ This repository is the **OpenHarmony** adaptation of the **[Flutter SDK](https:/
 
 ## Flutter-OH Roadmap
 
-> **2026 plan**: [Flutter-OH Roadmap](./docs/roadmap/Flutter-OH%20Roadmap.md) — release cadence, performance, ecosystem, and SIG collaboration.
+> **2026 plan**: [Flutter-OH Roadmap](./docs/roadmap/Flutter-OH-Roadmap.md) — release cadence, performance, ecosystem, and SIG collaboration.
 
 ## Development Guides
 
