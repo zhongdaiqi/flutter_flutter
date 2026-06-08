@@ -1,7 +1,5 @@
 # 2026 Flutter-OH 路线图：共筑鸿蒙生态
 
-> **文档入口**：[README 路线图章节](../../README.md#flutter-oh-roadmap) · [OH 开发文档索引](https://gitcode.com/openharmony-tpc/flutter_samples/blob/master/README.md)
-
 为了提高透明度，我们希望分享我们路线图的细节，以便开发者能够了解我们的优先事项，并根据我们正在进行的工作制定计划。
 
 这份路线图旨在分享 Flutter 在 OpenHarmony 生态（Flutter-OH）当前的重点投入领域与未来一年的主要方向。内容主要来自技术研发团队与 [Flutter SIG](https://gitcode.com/OpenHarmony-CrossPlatformFramework/community/blob/main/sigs/sig-flutter/charter.md) 成员的共同讨论。请注意，此路线图仅为意向声明，并非承诺或完整的功能列表。实际交付内容可能会根据技术挑战、社区反馈和资源情况而调整。我们鼓励开发者通过 Flutter SIG 社区参与讨论，共同塑造 Flutter 在鸿蒙生态的未来。
@@ -72,7 +70,7 @@
 
 ##  三方库丰富：双路径补齐生态
 
-Flutter 的强大离不开丰富的三方库生态。大量Flutter三方库不需要兼容适配HarmomyOS系统，不兼容三方库当前已完成适配三百余个，见[清单](https://gitcode.com/openharmony-tpc/flutter_packages),也有不少开源开发者参与适配贡献。
+Flutter 的强大离不开丰富的三方库生态。大量Flutter三方库不需要兼容适配HarmonyOS系统，不兼容三方库当前已完成适配三百余个，见[清单](https://gitcode.com/openharmony-tpc/flutter_packages),也有不少开源开发者参与适配贡献。
 
 2026 年，我们规划了 **至少 200 个高优先级 Flutter 三方库的鸿蒙适配**（更多适配计划还在规划中），覆盖网络、数据库、图片处理、音视频、地图等常见领域。主要通过如下渠道来持续丰富三方库
 
