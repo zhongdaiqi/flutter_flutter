@@ -1,6 +1,6 @@
 # 2026 Flutter-OH 路线图：共筑鸿蒙生态
 
-> **文档入口**：[README 路线图章节](../../README.md#flutter-oh-roadmap) · [OH 开发文档索引](../ohos/README.md)
+> **文档入口**：[README 路线图章节](../../README.md#flutter-oh-roadmap) · [OH 开发文档索引](https://gitcode.com/openharmony-tpc/flutter_samples/blob/master/README.md)
 
 为了提高透明度，我们希望分享我们路线图的细节，以便开发者能够了解我们的优先事项，并根据我们正在进行的工作制定计划。
 
