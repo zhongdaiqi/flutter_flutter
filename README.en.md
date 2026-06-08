@@ -8,6 +8,10 @@ This repository is the **OpenHarmony** adaptation of the **[Flutter SDK](https:/
 >
 > For information on version planning and branch strategy, see: [Flutter OH Version Planning and Branch Strategy](https://gitcode.com/openharmony-tpc/flutter_flutter/wiki/Flutter-OH%E7%89%88%E6%9C%AC%E6%BC%94%E8%BF%9B%E8%A7%84%E5%88%92%E5%92%8C%E5%88%86%E6%94%AF%E7%AD%96%E7%95%A5.md)
 
+## Flutter-OH Roadmap
+
+> **2026 plan**: [Flutter-OH Roadmap](./docs/roadmap/Flutter-OH%20Roadmap.md) — release cadence, performance, ecosystem, and SIG collaboration.
+
 ## Development Guides
 
 - [Flutter OH Development Documentation](https://gitcode.com/openharmony-tpc/flutter_samples/blob/master/README.en.md)
