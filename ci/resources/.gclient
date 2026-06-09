@@ -9,6 +9,9 @@ solutions = [
     "name": ".",
     "url": "https://gitcode.com/openharmony-tpc/flutter_flutter.git",
     "safesync_url": "",
+    "custom_vars": {
+      "download_emsdk": True,
+    },
     "custom_deps": {
       "engine/src/flutter/prebuilts/emsdk": "/home/tools/Flutter/repo/emsdk@2514ec738de72cebbba7f4fdba0cf2fabcb779a5",
       "engine/src/flutter/third_party/abseil-cpp": "/home/tools/Flutter/repo/abseil-cpp@ff6504dc527b25fef0f3c531e7dba0ed6b69c162",
