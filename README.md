@@ -6,11 +6,9 @@ Flutter SDK 仓库
 ---
 
 ## 仓库说明
-本仓库是 **[Flutter SDK](https://github.com/flutter/flutter)** 的 **OpenHarmony** 适配版本，由 OpenHarmony-Flutter 团队维护。开发者可使用熟悉的 Flutter 技术栈开发 OpenHarmony 应用，复用现有 Flutter 生态资源。
+本仓库是 **[Flutter SDK](https://github.com/flutter/flutter)** 的 **OpenHarmony** 适配版本，当前版本分支基于 Flutter 官方社区 [![Flutter Version](https://img.shields.io/badge/Flutter-3.27.4-blue?logo=flutter)](https://github.com/flutter/flutter/commit/5dcb86f68f239346676ceb1ed1ea385bd215fba1) 构建，由 OpenHarmony-Flutter 团队维护。开发者可使用熟悉的 Flutter 技术栈开发 OpenHarmony 应用，复用现有 Flutter 生态资源。
 
-> 该版本分支基于 Flutter 官方社区 [3.27.4](https://github.com/flutter/flutter/commit/5dcb86f68f239346676ceb1ed1ea385bd215fba1) 版本构建。 
->
-> 版本规划与分支策略请参见：[Flutter OH 版本规划与分支策略](https://gitcode.com/openharmony-tpc/flutter_flutter/wiki/Flutter-OH%E7%89%88%E6%9C%AC%E6%BC%94%E8%BF%9B%E8%A7%84%E5%88%92%E5%92%8C%E5%88%86%E6%94%AF%E7%AD%96%E7%95%A5.md)
+> 版本规划与分支策略请参见：[Flutter OH 版本规划与分支策略](https://gitcode.com/CPF-Flutter/flutter_flutter/wiki/Flutter-OH%E7%89%88%E6%9C%AC%E6%BC%94%E8%BF%9B%E8%A7%84%E5%88%92%E5%92%8C%E5%88%86%E6%94%AF%E7%AD%96%E7%95%A5.md)
 
 ## 开发指南
 
