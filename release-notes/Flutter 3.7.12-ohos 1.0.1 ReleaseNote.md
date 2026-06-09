@@ -14,10 +14,10 @@ HarmonyOS NEXT, API12
 
 ## 版本配套
 
-- ROM: 205.0.0.68
-- IDE: DevEco Studio 5.0.3.810
-- SDK: OpenHarmony 5.0.0.68
-- Flutter SDK: 3.7.12-ohos-1.0.1
+- 引擎构建最低要求 API：**OpenHarmony API 12**
+- 应用构建目标 API：**OpenHarmony API 12**
+- 应用最低运行 API：**OpenHarmony API 12**
+- Flutter SDK：**3.7.12-ohos-1.0.1**
 
 ## 赋能文档
 

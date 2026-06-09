@@ -15,10 +15,10 @@ October 22, 2024
 
 ## Version Compatibility 
 
-- ROM: 205.0.0.102
-- IDE: DevEco Studio 5.0.3.906
-- SDK: OpenHarmony 5.0.0.71
-- Flutter SDK: 3.7.12-ohos-1.0.2
+- Minimum Engine Build API: **OpenHarmony API 12**
+- Target App Build API: **OpenHarmony API 12**
+- Minimum App Runtime API: **OpenHarmony API 12**
+- Flutter SDK: **3.7.12-ohos-1.0.2**
 
 ## Development Documentation
 
