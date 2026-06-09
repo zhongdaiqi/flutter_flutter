@@ -16,10 +16,10 @@ This version is an OpenHarmony version based on Flutter 3.7.12. This version sup
 Jun 27, 2025
 
 ## Version Support
-- OpenHarmony API18
-- ROM: 5.0.1.201
-- IDE: DevEco Studio 5.1.0.828SP1
-- Flutter SDK: 3.7.12-ohos-1.1.4
+- 引擎构建最低要求 API：**OpenHarmony API 18**
+- 应用构建目标 API：**OpenHarmony API 18**
+- 应用最低运行 API：**OpenHarmony API 12**
+- Flutter SDK：**3.7.12-ohos-1.1.4**
 
 ## Changelog
 - [5.1.0.503](../CHANGELOG.md)
