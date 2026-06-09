@@ -21,10 +21,10 @@ HarmonyOS NEXT, API13
 December 31, 2024
 
 ## Version Compatibility
-- ROM: 5.0.0.115
-- IDE: DevEco Studio 5.0.5.310
-- SDK: HarmonyOS SDK 5.0.5.310, API13
-- Flutter SDK: 3.22.0-ohos-0.1.0 (Due to Flutter version parsing rules, to avoid version comparison failures, it will display as 3.22.1-ohos-0.1.0)
+- Minimum Engine Build API: **OpenHarmony API 13**
+- Target App Build API: **OpenHarmony API 13**
+- Minimum App Runtime API: **OpenHarmony API 12**
+- Flutter SDK: **3.22.0-ohos-0.1.0**  (Due to Flutter version parsing rules, to avoid version comparison failures, it will display as 3.22.1-ohos-0.1.0)
 
 ## Enabling Documentation
 

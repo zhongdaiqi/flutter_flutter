@@ -22,8 +22,10 @@ This version is an OpenHarmony version based on Flutter 3.22.0. This version sup
 Dec 25, 2025
 
 ## Version Support
-- OpenHarmony API20
-- Flutter SDK: 3.22.0-ohos-1.0.8(Due to Flutter version parsing rules, to avoid version comparison failures, it will display as 3.22.1-ohos-1.0.8)
+- Minimum Engine Build API: **OpenHarmony API 20**
+- Target App Build API: **OpenHarmony API 20**
+- Minimum App Runtime API: **OpenHarmony API 12**
+- Flutter SDK: **3.22.0-ohos-1.0.8** (Due to Flutter version parsing rules, to avoid version comparison failures, it will display as 3.22.1-ohos-1.0.8)
 
 ## Changelog
 - [6.0.3.21, 6.0.3.20, 6.0.3.17, 6.0.2.125, 6.0.2.122, 6.0.2.121](../CHANGELOG.md)
