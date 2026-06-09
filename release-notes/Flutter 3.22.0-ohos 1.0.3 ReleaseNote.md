@@ -15,10 +15,10 @@
 2025年6月7日
 
 ## 版本配套
-- OpenHarmony API17
-- ROM: 5.0.1.120
-- IDE: DevEco Studio 5.0.13.200
-- Flutter SDK: 3.22.0-ohos-1.0.3
+- Minimum Engine Build API: **OpenHarmony API 17**
+- Target App Build API: **OpenHarmony API 17**
+- Minimum App Runtime API: **OpenHarmony API 12**
+- Flutter SDK: **3.22.0-ohos-1.0.3**
 
 ## Changelog
 - [5.1.0.502](../CHANGELOG.md)

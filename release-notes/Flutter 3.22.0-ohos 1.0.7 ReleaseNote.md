@@ -20,8 +20,10 @@
 2025年11月4日
 
 ## 版本配套
-- OpenHarmony API20
-- Flutter SDK: 3.22.0-ohos-1.0.7（由于flutter版本解析规则，为了避免版本比较解析失败，将显示为3.22.1-ohos-1.0.7）
+- 引擎构建最低要求 API：**OpenHarmony API 20**
+- 应用构建目标 API：**OpenHarmony API 20**
+- 应用最低运行 API：**OpenHarmony API 12**
+- Flutter SDK：**3.22.0-ohos-1.0.7**（由于flutter版本解析规则，为了避免版本比较解析失败，将显示为3.22.1-ohos-1.0.7）
 
 ## Changelog
 - [6.0.0.705, 6.0.0.704, 6.0.0.701, 6.0.0.700](../CHANGELOG.md)
