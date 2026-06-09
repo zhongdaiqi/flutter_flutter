@@ -24,8 +24,10 @@
 - 修复多PlatformView场景下输入框失焦问题
 
 ## 版本配套
-- 编译引擎版本要求： OpenHarmony API 23及以上
-- Flutter SDK: 3.35.7-ohos-1.0.0（由于flutter版本解析规则，为了避免版本比较解析失败，将显示为3.35.8-ohos-1.0.0）
+- 引擎构建最低要求 API：**OpenHarmony API 23**
+- 应用构建目标 API：**OpenHarmony API 23**
+- 应用最低运行 API：**OpenHarmony API 12**
+- Flutter SDK：**3.35.7-ohos-1.0.0**（由于flutter版本解析规则，为了避免版本比较解析失败，将显示为3.35.8-ohos-1.0.0）
 
 ## Changelog
 - [3.35.7-ohos-1.0.0](../CHANGELOG_OHOS.md)
