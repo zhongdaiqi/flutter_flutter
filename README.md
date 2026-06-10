@@ -11,6 +11,11 @@ Flutter SDK 仓库
 > 版本规划与分支策略请参见：[Flutter OH 版本规划与分支策略](https://gitcode.com/openharmony-tpc/flutter_flutter/wiki/Flutter-OH%E7%89%88%E6%9C%AC%E6%BC%94%E8%BF%9B%E8%A7%84%E5%88%92%E5%92%8C%E5%88%86%E6%94%AF%E7%AD%96%E7%95%A5.md)
 
 
+<a id="flutter-oh-roadmap"></a>
+## Flutter-OH 路线图
+
+> **2026 年度规划**：[Flutter-OH 路线图](./docs/roadmap/Flutter-OH-Roadmap.md) — 版本节奏、性能优化、三方库生态与 SIG 共建方向。
+
 ## 开发指南
 
 - [Flutter OH 开发文档](https://gitcode.com/openharmony-tpc/flutter_samples/blob/master/README.md)

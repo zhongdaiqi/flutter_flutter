@@ -70,7 +70,7 @@
 
 ##  三方库丰富：双路径补齐生态
 
-Flutter 的强大离不开丰富的三方库生态。大量Flutter三方库不需要兼容适配HarmomyOS系统，不兼容三方库当前已完成适配三百余个，见[清单](https://gitcode.com/openharmony-tpc/flutter_packages),也有不少开源开发者参与适配贡献。
+Flutter 的强大离不开丰富的三方库生态。大量Flutter三方库不需要兼容适配HarmonyOS系统，不兼容三方库当前已完成适配三百余个，见[清单](https://gitcode.com/openharmony-tpc/flutter_packages),也有不少开源开发者参与适配贡献。
 
 2026 年，我们规划了 **至少 200 个高优先级 Flutter 三方库的鸿蒙适配**（更多适配计划还在规划中），覆盖网络、数据库、图片处理、音视频、地图等常见领域。主要通过如下渠道来持续丰富三方库
 
