@@ -29,8 +29,10 @@ This version is the Flutter OpenHarmony platform version 0.0.1 (Beta), based on 
 July 17, 2025
 
 ## Version Compatibility
-- OpenHarmony API20
-- Flutter SDK: 3.27.4-ohos-0.1.0 (Due to Flutter version parsing rules, to avoid version comparison failures, it will display as 3.27.5-ohos-0.1.0-Beta1)
+- Minimum Engine Build API: **OpenHarmony API 20**
+- Target App Build API: **OpenHarmony API 20**
+- Minimum App Runtime API: **OpenHarmony API 12**
+- Flutter SDK: **3.27.4-ohos-0.1.0** (Due to Flutter version parsing rules, to avoid version comparison failures, it will display as 3.27.5-ohos-0.1.0-Beta1)
 
 ## Changelog
 - [3.27.4-ohos-0.1.0](../CHANGELOG_OHOS.md)
