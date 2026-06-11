@@ -1,13 +1,9 @@
 Flutter SDK Repository
 ======================
 
-## Description
+This repository is the **OpenHarmony** adaptation of the **[Flutter SDK](https://github.com/flutter/flutter)** and **[Flutter Engine](https://github.com/flutter/flutter/tree/master/engine)**. The current version branch is based on the official Flutter community [![Flutter Version](https://img.shields.io/badge/Flutter-3.35.7-blue?logo=flutter)](https://github.com/flutter/flutter/commit/adc901062556672b4138e18a4dc62a4be8f4b3c2), maintained by the OpenHarmony-Flutter team. Developers can use the familiar Flutter technology stack to develop OpenHarmony applications, and can also build the Flutter Engine with OpenHarmony support from the source code in this repository.
 
-This repository is the **OpenHarmony** adaptation of the **[Flutter SDK](https://github.com/flutter/flutter)** and **[Flutter Engine](https://github.com/flutter/flutter/tree/master/engine)**, maintained by the OpenHarmony-Flutter team. It enables developers to use the familiar Flutter technology stack to build OpenHarmony applications, and to build the Flutter Engine with OpenHarmony support from the included source code.
-
-> This branch is based on Flutter version [3.35.7](https://github.com/flutter/flutter/commit/adc901062556672b4138e18a4dc62a4be8f4b3c2).
->
-> For information on version planning and branch strategy, see: [Flutter OH Version Planning and Branch Strategy](https://gitcode.com/openharmony-tpc/flutter_flutter/wiki/Flutter-OH%E7%89%88%E6%9C%AC%E6%BC%94%E8%BF%9B%E8%A7%84%E5%88%92%E5%92%8C%E5%88%86%E6%94%AF%E7%AD%96%E7%95%A5.md)
+> For information on version planning and branch strategy, see: [Flutter OH Version Planning and Branch Strategy](https://gitcode.com/CPF-Flutter/flutter_flutter/wiki/Flutter-OH%E7%89%88%E6%9C%AC%E6%BC%94%E8%BF%9B%E8%A7%84%E5%88%92%E5%92%8C%E5%88%86%E6%94%AF%E7%AD%96%E7%95%A5.md)
 
 ## Repository Structure
 
