@@ -23,8 +23,10 @@ This version is an OpenHarmony version based on Flutter 3.27.4. This version sup
 Dec 25, 2025
 
 ## Version Compatibility
-- OpenHarmony API20
-- Flutter SDK: 3.27.4-ohos-1.0.2 (Due to Flutter version parsing rules, to avoid version comparison failures, it will display as 3.27.5-ohos-1.0.2)
+- Minimum Engine Build API: **OpenHarmony API 20**
+- Target App Build API: **OpenHarmony API 20**
+- Minimum App Runtime API: **OpenHarmony API 12**
+- Flutter SDK: **3.27.4-ohos-1.0.2** (Due to Flutter version parsing rules, to avoid version comparison failures, it will display as 3.27.5-ohos-1.0.2)
 
 ## Changelog
 - [3.27.4-ohos-1.0.2](../CHANGELOG_OHOS.md)
