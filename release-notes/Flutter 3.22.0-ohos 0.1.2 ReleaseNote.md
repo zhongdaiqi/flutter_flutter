@@ -11,9 +11,10 @@ OpenHarmony API16
 2025年4月15日
 
 ## 版本配套
-- ROM: 205.0.0.150
-- IDE: DevEco Studio 5.0.11.100
-- Flutter SDK: 3.22.0-ohos-0.1.2
+- 引擎构建最低要求 API：**OpenHarmony API 16**
+- 应用构建目标 API：**OpenHarmony API 16**
+- 应用最低运行 API：**OpenHarmony API 12**
+- Flutter SDK：**3.22.0-ohos-0.1.2**
 
 ## 赋能文档
 - [文档链接](https://gitcode.com/openharmony-tpc/flutter_samples/tree/master/ohos/docs)

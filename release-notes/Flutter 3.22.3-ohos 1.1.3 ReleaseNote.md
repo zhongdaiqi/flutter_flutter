@@ -42,8 +42,10 @@
 ---
 
 ### 兼容性与配套
-- OpenHarmony API 20
-- Flutter SDK: 3.22.3-ohos-1.1.3（版本显示为3.22.4-ohos-1.1.3，确保解析兼容）
+- 引擎构建最低要求 API：**OpenHarmony API 20**
+- 应用构建目标 API：**OpenHarmony API 20**
+- 应用最低运行 API：**OpenHarmony API 12**
+- Flutter SDK：**3.22.3-ohos-1.1.3**（版本显示为3.22.4-ohos-1.1.3，确保解析兼容）
 
 ---
 

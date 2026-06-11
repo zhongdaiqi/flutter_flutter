@@ -24,9 +24,10 @@ OpenHarmony API16
 April 28, 2025
 
 ## Version Support
-- ROM: 5.0.0.150
-- IDE: DevEco Studio 5.0.11.100
-- Flutter SDK: 3.22.0-ohos-1.0.0
+- Minimum Engine Build API: **OpenHarmony API 16**
+- Target App Build API: **OpenHarmony API 16**
+- Minimum App Runtime API: **OpenHarmony API 12**
+- Flutter SDK: **3.22.0-ohos-1.0.0**
 
 ## Changelog
 - [5.1.0.403](../CHANGELOG.md)
