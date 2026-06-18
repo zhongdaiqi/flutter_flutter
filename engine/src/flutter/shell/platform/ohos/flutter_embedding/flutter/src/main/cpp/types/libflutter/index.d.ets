@@ -545,5 +545,3 @@ export const nativeSetQosOnLowMemory: (nativeShellHolderId: number, lowMemoryLev
 export const nativeSetAnimationStatus: (nativeShellHolderId: number, animationStatus: number) => void;
 
 export const nativeNotifyPageChanged: (pageName: string, pageNameLen: number, windowID: number) => number;
-
-export const nativeLTPODispatchHighFrameRate: (nativeShellHolderId: number) => void;
