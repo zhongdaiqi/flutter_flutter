@@ -151,7 +151,7 @@ Appendix: [Flutter Third-Party Library Adaptation Program](https://docs.qq.com/s
 
 ## FAQs
 
-1. The emulator can be only debugged on macOS (ARM64).
+1. The emulator supports debugging on macOS (ARM64) and Windows (x64), but not macOS (x86). When running the emulator on Windows (x64), white screen or crashes may occur, and Vulkan is not yet supported. You can try disabling Impeller.
 
 2. After switching to **FLUTTER_STORAGE_BASE_URL**, you need to delete the **\<flutter\>/bin/cache** directory and execute **flutter clean** in the project before running the project.
 
@@ -268,3 +268,4 @@ Appendix: [Flutter Third-Party Library Adaptation Program](https://docs.qq.com/s
          ```
 
 Reference: [FAQs] (https://gitcode.com/openharmony-tpc/flutter_samples/blob/master/ohos/docs/08_FAQ/README_EN.md)
+
