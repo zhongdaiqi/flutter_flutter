@@ -23,9 +23,9 @@ Flutter SDK 仓库
   Windows环境下flutter工程和依赖的插件工程需要在同一个磁盘。
 
 ### 环境配置
-  
+
   请从[OpenHarmony SDK](https://developer.huawei.com/consumer/cn/develop)下载配套开发工具。
-   
+
   类Unix系统（Linux、Mac）下可直接参照配置，Windows系统请在“环境变量配置”中添加配置。
 
 1. 配置OpenHarmony SDK和环境变量。
@@ -152,7 +152,7 @@ Flutter SDK 仓库
 
 ## 常见问题
 
-1. 模拟器调试只支持Mac(arm64)，还不支持Mac(x86)和Windows。
+1. 模拟器调试支持Mac(arm64)和Windows(x64)，还不支持Mac(x86)。模拟器在Windows(x64)上运行时可能出现白屏、崩溃等现象，且暂不支持vulkan，可尝试关闭Impeller。
 
 2. 切换FLUTTER_STORAGE_BASE_URL后需删除\<flutter\>/bin/cache目录，并在项目中执行flutter clean后再运行。
 
@@ -170,7 +170,7 @@ Flutter SDK 仓库
    解决方案：关闭全局日志，只打开自己领域的日志。  
 
    步骤一： 关闭所有领域的日志打印（部分特殊日志无法关闭）。
-     
+   
    ```
     hdc shell hilog -b X
    ```
@@ -218,7 +218,7 @@ Flutter SDK 仓库
 10. 配置环境完成后执行 flutter 命令 出现闪退。  
 
     解决方案：windows环境中添加git环境变量配置。  
-      
+    
     ```
       export PATH=<git path>/cmd:$PATH
     ```
@@ -254,7 +254,7 @@ Flutter SDK 仓库
 13. 执行 `flutter build hap` 报错。
     
     解决方案：打开 deveco 安装路径 D:\DevEco Studio\tools\hvigor\hvigor-ohos-plugin\src\model\module 下的 core-module-model-impl.js，修改 findBelongProjectPath 方法（需要管理员权限，可另存为后替换）。
-      
+    
       ```
       findBelongProjectPath(e) {
          if (e === path_1.default.dirname(e)) {
@@ -282,6 +282,6 @@ Flutter SDK 仓库
       ```
        Oops; flutter has exited unexpectedly: "PathNotFoundException: Cannot open file, path = 'D:\code\.ohos\build-profile.json5' (OS Error: 系统找不到指定的文件。，error = 2)".
        A crash report has been written to D:\code\flutter_01.log.
-      ``` 
+      ```
 
 [更多FAQ](https://gitcode.com/openharmony-tpc/flutter_samples/blob/master/ohos/docs/08_FAQ/README.md)
