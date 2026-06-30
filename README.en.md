@@ -193,7 +193,7 @@ You can learn more about our adaptation of Flutter for OpenHarmony in the [Flutt
 
 
     Please create the file `.npmrc` in the user directory `~`. For this configuration, please refer to [DevEco Studio official documentation](https://developer.harmonyos.com/cn/docs/documentation/doc-guides-V3/environment_config -0000001052902427-V3), the edited content is as follows:
-
+    
     ```
      registry=https://repo.huaweicloud.com/repository/npm/
      @ohos:registry=https://repo.harmonyos.com/npm/
@@ -313,7 +313,7 @@ You can learn more about our adaptation of Flutter for OpenHarmony in the [Flutt
       ```
 
 19. White screen, crashes, or similar issues occur when running the emulator.
-    1. The emulator only supports Mac (arm64) and does not yet support Mac (x86) or Windows.
+    1. The emulator supports debugging on macOS (ARM64) and Windows (x64), but not macOS (x86).
     2. Since the emulator does not currently support Vulkan, please try following the steps in section 2.1. Disable Impeller and try again.
 
 20. Compilation or runtime failure in Flutter profile mode
