@@ -160,6 +160,10 @@ static napi_value Init(napi_env env, napi_value exports) {
           "nativeLookupCallbackInformation",
           flutter::PlatformViewOHOSNapi::nativeLookupCallbackInformation),
       DECLARE_NAPI_FUNCTION(
+          "nativeLookupCallbackInformationBigInt",
+          flutter::PlatformViewOHOSNapi::
+              nativeLookupCallbackInformationBigInt),
+      DECLARE_NAPI_FUNCTION(
           "nativeUnicodeIsEmoji",
           flutter::PlatformViewOHOSNapi::nativeUnicodeIsEmoji),
       DECLARE_NAPI_FUNCTION(
@@ -229,6 +233,9 @@ static napi_value Init(napi_env env, napi_value exports) {
       DECLARE_NAPI_FUNCTION(
           "nativeNotifyPageChanged",
           flutter::PlatformViewOHOSNapi::nativeNotifyPageChanged),
+      DECLARE_NAPI_FUNCTION(
+          "nativeLTPODispatchHighFrameRate",
+          flutter::PlatformViewOHOSNapi::nativeLTPODispatchHighFrameRate),
   };
 
   FML_DLOG(INFO) << "Init NAPI size=" << sizeof(desc) / sizeof(desc[0]);

@@ -45,6 +45,7 @@ struct DecompressResult {
   SkImageInfo image_info;
   std::optional<SkImageInfo> resize_info = std::nullopt;
   std::string decode_error;
+  int ohosColorSpace = -1;
 };
 
 class ImageDecoderImpeller final : public ImageDecoder {
@@ -88,7 +89,8 @@ class ImageDecoderImpeller final : public ImageDecoder {
       const SkImageInfo& image_info,
       const std::shared_ptr<SkBitmap>& bitmap,
       const std::optional<SkImageInfo>& resize_info,
-      const std::shared_ptr<const fml::SyncSwitch>& gpu_disabled_switch);
+      const std::shared_ptr<const fml::SyncSwitch>& gpu_disabled_switch,
+      const int colorspace);
 
   /// @brief Create a texture from the provided bitmap.
   /// @param context     The Impeller graphics context.
@@ -112,7 +114,8 @@ class ImageDecoderImpeller final : public ImageDecoder {
       const std::shared_ptr<impeller::Context>& context,
       const std::shared_ptr<impeller::DeviceBuffer>& buffer,
       const SkImageInfo& image_info,
-      const std::optional<SkImageInfo>& resize_info);
+      const std::optional<SkImageInfo>& resize_info,
+      const int colorspace);
 
   FML_DISALLOW_COPY_AND_ASSIGN(ImageDecoderImpeller);
 };

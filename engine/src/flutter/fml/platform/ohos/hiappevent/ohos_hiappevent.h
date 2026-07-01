@@ -33,6 +33,10 @@ using SetReportEventFunc = int (*)(HiAppEvent_Processor* processor,
 using AddFunc = int64_t (*)(HiAppEvent_Processor* processor);
 
 using DestroyProcessor = void (*)(HiAppEvent_Processor* processor);
+
+using ReportFrameworkMemAnomaly = void(*)(int32_t fwType,
+                                          const char* fwVer, const char* description);
+
 using StartAsyncTraceExFunc = void (*)(uint64_t level,
                                        const char* name,
                                        int32_t taskId,
@@ -78,6 +82,10 @@ extern std::atomic<int> ScrollStatus;
 extern std::atomic<uint64_t> scroll_start_frame_;
 extern std::atomic<uint64_t> scroll_end_frame_;
 
+// Scroll start/end UTC time (milliseconds since epoch)
+extern std::atomic<int64_t> scroll_start_time_utc_ms;
+extern std::atomic<int64_t> scroll_end_time_utc_ms;
+
 // Last frame number observed by rasterizer (atomic)
 extern std::atomic<uint64_t> last_frame_number_;
 
@@ -89,6 +97,8 @@ class OhosHiappEventDDL {
   void Init(void);
 
   static std::shared_ptr<OhosHiappEventDDL> GetInstance(void);
+
+  static const char* GetFlutterVersion();
 
   void ReportJANKEvent(const MissedFrameInfo& missed_frame_info);
 
@@ -110,6 +120,8 @@ class OhosHiappEventDDL {
   void OnScrollStart();
   void OnScrollEndAndFlush();
 
+  void ReportMemoryUsage(int64_t oldUsed, int64_t newUsed);
+
  private:
   int WriteSingleFrame(void);
 
@@ -125,6 +137,8 @@ class OhosHiappEventDDL {
   SetReportEventFunc setReportEventFunc_ = nullptr;
   AddFunc addFunc_ = nullptr;
   DestroyProcessor destroyProcessor_ = nullptr;
+  ReportFrameworkMemAnomaly reportFrameworkMemAnomaly_ = nullptr;
+
   StartAsyncTraceExFunc startAsyncTraceExFunc_ = nullptr;
   FinishAsyncTraceExFunc finishAsyncTraceExFunc_ = nullptr;
 

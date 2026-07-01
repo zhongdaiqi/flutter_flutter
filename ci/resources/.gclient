@@ -9,6 +9,9 @@ solutions = [
     "name": ".",
     "url": "https://gitcode.com/openharmony-tpc/flutter_flutter.git",
     "safesync_url": "",
+    "custom_vars": {
+      "download_emsdk": True,
+    },
     "custom_deps": {
       "engine/src/flutter/prebuilts/emsdk": "/home/tools/Flutter/repo/emsdk@2514ec738de72cebbba7f4fdba0cf2fabcb779a5",
       "engine/src/flutter/third_party/abseil-cpp": "/home/tools/Flutter/repo/abseil-cpp@ff6504dc527b25fef0f3c531e7dba0ed6b69c162",
@@ -79,7 +82,7 @@ solutions = [
       "engine/src/flutter/third_party/rapidjson": "/home/tools/Flutter/repo/rapidjson@ef3564c5c8824989393b87df25355baf35ff544b",
       "engine/src/flutter/third_party/re2": "/home/tools/Flutter/repo/re2@c84a140c93352cdabbfb547c531be34515b12228",
       "engine/src/flutter/third_party/shaderc": "/home/tools/Flutter/repo/shaderc@37e25539ce199ecaf19fb7f7d27818716d36686d",
-      "engine/src/flutter/third_party/skia": "/home/tools/Flutter/repo/fluttertpc_skia@302d699a100e1317b54bff76ec7157df7c431913",
+      "engine/src/flutter/third_party/skia": "/home/tools/Flutter/repo/fluttertpc_skia@415cf7316f24321810e4008eed42a6166822fe42",
       "engine/src/flutter/third_party/sqlite": "/home/tools/Flutter/repo/sqlite@0f61bd2023ba94423b4e4c8cfb1a23de1fe6a21c",
       "engine/src/flutter/third_party/swiftshader": "/home/tools/Flutter/repo/fluttertpc_swiftshader@1d62dd49e04056e5ad006821d1ee38e8358cef7a",
       "engine/src/flutter/third_party/vulkan-deps": "/home/tools/Flutter/repo/fluttertpc_vulkan-deps@8739b8400449c9c4d96862aa7e3863a0a58637cf",

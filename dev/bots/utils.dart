@@ -18,6 +18,7 @@ import 'package:file/local.dart';
 import 'package:meta/meta.dart';
 import 'package:path/path.dart' as path;
 
+import 'ohos_platform_config.dart';
 import 'run_command.dart';
 import 'tool_subsharding.dart';
 
@@ -433,6 +434,11 @@ Future<void> runDartTest(
   List<String>? tags,
   bool runSkipped = false,
 }) async {
+  // OHOS CI always collects metrics for JSON report export.
+  if (isOhosCi) {
+    collectMetrics = true;
+  }
+
   // TODO(matanlurey): Consider Platform.numberOfProcessors instead.
   // See https://github.com/flutter/flutter/issues/161399.
   int cpus = 2;
@@ -490,8 +496,21 @@ Future<void> runDartTest(
   final TestFileReporterResults test = TestFileReporterResults.fromFile(
     metricFile,
   ); // --file-reporter name
-  final File info = fileSystem.file(path.join(flutterRoot, 'error.log'));
-  info.writeAsStringSync(json.encode(test.errors));
+
+  if (isOhosCi) {
+    final Directory ohosOutputDir = fileSystem.directory(path.join(flutterRoot, 'test_output'));
+    if (!ohosOutputDir.existsSync()) {
+      ohosOutputDir.createSync();
+    }
+    final File ohosErrorLog = fileSystem.file(path.join(ohosOutputDir.path, 'error_$suffix.log'));
+    ohosErrorLog.writeAsStringSync(json.encode(test.errors));
+    if (metricFile.existsSync()) {
+      metricFile.copySync(path.join(ohosOutputDir.path, 'metrics_$suffix.json'));
+    }
+  } else {
+    final File info = fileSystem.file(path.join(flutterRoot, 'error.log'));
+    info.writeAsStringSync(json.encode(test.errors));
+  }
 
   if (collectMetrics) {
     try {
@@ -502,8 +521,21 @@ Future<void> runDartTest(
       }
       if (testList.isNotEmpty) {
         final String testJson = json.encode(testList);
-        final File testResults = fileSystem.file(path.join(flutterRoot, 'test_results.json'));
-        testResults.writeAsStringSync(testJson);
+        if (isOhosCi) {
+          final Directory ohosOutputDir = fileSystem.directory(
+            path.join(flutterRoot, 'test_output'),
+          );
+          if (!ohosOutputDir.existsSync()) {
+            ohosOutputDir.createSync();
+          }
+          final File ohosTestResults = fileSystem.file(
+            path.join(ohosOutputDir.path, 'test_results_$suffix.json'),
+          );
+          ohosTestResults.writeAsStringSync(testJson);
+        } else {
+          final File testResults = fileSystem.file(path.join(flutterRoot, 'test_results.json'));
+          testResults.writeAsStringSync(testJson);
+        }
       }
     } on fs.FileSystemException catch (e) {
       print('Failed to generate metrics: $e');
@@ -545,6 +577,7 @@ Future<void> runFlutterTest(
   final File metricFile = fileSystem.systemTempDirectory.childFile('metrics_$suffix.json');
   final List<String> args = <String>[
     'test',
+    if (isOhosCi) '--no-pub',
     '--reporter=expanded',
     '--file-reporter=json:${metricFile.path}',
     if (shuffleTests && !_isRandomizationOff) '--test-randomize-ordering-seed=$shuffleSeed',
@@ -587,7 +620,16 @@ Future<void> runFlutterTest(
   // TODO(godofredoc): Ensure metricFile is parsed and aggregated before deleting.
   // https://github.com/flutter/flutter/issues/146003
   if (!dryRun) {
-    metricFile.deleteSync();
+    if (isOhosCi && metricFile.existsSync()) {
+      final Directory ohosOutputDir = fileSystem.directory(path.join(flutterRoot, 'test_output'));
+      if (!ohosOutputDir.existsSync()) {
+        ohosOutputDir.createSync();
+      }
+      metricFile.copySync(path.join(ohosOutputDir.path, 'metrics_$suffix.json'));
+    }
+    if (metricFile.existsSync()) {
+      metricFile.deleteSync();
+    }
   }
 
   if (outputChecker != null) {
@@ -740,15 +782,24 @@ Future<void> _runFromList(
 /// Returns null if the contents are good. Returns a string if they are bad.
 /// The string is an error message.
 Future<String?> verifyVersion(File file) async {
-  final RegExp pattern = RegExp(r'^(\d+)\.(\d+)\.(\d+)((-\d+\.\d+)?\.pre([-\.]\d+)?)?$');
+  // Upstream Flutter version strings (e.g. 1.2.3, 1.2.3-4.5.pre).
+  final RegExp upstreamPattern = RegExp(r'^(\d+)\.(\d+)\.(\d+)((-\d+\.\d+)?\.pre([-\.]\d+)?)?$');
+  // OHOS fork version strings (e.g. 3.35.8-ohos-0.0.3, 3.22.1-ohos-1.0.0).
+  // Requires the -ohos-A.B.C sub-version; bare "X.Y.Z-ohos" is invalid.
+  final RegExp ohosPattern = RegExp(r'^(\d+)\.(\d+)\.(\d+)-ohos-\d+\.\d+\.\d+(-[a-zA-Z0-9.]+)?$');
   if (!file.existsSync()) {
     return 'The version logic failed to create the Flutter version file.';
   }
-  final String version = await file.readAsString();
+  final String raw = await file.readAsString();
+  // Allow a trailing newline in the version file, but no other whitespace.
+  final String version = raw.replaceAll(RegExp(r'[\r\n]+$'), '');
+  if (version.trim() != version) {
+    return 'The version logic generated an invalid version string: "$version".';
+  }
   if (version == '0.0.0-unknown') {
     return 'The version logic failed to determine the Flutter version.';
   }
-  if (!version.contains(pattern)) {
+  if (!upstreamPattern.hasMatch(version) && !ohosPattern.hasMatch(version)) {
     return 'The version logic generated an invalid version string: "$version".';
   }
   return null;

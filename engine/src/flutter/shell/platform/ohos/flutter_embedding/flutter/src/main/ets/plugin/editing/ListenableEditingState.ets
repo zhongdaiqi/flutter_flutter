@@ -864,11 +864,7 @@ export class ListenableEditingState {
     if (docSelEnd > len) {
       docSelEnd = len;
     }
-    if (docSelStart > docSelEnd) {
-      const swapHold = docSelStart;
-      docSelStart = docSelEnd;
-      docSelEnd = swapHold;
-    }
+
     this.mSelectionStartCache = docSelStart;
     this.mSelectionEndCache = docSelEnd;
   }
@@ -1262,6 +1258,10 @@ export class ListenableEditingState {
    * Handles insertion of final text from the input method.
    * @param text - The text to insert
    * @param options - Optional policy for preview commit (e.g. English preview range + suffix). Applied by caller.
+   *
+   * Selection cache before replace: at most one if/else-if arm updates mSelection* (explicit preview, non-empty preview span without
+   * candidateBridgeBeforePreview, or BMP CJK + collapsed preview span when PreviewTextStringMerge.getFullBufferPinyinRangeIfPureLatin accepts
+   * the editable). candidateBridgeBeforePreview leaves mSelection* unchanged here; replace uses the bridge-specific start/end mapping below.
    */
   handleInsertTextEvent(text: string, options?: PreviewInsertOptions): void {
     const notifySnap = this.captureEditingSnapshot();
@@ -1297,6 +1297,8 @@ export class ListenableEditingState {
     const bridgeBeforePinyin = candidateBridgeBeforePreview
       ? this.mStringCache.substring(selectionMin, previewLeftIdx)
       : '';
+    // Selection cache priority: explicit preview range > non-empty preview > full-buffer pinyin (CJK insert + collapsed preview)
+    // candidateBridgeBeforePreview path handles leading CJK before pinyin segment marker
     // When finishTextPreview commits with retainSpan, do not overwrite mSelection with [leftIdx,rightIdx): that was only needed
     // as replace bounds; forcing [2,6) makes post-replace caret jump to span end and breaks prefix caret + delete.
     if (usedExplicitPreviewRange) {
@@ -1312,8 +1314,20 @@ export class ListenableEditingState {
       // at preview left edge sel==leftIdx breaks old check → replace(leftIdx,leftIdx) zero-width, preview remains, suggestions jump to end.
       this.mSelectionStartCache = previewLeftIdx;
       this.mSelectionEndCache = previewRightIdx;
+    } else if (
+      !usedExplicitPreviewRange &&
+      !candidateBridgeBeforePreview &&
+      ListenableEditingState.isBmpCjkOnlyInsert(text) &&
+      previewLeftIdx >= previewRightIdx
+    ) {
+      const fullRun = PreviewTextStringMerge.getFullBufferPinyinRangeIfPureLatin(this.mStringCache);
+      if (fullRun !== null) {
+        this.mSelectionStartCache = fullRun.start;
+        this.mSelectionEndCache = fullRun.end;
+      }
     }
 
+    // replace bounds: explicit preview > bridge path > selection min/max from cache
     let start: number;
     let end: number;
     let insertPayload = text;
@@ -1742,9 +1756,6 @@ export class ListenableEditingState {
     // Preview span / delta paths can leave mSelection* past mStringCache.length; getOffsetBefore throws RangeError.
     this.clampDocumentSelectionToCache();
 
-    // Preview span / delta paths can leave mSelection* past mStringCache.length; getOffsetBefore throws RangeError.
-    this.clampDocumentSelectionToCache();
-
     let start =
       this.mSelectionStartCache < this.mSelectionEndCache ? this.mSelectionStartCache : this.mSelectionEndCache;
     let end = this.mSelectionStartCache > this.mSelectionEndCache ? this.mSelectionStartCache : this.mSelectionEndCache;
@@ -1920,6 +1931,8 @@ export class ListenableEditingState {
   handleMoveCursorEvent(direction: inputMethod.Direction): void {
     switch (direction) {
       case inputMethod.Direction.CURSOR_LEFT:
+        this.moveCursorLeftWithoutKeySimulation();
+        break;
       case inputMethod.Direction.CURSOR_RIGHT:
       case inputMethod.Direction.CURSOR_UP:
       case inputMethod.Direction.CURSOR_DOWN:
@@ -1930,6 +1943,22 @@ export class ListenableEditingState {
       default:
         Log.w(TAG, `"Unknown cursor movement direction: ${direction}"`);
         break;
+    }
+  }
+
+  /**
+   * Moves the collapsed cursor one character left in mStringCache / selection cache.
+   * Used when IME calls moveCursor(LEFT) after paired-symbol insertText; does not
+   * simulate ArrowLeft (avoids Shift+Left expand-selection while Shift is held).
+   */
+  private moveCursorLeftWithoutKeySimulation(): void {
+    const selStart = this.mSelectionStartCache;
+    const selEnd = this.mSelectionEndCache;
+    if (selStart == selEnd && selStart > 0) {
+      const newOffset = FlutterTextUtils.getOffsetBefore(this.mStringCache, selStart);
+      this.setSelectionStart(newOffset);
+      this.setSelectionEnd(newOffset);
+      this.notifyListenersIfNeeded(false, true, false);
     }
   }
 
@@ -2019,9 +2048,6 @@ export class ListenableEditingState {
    * @param action - The action to perform
    */
   handleExtendActionEvent(action: inputMethod.ExtendAction) : void {
-    // Clamp selection to valid range before any action to prevent logic errors
-    this.clampDocumentSelectionToCache();
-
     switch (action) {
       case inputMethod.ExtendAction.SELECT_ALL:
         // select all text from the start to end, and notify cursor state updating
@@ -2117,36 +2143,6 @@ export class ListenableEditingState {
     if (isShiftPressed) { // simulate shift-key up
       this.sendSimulatedKeyEvent(new SimulateKeyEvent(KeyCode.KEYCODE_SHIFT_LEFT, SimulatedKeyText.KEY_SHIFT), true);
     }
-  }
-
-  /**
-   * Clamp selection to [0, mStringCache.length]. When IME clears preview the session ends and flush must not write mSelection*
-   * at stale lengths or later TextEditState from syncEditingState throws invalid selection.
-   * Preview span / delta paths can leave mSelection* past mStringCache.length; getOffsetBefore throws RangeError.
-   */
-  private clampDocumentSelectionToCache(): void {
-    const len = this.mStringCache.length;
-    let docSelStart = this.mSelectionStartCache;
-    let docSelEnd = this.mSelectionEndCache;
-    if (docSelStart < 0) {
-      docSelStart = 0;
-    }
-    if (docSelEnd < 0) {
-      docSelEnd = 0;
-    }
-    if (docSelStart > len) {
-      docSelStart = len;
-    }
-    if (docSelEnd > len) {
-      docSelEnd = len;
-    }
-    if (docSelStart > docSelEnd) {
-      const swapHold = docSelStart;
-      docSelStart = docSelEnd;
-      docSelEnd = swapHold;
-    }
-    this.mSelectionStartCache = docSelStart;
-    this.mSelectionEndCache = docSelEnd;
   }
 
   /**

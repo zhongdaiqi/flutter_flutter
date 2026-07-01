@@ -18,6 +18,7 @@ import Log from '../../../util/Log';
 import DartExecutor from '../dart/DartExecutor';
 import FlutterManager from '../../ohos/FlutterManager';
 import Any from '../../../plugin/common/Any';
+import DisplayMetricsChannel from './DisplayMetricsChannel';
 
 /**
  * Navigator activity types.
@@ -47,13 +48,14 @@ export default class NavigationChannel {
   /**
    * Constructs a new NavigationChannel instance.
    * @param dartExecutor - The DartExecutor for sending messages to Dart
+   * @param displayMetricsChannel - The DisplayMetricsChannel for DPI state management
    * @param context - The application context
    */
-  constructor(dartExecutor: DartExecutor, context?: common.Context) {
+  constructor(dartExecutor: DartExecutor, context?: common.Context, displayMetricsChannel?: DisplayMetricsChannel) {
     this.channel = new MethodChannel(dartExecutor, "flutter/navigation", JSONMethodCodec.INSTANCE);
     // Provide a default handler that returns an empty response to any messages
     // on this channel.
-    this.channel.setMethodCallHandler(new NavigationCallback(dartExecutor, context));
+    this.channel.setMethodCallHandler(new NavigationCallback(dartExecutor, context, displayMetricsChannel));
   }
 
   /**
@@ -107,10 +109,12 @@ class NavigationCallback implements MethodCallHandler {
   private static TAG = "NavigationChannel";
   private dartExecutor: DartExecutor;
   private context?: common.Context;
+  private displayMetricsChannel?: DisplayMetricsChannel;
 
-  constructor(dartExecutor: DartExecutor, context?: common.Context) {
+  constructor(dartExecutor: DartExecutor, context?: common.Context, displayMetricsChannel?: DisplayMetricsChannel) {
     this.dartExecutor = dartExecutor;
     this.context = context;
+    this.displayMetricsChannel = displayMetricsChannel;
   }
 
   onMethodCall(call: MethodCall, result: MethodResult) {
@@ -119,6 +123,11 @@ class NavigationCallback implements MethodCallHandler {
     Log.i(NavigationCallback.TAG, "method = " + method);
     switch (method) {
       case "reportNavigatorActivity": {
+        if (args == null || !(args instanceof Map)) {
+          Log.e(NavigationCallback.TAG, "reportNavigatorActivity, args is null or not a Map");
+          result.success(null);
+          break;
+        }
         let activity: string = args.get("activity");
         if (activity === undefined) {
           Log.e(NavigationCallback.TAG, "reportNavigatorActivity, incorrect parameter activity");
@@ -132,6 +141,12 @@ class NavigationCallback implements MethodCallHandler {
         }
         let navigatorStatus: NavigatorStatus = this.getNavigatorStatusFromValue(status);
 
+        let routeName: string = args.get("routeName");
+        if (status === 'start' && routeName !== this.displayMetricsChannel?.getCurrentUri()) {
+ 	        this.displayMetricsChannel?.setCurrentUri('');
+ 	        this.displayMetricsChannel?.setCustomDpiActive(false);
+ 	      }
+
         let navigatorActivity: NavigatorActivity = this.getNavigatorActivityFromValue(activity);
         switch(navigatorActivity) {
           case NavigatorActivity.PUSH:
@@ -143,11 +158,13 @@ class NavigationCallback implements MethodCallHandler {
         }
         break;
       }
-      default: {
-        this.notifyPageChanged(call);
-        result.success(null);
-        break;
-      }
+      case "routeInformationUpdated":
+ 	      this.notifyPageChanged(call);
+ 	      result.success(null);
+ 	      break;
+ 	    default:
+ 	      result.success(null);
+ 	      break;
     }
   }
 
@@ -163,6 +180,12 @@ class NavigationCallback implements MethodCallHandler {
       return;
     }
 
+    // Skip notification if args is null or not a Map
+    if (call.args == null || !(call.args instanceof Map)) {
+      Log.e(NavigationCallback.TAG, "routeInformationUpdated args is null or not a Map, skip OHOS page change notification");
+      return;
+    }
+
     const argsMap = call.args as Map<string, string>;
     const currentUri: string = argsMap.get('uri') ?? '';
     const currentUriLen: number = currentUri.length;
@@ -174,6 +197,7 @@ class NavigationCallback implements MethodCallHandler {
       return;
     }
 
+    this.displayMetricsChannel?.setCurrentUri(currentUri);
     const notifyResult = this.dartExecutor.flutterNapi.NotifyPageChanged(currentUri, currentUriLen, windowId);
     // Return value: 0 means success, non-zero means error
     if (notifyResult == 0) {

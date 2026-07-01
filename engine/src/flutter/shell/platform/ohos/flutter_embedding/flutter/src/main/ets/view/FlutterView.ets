@@ -25,7 +25,9 @@ import { common } from '@kit.AbilityKit';
 import { deviceInfo } from '@kit.BasicServicesKit';
 import KeyEventChannel from '../embedding/engine/systemchannels/KeyEventChannel';
 import StatusBarClickChannel from '../embedding/engine/systemchannels/StatusBarClickChannel';
+import FlutterNapi, { LTPOSwitchState } from '../embedding/engine/FlutterNapi';
 import { commonEventManager, BusinessError } from '@kit.BasicServicesKit';
+import { AUTOFILL_SUPPORT_API } from '../plugin/editing/OhosAutoFillHelper';
 
 const TAG = "FlutterViewTag";
 const EVENT_BACK_PRESS = 'EVENT_BACK_PRESS';
@@ -115,7 +117,7 @@ export class ViewportMetrics {
       this.physicalViewInsetBottom === other.physicalViewInsetBottom &&
       this.physicalViewInsetLeft === other.physicalViewInsetLeft &&
       this.systemGestureInsetTop === other.systemGestureInsetTop &&
-      this.systemGestureInsetRight === other.systemGestureInsetRight &&
+        this.systemGestureInsetRight === other.systemGestureInsetRight &&
       this.systemGestureInsetBottom === other.systemGestureInsetBottom &&
       this.systemGestureInsetLeft === other.systemGestureInsetLeft &&
       this.physicalTouchSlop === other.physicalTouchSlop &&
@@ -287,8 +289,7 @@ export class FlutterView {
   private flutterEngine: FlutterEngine | null = null
   private id: string = ""
   private isActive: boolean = true
-  private dVModel: DVModel =
-    new DVModel("Stack", new DVModelParameters(), new DVModelEvents(), new DVModelChildren(), null);
+  private dVModel: DVModel | undefined = undefined;
   /** The wrapped builder for creating the view, or undefined if not set. */
   private wrapBuilder: WrappedBuilder<[Params]> | undefined = undefined;
   private platformView: PlatformView | undefined = undefined;
@@ -302,6 +303,8 @@ export class FlutterView {
   private mouseCursorPlugin?: MouseCursorPlugin;
   private textInputPlugin?: TextInputPlugin;
   private uiContext?: UIContext | undefined;
+  /** Page/component UIContext for autoFillManager; preferred over window UIContext. */
+  private autofillUiContext?: UIContext | undefined;
   private context: Context;
   private settings?: Settings;
   private mFirstFrameListeners: ArrayList<FirstFrameListener>;
@@ -310,7 +313,6 @@ export class FlutterView {
   private isFlutterUiPreload: boolean = false;
   private surfaceLifecycleToken: number = 0;
   private activeSurfaceLifecycleToken: number = 0;
-  private surfaceId: string = "0";
   private nodeController: EmbeddingNodeController = new EmbeddingNodeController();
   private platformViewSize: PlatformViewParas = new PlatformViewParas();
   private checkFullScreen: boolean = true;
@@ -332,6 +334,8 @@ export class FlutterView {
   private isDevicePixelRatioAdaptive: boolean = false;
   private lastHeight: number = 0;
   private statusBarClickSubscriber: commonEventManager.CommonEventSubscriber | null = null;
+
+  private ltpoSwitchState: LTPOSwitchState = LTPOSwitchState.NOT_INIT;
 
   /**
    * Constructs a new FlutterView instance.
@@ -472,6 +476,10 @@ export class FlutterView {
         const scale = customDensity / sysDensity;
         Log.i(TAG, "densityUpdateCallback: customDensity=" + customDensity + ", sysDensity=" +
           sysDensity + ", scale=" + scale);
+        const currentUri = this.flutterEngine?.getDisplayMetricsChannel()?.getCurrentUri() ?? '';
+        if (currentUri) {
+          this.flutterEngine?.getDisplayMetricsChannel()?.setCustomDpiActive(true);
+        }
         this.onDevicePixelRatioChange(scale);
       }
     } catch (e) {
@@ -583,6 +591,9 @@ export class FlutterView {
   }
   private windowTitleButtonRectChangeCallback = (data: window.TitleButtonRect) => {
     Log.i(TAG, "windowTitleButtonRectChangeCallback " + JSON.stringify(data));
+    // Clear padding before handling window decoration to allow recalculation
+    // This fixes the issue where safe area avoidance is not applied after exiting freeform multi-window mode
+    this.paddingTop = undefined;
     FlutterManager.getInstance().handleWindowDecorSafeArea(this.id, this.context);
   }
 
@@ -611,44 +622,12 @@ export class FlutterView {
   }
 
   /**
-   * Sets the surface ID for rendering.
-   * @param surfaceId - The surface ID
-   */
-  setSurfaceId(surfaceId: string): void {
-    this.surfaceId = surfaceId;
-  }
-
-  /**
-   * Gets the surface ID.
-   * @returns The surface ID
-   */
-  getSurfaceId(): string {
-    return this.surfaceId;
-  }
-  
-  /**
    * Gets the embedding node controller.
    * @deprecated since 3.7
    * @returns The EmbeddingNodeController instance
    */
   getEmbeddingNodeController(): EmbeddingNodeController {
     return this.nodeController;
-  }
-
-  /**
-   * Sets the wrapped builder for platform views.
-   * @param wrappedBuilder - The WrappedBuilder instance
-   */
-  setWrappedBuilder(wrappedBuilder: WrappedBuilder<[Params]>) {
-    this.wrapBuilder = wrappedBuilder;
-  }
-
-  /**
-   * Gets the wrapped builder.
-   * @returns The WrappedBuilder instance, or undefined if not set
-   */
-  getWrappedBuilder(): WrappedBuilder<[Params]> | undefined {
-    return this.wrapBuilder;
   }
 
   /**
@@ -674,6 +653,10 @@ export class FlutterView {
    */
   getPlatformViewSize(): PlatformViewParas {
     return this.platformViewSize;
+  }
+
+  setDVModel(model: DVModel) {
+    this.dVModel = model;
   }
 
   /**
@@ -753,7 +736,7 @@ export class FlutterView {
     if (accessibility.isOpenAccessibilitySync()) {
       this.flutterEngine?.getFlutterNapi()?.accessibilityStateChange(true);
     }
-    flutterEngine.getPlatformViewsController()?.attachToView(this);
+    this.dVModel = this.flutterEngine.getPlatformViewsController()?.getRootDvModel();
 
     let newArea: Area | null = {
       width: px2vp(this.displayInfo!.width),
@@ -767,6 +750,11 @@ export class FlutterView {
     this.onAreaChange(newArea, true);
 
     this.context.eventHub.on(EVENT_BACK_PRESS, () => {
+      /// [LTPO] Notifying the VSync signal may require a high frame rate.
+      if (this.ltpoSwitchState == LTPOSwitchState.ON) {
+        this.flutterEngine?.getFlutterNapi()?.LTPODispatchHighFrameRate();
+      }
+
       if (this?.getKeyboardHeight() == 0) {
         this.flutterEngine?.getNavigationChannel()?.popRoute();
       } else {
@@ -776,8 +764,14 @@ export class FlutterView {
 
     let windowId = this.mainWindow?.getWindowProperties()?.id ?? 0
     this.mouseCursorPlugin = new MouseCursorPlugin(windowId, this.flutterEngine?.getMouseCursorChannel()!);
+    if (this.uiContext === undefined) {
+      this.uiContext = this.tryGetUIContext();
+    }
     this.textInputPlugin = new TextInputPlugin(this.flutterEngine?.getTextInputChannel()!, this.id,
-      new KeyEventChannel(this.flutterEngine.dartExecutor));
+      new KeyEventChannel(this.flutterEngine.dartExecutor), this.uiContext);
+    if (this.uiContext !== undefined && this.autofillUiContext === undefined) {
+      this.applyAutofillUiContext(this.uiContext);
+    }
     this.flutterEngine.getPlatformViewsController()?.attachTextInputPlugin(this.textInputPlugin);
     this.statusBarClickChannel = new StatusBarClickChannel(flutterEngine.dartExecutor)
     this.keyboardManager = new KeyboardManager(flutterEngine, this.textInputPlugin!);
@@ -794,6 +788,11 @@ export class FlutterView {
     if (this.isSurfaceAvailableForRendering) {
       this.flutterEngine?.processPendingMessages();
     }
+
+    if (this.ltpoSwitchState == LTPOSwitchState.NOT_INIT) {
+      this.ltpoSwitchState = FlutterNapi.checkLTPOSwitchState() as LTPOSwitchState;
+    }
+
     hiTraceMeter.finishTrace("attachToFlutterEngine", 0);
   }
 
@@ -829,7 +828,7 @@ export class FlutterView {
     // Keep the controller -> TextInputPlugin link alive until the platform-view
     // hierarchy has been detached. This lets late blur/teardown callbacks clear
     // any physical PlatformView owner that is still active during shutdown.
-    this.flutterEngine?.getPlatformViewsController()?.detachFromView(this);
+    this.flutterEngine?.getPlatformViewsController()?.detachFromView();
     this.flutterEngine?.getPlatformViewsController()?.detachTextInputPlugin();
     this.flutterEngine = null;
     this.keyboardManager = null;
@@ -838,19 +837,57 @@ export class FlutterView {
   }
 
   /**
+   * Safely obtains UIContext. Before loadContent completes, getUIContext() may throw on some API levels.
+   */
+  private tryGetUIContext(): UIContext | undefined {
+    if (this.mainWindow == null) {
+      return undefined;
+    }
+    try {
+      return this.mainWindow.getUIContext();
+    } catch (error) {
+      Log.w(TAG, 'tryGetUIContext failed: ' + JSON.stringify(error));
+      return undefined;
+    }
+  }
+
+  /**
+   * Supplies the page/component UIContext that owns the XComponent. This should be used for
+   * autoFillManager so UIExtension shares the same UIContent instanceId as the Flutter surface.
+   */
+  setAutofillUiContext(source: string, uiContext: UIContext | undefined): void {
+    if (deviceInfo.sdkApiVersion < AUTOFILL_SUPPORT_API || uiContext === undefined) {
+      return;
+    }
+    this.autofillUiContext = uiContext;
+    this.applyAutofillUiContext(uiContext);
+  }
+
+  private applyAutofillUiContext(uiContext: UIContext): void {
+    if (deviceInfo.sdkApiVersion < AUTOFILL_SUPPORT_API) {
+      return;
+    }
+    this.textInputPlugin?.setAutofillUiContext(uiContext);
+  }
+
+  /**
    * Called when the window is created.
    * Initializes the UIContext and sends settings to Flutter.
    */
   onWindowCreated() {
     Log.d(TAG, "received onwindowCreated.");
-    let _UIContext = this.mainWindow?.getUIContext();
-    this.uiContext = _UIContext;
-    // Listen to route navigation (Flutter navigating to HarmonyOS native), soft keyboard management
-    uiObserver.on('routerPageUpdate', this.uiContext as UIContext, this.routerPageUpdateCallback);
-    uiObserver.on('densityUpdate', this.uiContext as UIContext, this.densityUpdateCallback);
-    this.sendSettings();
-    this.mainWindow?.on('windowTitleButtonRectChange', this.windowTitleButtonRectChangeCallback);
-    Log.d(TAG, "uiContext init and sendSettings finished.");
+    this.uiContext = this.tryGetUIContext();
+    if (this.uiContext !== undefined) {
+      // Listen to route navigation (Flutter navigating to HarmonyOS native), soft keyboard management
+      uiObserver.on('routerPageUpdate', this.uiContext, this.routerPageUpdateCallback);
+      uiObserver.on('densityUpdate', this.uiContext, this.densityUpdateCallback);
+      this.sendSettings();
+      if (this.autofillUiContext === undefined) {
+        this.applyAutofillUiContext(this.uiContext);
+      }
+      this.mainWindow?.on('windowTitleButtonRectChange', this.windowTitleButtonRectChangeCallback);
+      Log.d(TAG, "uiContext init and sendSettings finished.");
+    }
   }
 
   /**
@@ -878,7 +915,6 @@ export class FlutterView {
       this.isXComponentAttachedToEngine = true;
     }
     this.isSurfaceAvailableForRendering = true;
-    this.flutterEngine?.getPlatformViewsController()?.attachToView(this);
     this.flutterEngine?.processPendingMessages();
     return this.activeSurfaceLifecycleToken;
   }
@@ -899,7 +935,7 @@ export class FlutterView {
       this.flutterEngine!!.getFlutterNapi().xComponentDetachFlutterEngine(this.id)
       this.isXComponentAttachedToEngine = false;
     }
-    this.flutterEngine?.getPlatformViewsController()?.detachFromView(this);
+    this.flutterEngine?.getPlatformViewsController()?.detachFromView();
     if (surfaceLifecycleToken == this.activeSurfaceLifecycleToken) {
       this.activeSurfaceLifecycleToken = 0;
     }
