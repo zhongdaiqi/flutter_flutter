@@ -1,9 +1,7 @@
 # Changelog
-## 6.1.1.389
-- fix: clamp text selection range to prevent RangeError in IME operations ([57fd6802](https://gitcode.com/openharmony-tpc/flutter_engine/commit/57fd6802cc62d5ebccef0b9597f933c589e6d09e?ref=oh-3.22.3-release&prId=1363))
-- 修复鼠标左右键按键异常 ([a794b243](https://gitcode.com/openharmony-tpc/flutter_engine/commit/a794b243a5e34f75b8709f6dfc84944a631ad9cc?ref=cherry-pick-mr-1351-1779081749800-auto&prId=1355))
-## 6.1.1.388
-- fix napi lookupcallbackinformation parameter type ([82709afd](https://gitcode.com/openharmony-tpc/flutter_engine/commit/82709afd83c35178f319fd6e0141e13b104ef1fa?ref=cherry-pick-mr-1341-1778729325084-auto&prId=1349))
+## 7.0.0.24
+- fix napi lookupcallbackinformation parameter type ([ccb3d654](https://gitcode.com/openharmony-tpc/flutter_engine/commit/ccb3d6543fad1c8894b442f311a153902ae6814e?ref=oh-3.22.3-dev&prId=1341))
+- 解决旋转屏幕锁定问题 ([55e17456](https://gitcode.com/openharmony-tpc/flutter_engine/commit/55e174563bf5cceb442b7c5a3516de8b273acfdb?ref=0506&prId=1334))
 ## 7.0.0.22
 - Fixed the issue where EventChannel.endOfStream() method did not trigger the onDone event in Dart ([bd76bd56](https://gitcode.com/openharmony-tpc/flutter_engine/commit/bd76bd56cec1c51a7cef938df8a49b074764c8bd?ref=fix_not_trigger_onDone_322&prId=1320))
 ## 6.1.1.385

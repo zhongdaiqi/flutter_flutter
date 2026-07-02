@@ -30,9 +30,9 @@
 
 ## 版本配套
 - 引擎构建最低要求 API：**OpenHarmony API 20**
-- 应用构建目标 API：**OpenHarmony API 20**
-- 应用最低运行 API：**OpenHarmony API 12**
-- Flutter SDK：**3.22.0-ohos-1.1.1**（由于flutter版本解析规则，为了避免版本比较解析失败，将显示为3.22.1-ohos-1.1.1）
+- 应用构建推荐适配 API：**OpenHarmony API 23**
+- 应用构建最低适配 API：**OpenHarmony API 20**
+- Flutter SDK: 3.22.0-ohos-1.1.1（由于flutter版本解析规则，为了避免版本比较解析失败，将显示为3.22.1-ohos-1.1.1）
 
 ## Changelog
 - [3.22.0-ohos-1.1.1](../CHANGELOG.md)
