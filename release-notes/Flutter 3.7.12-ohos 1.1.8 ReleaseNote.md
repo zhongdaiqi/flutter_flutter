@@ -34,7 +34,8 @@
 
 ## 版本配套
 - 引擎构建最低要求 API：**OpenHarmony API 20**
-- 应用构建目标 API：**OpenHarmony API 20**
+- 应用构建推荐适配 API：**OpenHarmony API 23**
+- 应用构建最低适配 API：**OpenHarmony API 20**
 - 应用最低运行 API：**OpenHarmony API 12**
 - Flutter SDK：**3.7.12-ohos-1.1.8**
 
