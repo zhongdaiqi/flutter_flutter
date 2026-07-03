@@ -63,8 +63,7 @@ void SemanticsBridge::UpdateFocusedNode() {
   auto focused_node = tree_.focused_node_;
 
   auto root_node = tree_.GetRootNode();
-  if (has_navigationed_ && root_node != nullptr) {
-    has_navigationed_ = false;
+  if (root_node != nullptr && tree_.DetectRouteChange()) {
     SendSemanticsEvent(
         root_node, ARKUI_ACCESSIBILITY_NATIVE_EVENT_TYPE_PAGE_CONTENT_UPDATE,
         nullptr);
@@ -114,9 +113,8 @@ void SemanticsBridge::SendSemanticsEvent(SemanticsNodeExtend* node,
   }
   if (provider_ohos_) {
     auto callback = [](int32_t errorCode) {
-      if (errorCode != 0) {
-        FML_DLOG(INFO) << "SendSemanticsEvent callback-> errorCode ="
-                       << errorCode;
+      if (errorCode != ARKUI_ACCESSIBILITY_NATIVE_RESULT_SUCCESSFUL) {
+        FML_LOG(ERROR) << "SendSemanticsEvent callback-> errorCode =" << errorCode;
       }
     };
     OH_ArkUI_SendAccessibilityAsyncEvent(provider_ohos_, event, callback);
@@ -134,9 +132,12 @@ int32_t SemanticsBridge::FindFocusNode(int32_t id,
                                        ArkUI_AccessibilityElementInfo* info) {
   auto node = tree_.FindFocusNode(id, focusType);
   if (node) {
-    node->FillElementInfo(info);
+    const bool accessibility_focus_maps_to_native_focused =
+        (focusType == ARKUI_ACCESSIBILITY_NATIVE_FOCUS_TYPE_ACCESSIBILITY);
+    node->FillElementInfo(info, accessibility_focus_maps_to_native_focused);
     return ARKUI_ACCESSIBILITY_NATIVE_RESULT_SUCCESSFUL;
   } else {
+    FML_LOG(ERROR) << "FindFocusNode failed, id:" << id << ", focusType:" << (int32_t)focusType;
     return ARKUI_ACCESSIBILITY_NATIVE_RESULT_FAILED;
   }
 }
@@ -147,9 +148,10 @@ int32_t SemanticsBridge::FindNextFocusNode(
     ArkUI_AccessibilityElementInfo* info) {
   auto node = tree_.FindNextFocusNode(id, direction);
   if (node) {
-    node->FillElementInfo(info);
+    node->FillElementInfo(info, true);
     return ARKUI_ACCESSIBILITY_NATIVE_RESULT_SUCCESSFUL;
   } else {
+    FML_LOG(ERROR) << "FindNextFocusNode failed, id:" << id << ", direction:" << (int32_t)direction;
     return ARKUI_ACCESSIBILITY_NATIVE_RESULT_FAILED;
   }
 }
@@ -161,6 +163,7 @@ int32_t SemanticsBridge::FillNodesWithSearchText(
   if (tree_.FillNodesWithSearchText(id, text, list)) {
     return ARKUI_ACCESSIBILITY_NATIVE_RESULT_SUCCESSFUL;
   } else {
+    FML_LOG(ERROR) << "FillNodesWithSearchText failed, id:" << id << ", text:" << (text ? text : "null");
     return ARKUI_ACCESSIBILITY_NATIVE_RESULT_FAILED;
   }
 }
@@ -172,6 +175,7 @@ int32_t SemanticsBridge::FillNodesWithSearch(
   if (tree_.FillNodesWithSearch(id, mode, list)) {
     return ARKUI_ACCESSIBILITY_NATIVE_RESULT_SUCCESSFUL;
   } else {
+    FML_LOG(ERROR) << "FillNodesWithSearch failed, id:" << id << ", mode:" << (int32_t)mode;
     return ARKUI_ACCESSIBILITY_NATIVE_RESULT_FAILED;
   }
 }
@@ -216,6 +220,7 @@ int32_t SemanticsBridge::GainAccessibilityFocus(int32_t id,
     }
     return ARKUI_ACCESSIBILITY_NATIVE_RESULT_SUCCESSFUL;
   } else {
+    FML_LOG(ERROR) << "GainAccessibilityFocus failed, id:" << id;
     return ARKUI_ACCESSIBILITY_NATIVE_RESULT_FAILED;
   }
 }
@@ -227,6 +232,7 @@ int32_t SemanticsBridge::GetAccessibilityNodeCursorPosition(int64_t elementId,
     *index = node->textSelectionBase;
     return ARKUI_ACCESSIBILITY_NATIVE_RESULT_SUCCESSFUL;
   } else {
+    FML_LOG(ERROR) << "GetAccessibilityNodeCursorPosition failed, elementId:" << elementId;
     return ARKUI_ACCESSIBILITY_NATIVE_RESULT_FAILED;
   }
 }

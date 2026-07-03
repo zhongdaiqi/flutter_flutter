@@ -26,6 +26,7 @@ import TextInputChannel from './systemchannels/TextInputChannel';
 import TextInputPlugin from '../../plugin/editing/TextInputPlugin';
 import PlatformChannel from './systemchannels/PlatformChannel';
 import SystemChannel from './systemchannels/SystemChannel';
+import SplitViewConfigSystemChannel from './systemchannels/SplitViewConfigSystemChannel';
 import MouseCursorChannel from './systemchannels/MouseCursorChannel';
 import DisplayMetricsChannel from './systemchannels/DisplayMetricsChannel';
 import RestorationChannel from './systemchannels/RestorationChannel';
@@ -80,6 +81,7 @@ export default class FlutterEngine implements EngineLifecycleListener {
   private platformChannel: PlatformChannel | null = null;
   private sensitiveContentChannel: SensitiveContentChannel  | null = null;
   private systemChannel: SystemChannel | null = null;
+  private splitViewConfigSystemChannel: SplitViewConfigSystemChannel | null = null;
   private mouseCursorChannel: MouseCursorChannel | null = null;
   private displayMetricsChannel: DisplayMetricsChannel | null = null;
   private restorationChannel: RestorationChannel | null = null;
@@ -145,14 +147,15 @@ export default class FlutterEngine implements EngineLifecycleListener {
     }
     //channel初始化
     this.lifecycleChannel = new LifecycleChannel(this.dartExecutor);
-    this.navigationChannel = new NavigationChannel(this.dartExecutor, context);
+    this.displayMetricsChannel = new DisplayMetricsChannel(this.dartExecutor, context);
+ 	  this.navigationChannel = new NavigationChannel(this.dartExecutor, context, this.displayMetricsChannel);
     this.textInputChannel = new TextInputChannel(this.dartExecutor);
     this.testChannel = new TestChannel(this.dartExecutor);
     this.platformChannel = new PlatformChannel(this.dartExecutor, this.flutterNapi);
     this.sensitiveContentChannel = new SensitiveContentChannel(this.dartExecutor);
     this.systemChannel = new SystemChannel(this.dartExecutor);
+    this.splitViewConfigSystemChannel = new SplitViewConfigSystemChannel(this.dartExecutor, context);
     this.mouseCursorChannel = new MouseCursorChannel(this.dartExecutor);
-    this.displayMetricsChannel = new DisplayMetricsChannel(this.dartExecutor, context);
     this.restorationChannel = new RestorationChannel(this.dartExecutor, waitForRestorationData);
     this.settingsChannel = new SettingsChannel(this.dartExecutor);
     this.localeChannel = new LocalizationChannel(this.dartExecutor);
@@ -274,6 +277,10 @@ export default class FlutterEngine implements EngineLifecycleListener {
    */
   getSystemChannel(): SystemChannel | null {
     return this.systemChannel;
+  }
+
+  getSplitViewConfigSystemChannel(): SplitViewConfigSystemChannel | null {
+    return this.splitViewConfigSystemChannel;
   }
 
   /**

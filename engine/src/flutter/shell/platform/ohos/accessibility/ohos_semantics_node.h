@@ -94,13 +94,18 @@ struct SemanticsNodeExtend : flutter::SemanticsNode {
   }
 
   ~SemanticsNodeExtend() {
-    OH_ArkUI_DestoryAccessibilityElementInfo(elementInfoOHOS);
+    if (elementInfoOHOS) {
+      OH_ArkUI_DestoryAccessibilityElementInfo(elementInfoOHOS);
+    }
   }
 
-  void FillElementInfo(ArkUI_AccessibilityElementInfo* info);
+  void FillElementInfo(ArkUI_AccessibilityElementInfo* info,
+                       bool accessibility_focus_maps_to_native_focused);
   void UpdateSelfElementInfo();
   void FillElementInfoWithId(ArkUI_AccessibilityElementInfo* info);
-  void FillElementInfoWithProperty(ArkUI_AccessibilityElementInfo* info);
+  void FillElementInfoWithProperty(
+      ArkUI_AccessibilityElementInfo* info,
+      bool accessibility_focus_maps_to_native_focused);
   void FillElementInfoWithContent(ArkUI_AccessibilityElementInfo* info);
   void FillElementInfoWithChildren(ArkUI_AccessibilityElementInfo* info);
   void FillElementInfoWithScroll(ArkUI_AccessibilityElementInfo* info);

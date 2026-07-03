@@ -48,6 +48,8 @@ void main() {
         '1.2.3.pre.1',
         '1.2.3-4.5.pre',
         '1.2.3-5.0.pre.12',
+        '3.35.8-ohos-0.0.3',
+        '3.22.1-ohos-1.0.0',
       ];
       for (final String version in valid_versions) {
         final File file = fileSystem.file('version');
@@ -70,6 +72,9 @@ void main() {
         '1.2.3-pre.1+hotfix.1',
         '  1.2.3',
         '1.2.3-hotfix.1',
+        '3.35.8-ohos',
+        '3.35.8-ohos-1.0',
+        '3.35.8-ohos-1.0.0-',
       ];
       for (final String version in invalid_versions) {
         final File file = fileSystem.file('version');
@@ -167,7 +172,10 @@ void main() {
     });
 
     test('--dry-run prints every test that would run', () async {
-      final ProcessResult result = await runScript(<String, String>{}, <String>['--dry-run']);
+      final ProcessResult result = await runScript(
+        <String, String>{'SHARD': 'tool_tests'},
+        <String>['--dry-run'],
+      );
       expectExitCode(result, 0);
       expect(result.stdout, contains('|> bin/flutter'));
     }, testOn: 'posix');

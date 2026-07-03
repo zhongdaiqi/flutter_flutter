@@ -399,6 +399,131 @@ export default class FlutterManager {
     }
     return 0;
   }
+
+  /**
+   * Sets the visibility of a specific system bar and applies safe area padding.
+   * When hiding a system bar, automatically applies padding to avoid content being covered.
+   * @param flutterViewId - The ID of the FlutterView to apply padding
+   * @param specificSystemBar - System bar type: 'status' for status bar, 'navigation' for three-key navigation bar, 'navigationIndicator' for gesture navigation bar
+   * @param isVisible - True to show, false to hide
+   * @param enableAnimation - Whether to enable animation effect, optional
+   * @param context - Optional context, uses the first UIAbility if not provided
+   */
+  setSpecificSystemBarEnabled(flutterViewId: string, specificSystemBar: 'status' | 'navigation' | 'navigationIndicator', isVisible: boolean, enableAnimation?: boolean, context?: Context): void {
+    const flutterView: FlutterView | null = this.getFlutterView(flutterViewId);
+    if (!flutterView) {
+      Log.e(TAG, `setSpecificSystemBarEnabled failed: flutterView not found for id ${flutterViewId}`);
+      return;
+    }
+
+    try {
+      const windowStage = this.getWindowStage(this.getUIAbility(context));
+      if (!windowStage) {
+        Log.e(TAG, 'setSpecificSystemBarEnabled failed: windowStage is null');
+        return;
+      }
+
+      const mainWindow = windowStage.getMainWindowSync();
+      if (!mainWindow) {
+        Log.e(TAG, 'setSpecificSystemBarEnabled failed: mainWindow is null');
+        return;
+      }
+      mainWindow.setSpecificSystemBarEnabled(specificSystemBar, isVisible, enableAnimation);
+
+      switch (specificSystemBar) {
+        case 'status':
+          // Apply top padding when hiding status bar to avoid content being covered
+          const statusBarHeight = mainWindow.getWindowAvoidArea(window.AvoidAreaType.TYPE_SYSTEM).topRect.height;
+          if (statusBarHeight > 0) {
+            flutterView.setPaddingTop(statusBarHeight);
+          }
+          break;
+        case 'navigation':
+        case 'navigationIndicator':
+          // Apply bottom padding when hiding navigation bar to avoid content being covered
+          const navHeight = mainWindow.getWindowAvoidArea(window.AvoidAreaType.TYPE_NAVIGATION_INDICATOR).bottomRect.height;
+          if (navHeight > 0) {
+            flutterView.setPaddingBottom(navHeight);
+          }
+          break;
+      }
+
+      Log.i(TAG, `setSpecificSystemBarEnabled: ${specificSystemBar} = ${isVisible}, animation = ${enableAnimation} success`);
+    } catch (error) {
+      Log.e(TAG, `setSpecificSystemBarEnabled error: ${JSON.stringify(error)}`);
+    }
+  }
+
+  /**
+   * Adjusts FlutterView top padding to avoid window decoration overlap.
+   * @param flutterViewId - The FlutterView ID
+   * @param context - Optional context, defaults to first UIAbility
+   */
+  handleWindowDecorSafeArea(flutterViewId: string, context?: Context | null | undefined): void {
+    if (!this.isWindowDecorSafeAreaAvoidSupported(context)) {
+      return;
+    }
+    const flutterView = this.getFlutterView(flutterViewId);
+    if (!flutterView) {
+      return;
+    }
+    const mainWindow = this.getWindowStage(this.getUIAbility(context ?? undefined))?.getMainWindowSync();
+    if (!mainWindow) {
+      return;
+    }
+
+    try {
+      // Get current window status
+      const currentStatus: window.WindowStatusType = mainWindow.getWindowStatus();
+      // In MAXIMIZE mode, skip setting padding because the window menu bar is temporarily displayed
+      if (currentStatus == window.WindowStatusType.MAXIMIZE) {
+        return;
+      }
+    } catch (e) {
+      Log.e(TAG, "Failed to get window status: " + JSON.stringify(e));
+      return;
+    }
+
+    // Clear padding if window decoration is visible
+    if (mainWindow.getWindowDecorVisible() ) {
+      flutterView.setPaddingTop(0);
+      return;
+    }
+    // Clear padding if title buttons are hidden
+    const titleButtonRect = mainWindow.getTitleButtonRect();
+    if (!titleButtonRect || titleButtonRect.height <= 0) {
+      flutterView.setPaddingTop(0);
+      return;
+    }
+    // Set padding to match title button height
+    flutterView.setPaddingTop(vp2px(titleButtonRect.height));
+  }
+
+  /**
+   * Checks if window decoration safe area avoidance is supported on the current device.
+   * Returns true only when the device is in freeform multi-window mode and supports window decoration.
+   * @param context - Optional context, defaults to first UIAbility
+   * @returns True if window decoration safe area avoidance is supported, false otherwise
+   */
+  isWindowDecorSafeAreaAvoidSupported(context?: Context | null | undefined): boolean {
+    // API 18+ required for window decoration APIs
+    if (deviceInfo.sdkApiVersion < 18) {
+      return false;
+    }
+    const mainWindow = this.getWindowStage(this.getUIAbility(context ?? undefined))?.getMainWindowSync();
+    if (!mainWindow) {
+      return false;
+    }
+    try {
+      // Avoid compilation errors: getWindowDecorVisible is an API18 interface
+      // Check if getWindowDecorVisible API is available
+      const result = typeof (mainWindow as ESObject)?.getWindowDecorVisible();
+      return result == 'boolean';
+    } catch (exception) {
+      Log.i(TAG, `Failed to check window decor visibility support. Cause code: ${exception.code}, message: ${exception.message}`);
+      return false;
+    }
+  }
 }
 
 /**

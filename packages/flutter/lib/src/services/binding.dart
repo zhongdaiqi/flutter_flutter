@@ -23,6 +23,7 @@ import 'debug.dart';
 import 'hardware_keyboard.dart';
 import 'message_codec.dart';
 import 'platform_channel.dart';
+import 'split_view_config_loader.dart';
 import 'raw_keyboard.dart' show RawKeyboard;
 import 'restoration.dart';
 import 'service_extensions.dart';
@@ -62,6 +63,9 @@ mixin ServicesBinding on BindingBase, SchedulerBinding {
     platformDispatcher.onViewFocusChange = handleViewFocusChanged;
     TextInput.ensureInitialized();
     readInitialLifecycleStateFromNativeWindow();
+    if (defaultTargetPlatform == TargetPlatform.ohos) {
+      SplitViewConfigLoader().setupSystemChannel();
+    }
     initializationComplete();
   }
 
@@ -597,12 +601,13 @@ mixin ServicesBinding on BindingBase, SchedulerBinding {
   ///
   /// @Param status :
   /// [start] or [finish]
-  void reportNavigatorActivity(String activity, String status) {
+  void reportNavigatorActivity(String activity, String status, [String? routeName = '']) {
     SystemChannels.navigation.invokeMethod<void>(
       'reportNavigatorActivity',
       <String, String>{
         'activity': activity,
-        'status': status
+        'status': status,
+        'routeName': routeName ?? ''
       }
     );
   }

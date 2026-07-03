@@ -17,10 +17,9 @@ import PlatformViewsChannel, {
   PlatformViewBufferSize
 } from '../../../ets/embedding/engine/systemchannels/PlatformViewsChannel';
 import PlatformView, { Params } from './PlatformView';
-import { DVModelParameters, } from '../../view/DynamicView/dynamicView';
+import { DVModel, DVModelChildren, DVModelEvents, DVModelParameters, } from '../../view/DynamicView/dynamicView';
 import { createDVModelFromJson } from '../../view/DynamicView/dynamicViewJson';
 import display from '@ohos.display';
-import { FlutterView } from '../../view/FlutterView';
 import { TextureRegistry } from '../../view/TextureRegistry';
 import TextInputPlugin from '../editing/TextInputPlugin';
 import { PlatformViewWrapper } from './PlatformViewWrapper';
@@ -90,6 +89,10 @@ enum TouchEventType {
 }
 
 const TAG = "PlatformViewsController"
+const PLATFORM_VIEW_ACTIVE_TOUCHES = 'platformViewActiveTouches';
+const PLATFORM_VIEW_LAST_TOUCH_EVENT = 'platformViewLastTouchEvent';
+const PLATFORM_VIEW_LAST_TOUCH_EVENT_IS_PX = 'platformViewLastTouchEventIsPx';
+const PLATFORM_VIEW_CANCEL_DRAINING = 'platformViewCancelDraining';
 
 /**
  * Controller for managing platform views in Flutter applications.
@@ -98,19 +101,18 @@ const TAG = "PlatformViewsController"
 export default class PlatformViewsController implements PlatformViewsHandler {
   private registry: PlatformViewRegistryImpl;
   private context: Context | null = null;
-  private flutterView: FlutterView | null = null;
   private textureRegistry: TextureRegistry | null = null;
   private textInputPlugin: TextInputPlugin | null = null;
   private platformViewsChannel: PlatformViewsChannel | null = null;
   private nextOverlayLayerId: number = 0;
   private focusViewId: number = -1;
-  private platformViews: Map<number, PlatformView>;
-  private platformViewParentInfo: Map<number, PlatformViewInfo>;
   private viewIdWithTextureId: Map<number, number>;
   private viewIdWithNodeController: Map<number, EmbeddingNodeController>;
   private viewWrappers: Map<number, PlatformViewWrapper>;
   private currentFrameUsedOverlayLayerIds: HashSet<number>;
   private currentFrameUsedPlatformViewIds: HashSet<number>;
+  private rootDVModel: DVModel =
+    new DVModel("Stack", new DVModelParameters(), new DVModelEvents(), new DVModelChildren(), null);
 
   /**
    * Constructs a new PlatformViewsController instance.
@@ -120,8 +122,6 @@ export default class PlatformViewsController implements PlatformViewsHandler {
     this.currentFrameUsedOverlayLayerIds = new HashSet();
     this.currentFrameUsedPlatformViewIds = new HashSet();
     this.viewWrappers = new Map();
-    this.platformViews = new Map();
-    this.platformViewParentInfo = new Map();
     this.viewIdWithTextureId = new Map();
     this.viewIdWithNodeController = new Map();
   }
@@ -143,43 +143,180 @@ export default class PlatformViewsController implements PlatformViewsHandler {
     this.configureForHybridComposition(platformView, request);
   }
 
+  private isTerminalTouch(type: TouchType): boolean {
+    return type === TouchType.Up || type === TouchType.Cancel;
+  }
+
+  private cloneTouchObjectWithType(touch: CustomTouchObject, type: TouchType): CustomTouchObject {
+    return new CustomTouchObject(type, touch.id, touch.displayX, touch.displayY, touch.windowX, touch.windowY,
+      touch.screenX, touch.screenY, touch.x, touch.y);
+  }
+
+  private getActiveTouches(params: Record<string, Any>, create: boolean = false): Map<number, CustomTouchObject> | undefined {
+    let activeTouches = params[PLATFORM_VIEW_ACTIVE_TOUCHES] as Map<number, CustomTouchObject> | undefined;
+    if (activeTouches === undefined && create) {
+      activeTouches = new Map<number, CustomTouchObject>();
+      params[PLATFORM_VIEW_ACTIVE_TOUCHES] = activeTouches;
+    }
+    return activeTouches;
+  }
+
+  private rememberPostedTouchEvent(params: Record<string, Any>, event: CustomTouchEvent, isPx: boolean = true): void {
+    params[PLATFORM_VIEW_LAST_TOUCH_EVENT] = event;
+    params[PLATFORM_VIEW_LAST_TOUCH_EVENT_IS_PX] = isPx;
+
+    let activeTouches = this.getActiveTouches(params, true)!;
+    if (event.type === TouchType.Cancel) {
+      activeTouches.clear();
+      return;
+    }
+
+    for (let touch of event.changedTouches) {
+      if (this.isTerminalTouch(touch.type)) {
+        activeTouches.delete(touch.id);
+      } else {
+        activeTouches.set(touch.id, this.cloneTouchObjectWithType(touch, touch.type));
+      }
+    }
+
+    for (let touch of event.touches) {
+      if (this.isTerminalTouch(touch.type)) {
+        activeTouches.delete(touch.id);
+      } else {
+        activeTouches.set(touch.id, this.cloneTouchObjectWithType(touch, touch.type));
+      }
+    }
+  }
+
+  private clearTrackedTouchState(params: Record<string, Any>): void {
+    params['down'] = false;
+    params['touchEvent'] = undefined;
+    params['mouseEvent'] = undefined;
+    params[PLATFORM_VIEW_LAST_TOUCH_EVENT] = undefined;
+    params[PLATFORM_VIEW_LAST_TOUCH_EVENT_IS_PX] = undefined;
+    const activeTouches = this.getActiveTouches(params);
+    activeTouches?.clear();
+    params[PLATFORM_VIEW_ACTIVE_TOUCHES] = undefined;
+  }
+
+  private postTouchCancelEvent(nodeController: EmbeddingNodeController,
+    lastTouchEvent: CustomTouchEvent | undefined,
+    lastTouchEventIsPx: boolean,
+    viewId: number,
+    reason: string,
+    source: string,
+    cancelTouches: Array<CustomTouchObject>): boolean {
+    const cancelEvent = new CustomTouchEvent(TouchType.Cancel, cancelTouches, cancelTouches,
+      Date.now(),
+      lastTouchEvent?.source ?? SourceType.TouchScreen, lastTouchEvent?.pressure ?? 1,
+      lastTouchEvent?.tiltX ?? 0, lastTouchEvent?.tiltY ?? 0, lastTouchEvent?.sourceTool ?? SourceTool.Finger);
+    let ret = false;
+    try {
+      ret = nodeController.postEvent(cancelEvent, lastTouchEventIsPx);
+    } catch (err) {
+      Log.e(TAG, "Sending platform view touch cancel threw an exception", err);
+    }
+    Log.i(TAG, "platform_view_touch_cancel sent viewId=" + viewId
+      + " reason=" + reason + " source=" + source + " changedTouches=" + cancelTouches.length
+      + " ret=" + ret);
+    return ret;
+  }
+
+  private cancelActiveTouchIfNeeded(viewId: number, params: Record<string, Any>, reason: string): void {
+    const nodeController = params['nodeController'] as EmbeddingNodeController | undefined;
+    const activeTouches = this.getActiveTouches(params);
+    const lastTouchEvent = params[PLATFORM_VIEW_LAST_TOUCH_EVENT] as CustomTouchEvent | undefined;
+    const lastTouchEventIsPx = params[PLATFORM_VIEW_LAST_TOUCH_EVENT_IS_PX] as boolean ?? false;
+    const pendingTouchEvents = params['touchEvent'] as Array<CustomTouchEvent> | undefined;
+    const pendingCount = pendingTouchEvents === undefined ? 0 : pendingTouchEvents.length;
+
+    if (nodeController === undefined) {
+      Log.i(TAG, "platform_view_touch_cancel skip viewId=" + viewId
+        + " reason=" + reason + " no_node pending=" + pendingCount);
+      this.clearTrackedTouchState(params);
+      return;
+    }
+
+    let cancelTouches: Array<CustomTouchObject> = [];
+    let cancelSource: string = "none";
+    if (activeTouches !== undefined && activeTouches.size > 0) {
+      activeTouches.forEach((touch: CustomTouchObject) => {
+        cancelTouches.push(this.cloneTouchObjectWithType(touch, TouchType.Cancel));
+      });
+      cancelSource = "active_map";
+    } else if (lastTouchEvent !== undefined) {
+      const sourceTouches = lastTouchEvent.touches.length > 0 ? lastTouchEvent.touches : lastTouchEvent.changedTouches;
+      for (let touch of sourceTouches) {
+        cancelTouches.push(this.cloneTouchObjectWithType(touch, TouchType.Cancel));
+      }
+      cancelSource = "last_event";
+    }
+
+    if (cancelTouches.length > 0) {
+      if (cancelTouches.length > 1) {
+        for (let i = 0; i < cancelTouches.length; i++) {
+          this.postTouchCancelEvent(nodeController, lastTouchEvent, lastTouchEventIsPx,
+            viewId, reason, cancelSource + "_single_" + i, [cancelTouches[i]]);
+        }
+      }
+      this.postTouchCancelEvent(nodeController, lastTouchEvent, lastTouchEventIsPx,
+        viewId, reason, cancelSource + "_combined", cancelTouches);
+      params[PLATFORM_VIEW_CANCEL_DRAINING] = true;
+    } else {
+      Log.i(TAG, "platform_view_touch_cancel skip viewId=" + viewId
+        + " reason=" + reason + " no_touch pending=" + pendingCount);
+    }
+
+    this.clearTrackedTouchState(params);
+  }
+
   /**
    * Disposes a platform view and releases all associated resources.
    * @param viewId - The ID of the platform view to dispose
    */
   dispose(viewId: number): void {
-    let platformView: PlatformView | null = this.platformViews.get(viewId) || null;
-    if (platformView == null) {
+    let viewWrapper = this.viewWrappers.get(viewId);
+    if (viewWrapper == null) {
       Log.e(TAG, "Disposing unknown platform view with id: " + viewId);
       return;
     }
+    let disposedParams = viewWrapper.getDvModel().getLayoutParams() as Record<string, Any>;
+    this.cancelActiveTouchIfNeeded(viewId, disposedParams, "dispose");
+
     if (this.focusViewId == viewId) {
       this.clearFocus(viewId);
       this.focusViewId = -1;
     }
-    this.platformViews.delete(viewId);
-    this.platformViewParentInfo.delete(viewId);
+    this.viewWrappers.delete(viewId);
+    // Disposal is a terminal teardown path, not a normal focus transition. If
+    // the embedded node's blur callback is missed while the view is being
+    // removed, release the matching physical PlatformView owner here so stale
+    // keyboard/focus state cannot leak into the next client. In the common
+    // path, the native blur callback has already reset ownership before dispose
+    // reaches this point, so this remains a safety net instead of becoming part
+    // of the steady-state focus handoff.
+    this.textInputPlugin?.clearPlatformViewClientForTeardown(viewId);
     let textureId = this.viewIdWithTextureId.get(viewId);
 
     if (textureId != undefined) {
       this.textureRegistry!.unregisterTexture(textureId);
     }
+    this.viewIdWithTextureId.delete(viewId);
 
     this.viewIdWithNodeController.get(viewId)?.disposeFrameNode()
     this.viewIdWithNodeController.delete(viewId);
 
-    let viewWrapper: PlatformViewWrapper | null = this.viewWrappers.get(viewId) || null;
-    if (viewWrapper != null && this.flutterView) {
-      let index = this.flutterView.getDVModel().children.indexOf(viewWrapper.getDvModel()!);
+    if (viewWrapper != null) {
+      let index = this.rootDVModel.children.indexOf(viewWrapper.getDvModel());
+
       if (index > -1) {
-        this.flutterView.getDVModel().children.splice(index, 1);
-        platformView.onFlutterViewDetached();
+        this.rootDVModel.children.splice(index, 1);
+        viewWrapper.getView().onFlutterViewDetached();
       }
     }
-    this.viewWrappers.delete(viewId);
 
     try {
-      platformView.dispose();
+      viewWrapper.getView().dispose();
     } catch (err) {
       Log.e(TAG, "Disposing platform view threw an exception", err);
     }
@@ -303,14 +440,19 @@ export default class PlatformViewsController implements PlatformViewsHandler {
       let params = dvModel.getLayoutParams() as Record<string, Any>;
       // When receiving a DOWN action
       if (touch.action === TouchEventType.ACTION_DOWN) {
+        const shouldHandoffFrameworkFocus = this.textInputPlugin?.isFrameworkTextInputActive() ?? false;
         // Set the current touch state to true
         params['down'] = true
+        params['shouldHandoffFrameworkFocusOnTouch'] = shouldHandoffFrameworkFocus
+        params[PLATFORM_VIEW_CANCEL_DRAINING] = false;
         // When first receiving a touch DOWN event, dispatch all events stored in the list
         let touchEventArray: Array<CustomTouchEvent> | undefined = params['touchEvent'] as Array<CustomTouchEvent>
         if (touchEventArray !== undefined) {
           let nodeController = params['nodeController'] as EmbeddingNodeController;
           for (let it of touchEventArray) {
             nodeController.postEvent(it)
+            this.invokeTextInputHandoffOnTouch(touch.viewId, shouldHandoffFrameworkFocus, it.type == TouchType.Down);
+            this.rememberPostedTouchEvent(params, it);
           }
           // Clear the list after first dispatch
           params['touchEvent'] = undefined
@@ -328,11 +470,45 @@ export default class PlatformViewsController implements PlatformViewsHandler {
         }
         // When receiving an UP action
       } else if (touch.action === TouchEventType.ACTION_UP || touch.action === TouchEventType.ACTION_CANCEL) {
+        if (touch.action === TouchEventType.ACTION_CANCEL) {
+          this.cancelActiveTouchIfNeeded(touch.viewId, params, "platform_cancel");
+        }
         // Set the touch state to false after finger is lifted. When multiple fingers are lifted suddenly,
         // the final state returned is also ACTION_UP, so we use the UP state to indicate the user
         // is no longer touching the platform view
         params['down'] = false
+        params['shouldHandoffFrameworkFocusOnTouch'] = false
       }
+    }
+  }
+
+  private invokeTextInputHandoffOnTouch(
+    viewId: number,
+    shouldHandoffFrameworkFocus: boolean,
+    canInvokeViewFocused: boolean,
+  ): void {
+    const viewWrapper = this.viewWrappers.get(viewId);
+    const shouldTriggerTextInputHandoff = viewWrapper?.getView()?.shouldTriggerTextInputHandoffOnTouch() ?? false;
+    if (!canInvokeViewFocused) {
+      return;
+    }
+    if (!shouldHandoffFrameworkFocus) {
+      return;
+    }
+    // Query the concrete PlatformView after ArkUI receives each touch event.
+    // Composite views can consume a child-editor touch marker here, while only
+    // DOWN is allowed to invoke viewFocused. This prevents a later container tap
+    // from reusing stale state.
+    if (shouldTriggerTextInputHandoff) {
+      this.platformViewsChannel?.invokeViewFocused(viewId);
+    }
+  }
+
+  private attachTextInputHandoffOnTouch(params: Record<string, Any>, viewId: number): void {
+    params['textInputHandoffOnTouch'] = (canInvokeViewFocused: boolean = true) => {
+      const shouldHandoffFrameworkFocus =
+        (params['shouldHandoffFrameworkFocusOnTouch'] as boolean | undefined) ?? false;
+      this.invokeTextInputHandoffOnTouch(viewId, shouldHandoffFrameworkFocus, canInvokeViewFocused);
     }
   }
 
@@ -342,17 +518,21 @@ export default class PlatformViewsController implements PlatformViewsHandler {
    * @param direction - The text direction to set
    */
   setDirection(viewId: number, direction: Direction): void {
+    let viewWrapper = this.viewWrappers.get(viewId);
     let nodeController = this.viewIdWithNodeController.get(viewId)
-    let platformViewInfo = this.platformViewParentInfo.get(viewId);
-    if (nodeController != undefined && platformViewInfo != undefined) {
-      platformViewInfo.direction = direction;
-      // Rebuild the node with the PlatformView and surface that belong to this
-      // specific viewId. Reusing the latest FlutterView-level references can
-      // redirect updates to the wrong native node when multiple PlatformViews
-      // are alive at the same time.
-      nodeController?.setRenderOption(platformViewInfo.platformView, platformViewInfo.surfaceId,
-        NodeRenderType.RENDER_TYPE_TEXTURE, direction)
-      nodeController?.rebuild()
+    if (nodeController != undefined && viewWrapper != undefined) {
+      viewWrapper.setDirection(direction);
+      nodeController.setRenderOption(viewWrapper.getView(), viewWrapper.getSurfaceId(),
+        NodeRenderType.RENDER_TYPE_TEXTURE, direction);
+      let oldBuilderNode = nodeController?.getBuilderNode();
+      if(oldBuilderNode != null){
+        oldBuilderNode?.getFrameNode()?.getRenderNode()?.dispose();
+        oldBuilderNode?.dispose();
+      }
+      nodeController.rebuild();
+    } else {
+      Log.w(TAG, "setDirection called for view " + viewId +
+        " but platformViewInfo is not available. This may indicate lifecycle management issue.");
     }
   }
 
@@ -370,17 +550,20 @@ export default class PlatformViewsController implements PlatformViewsHandler {
    * @param viewId - The ID of the platform view
    */
   clearFocus(viewId: number): void {
-    const platformView = this.platformViews.get(viewId);
-    if (platformView == null) {
+    const viewWrapper = this.viewWrappers.get(viewId);
+    if (viewWrapper == null) {
       Log.e(TAG, "Setting direction to an unknown view with id: " + viewId);
       return;
     }
-    const embeddedView = platformView.getView();
+    const embeddedView = viewWrapper.getView();
     if (embeddedView == null) {
       Log.e(TAG, "Setting direction to a null view with id: " + viewId);
       return;
     }
-    // Make the Xcomponent gain focus.
+    // clearFocus only removes focus from the wrapper/XComponent side. Releasing
+    // the text-input owner is intentionally handled by the embedded node's real
+    // onBlur callback below, so native keyboard teardown follows the actual
+    // editor lifecycle instead of controller bookkeeping.
     focusControl.requestFocus("unfocus-xcomponent-node");
   }
 
@@ -454,7 +637,6 @@ export default class PlatformViewsController implements PlatformViewsHandler {
       throw new Error("PlatformView#getView() returned null, but an WrappedBuilder reference was expected.");
     }
 
-    this.platformViews.set(request.viewId, platformView);
     return platformView;
   }
 
@@ -480,18 +662,18 @@ export default class PlatformViewsController implements PlatformViewsHandler {
   private configureForTextureLayerComposition(platformView: PlatformView,
     request: PlatformViewCreationRequest): number {
     Log.i(TAG, "Hosting view in view hierarchy for platform view: " + request.viewId);
+    let viewWrapper: PlatformViewWrapper = new PlatformViewWrapper();
     let surfaceId: string = '0';
     let textureId: number = 0;
     if (this.textureRegistry != null) {
       textureId = this.textureRegistry!.getTextureId();
       surfaceId = this.textureRegistry!.registerTexture(textureId).getSurfaceId().toString();
       Log.i(TAG, "nodeController getSurfaceId: " + surfaceId);
-      this.flutterView!.setSurfaceId(surfaceId);
+      viewWrapper.setSurfaceId(surfaceId);
     }
 
-    let wrappedBuilder: WrappedBuilder<[Params]> = platformView.getView();
-    this.flutterView?.setWrappedBuilder(wrappedBuilder);
-    this.flutterView?.setPlatformView(platformView);
+    viewWrapper.setView(platformView);
+
     let physicalWidth: number = this.toPhysicalPixels(request.logicalWidth);
     let physicalHeight: number = this.toPhysicalPixels(request.logicalHeight);
 
@@ -499,20 +681,8 @@ export default class PlatformViewsController implements PlatformViewsHandler {
     nodeController.setRenderOption(platformView, surfaceId, NodeRenderType.RENDER_TYPE_TEXTURE, request.direction);
     // Persist the native view/surface pair per Flutter viewId so later updates
     // (for example setDirection) always target the correct embedded node.
-    this.platformViewParentInfo.set(
-      request.viewId,
-      new PlatformViewInfo(
-        platformView,
-        surfaceId,
-        physicalWidth,
-        physicalHeight,
-        request.logicalTop,
-        request.logicalLeft,
-        request.direction
-      )
-    );
+    viewWrapper.setDirection(request.direction);
     this.viewIdWithNodeController.set(request.viewId, nodeController);
-
     let dvModel = createDVModelFromJson(new DVModelJson("NodeContainer",
       [],
       {
@@ -524,13 +694,26 @@ export default class PlatformViewsController implements PlatformViewsHandler {
       },
       {},
       undefined));
-    let viewWrapper: PlatformViewWrapper = new PlatformViewWrapper();
-    viewWrapper.addDvModel(dvModel);
+    let params = dvModel.getLayoutParams() as Record<string, Any>;
+    this.attachTextInputHandoffOnTouch(params, request.viewId);
+    let events = dvModel.events as Record<string, Any>;
+    // Release the physical PlatformView owner only when the embedded native
+    // node actually loses focus. This keeps native blur/release aligned with
+    // the real editor lifecycle instead of using controller-level clearFocus as
+    // a broader proxy.
+    events.onBlur = () => {
+      this.textInputPlugin?.clearPlatformViewClient(request.viewId);
+    };
+    viewWrapper.setDvModel(dvModel);
     this.viewWrappers.set(request.viewId, viewWrapper);
-    this.flutterView?.getDVModel().children.push(viewWrapper.getDvModel())
-    platformView.onFlutterViewAttached(this.flutterView!.getDVModel());
+    this.rootDVModel.children.push(viewWrapper.getDvModel());
+    platformView.onFlutterViewAttached(this.rootDVModel);
     Log.i(TAG, "Create platform view success");
     return textureId;
+  }
+
+  getRootDvModel(): DVModel {
+    return this.rootDVModel
   }
 
   /**
@@ -560,28 +743,11 @@ export default class PlatformViewsController implements PlatformViewsHandler {
   }
 
   /**
-   * Attaches the controller to a FlutterView.
-   * @param newFlutterView - The FlutterView to attach to
-   */
-  public attachToView(newFlutterView: FlutterView) {
-    this.flutterView = newFlutterView;
-  }
-
-  /**
    * Detaches the controller from the FlutterView.
    */
   public detachFromView(): void {
     this.destroyOverlaySurfaces();
     this.removeOverlaySurfaces();
-    this.flutterView = null;
-  }
-
-  /**
-   * Gets the current FlutterView.
-   * @returns The FlutterView instance, or null if not attached
-   */
-  public getFlutterView(): FlutterView | null {
-    return this.flutterView;
   }
 
   /**
@@ -668,7 +834,7 @@ export default class PlatformViewsController implements PlatformViewsHandler {
    * @private
    */
   private diposeAllViews(): void {
-    let viewKeys = this.platformViews.keys();
+    let viewKeys = this.viewWrappers.keys();
     for (let viewId of viewKeys) {
       this.dispose(viewId);
     }
@@ -735,9 +901,6 @@ export default class PlatformViewsController implements PlatformViewsHandler {
    * @private
    */
   private removeOverlaySurfaces(): void {
-    if (!(this.flutterView instanceof FlutterView)) {
-      return;
-    }
   }
 
   /**
@@ -763,11 +926,6 @@ export default class PlatformViewsController implements PlatformViewsHandler {
       return;
     }
 
-    this.flutterView!.setSurfaceId(surfaceId.toString());
-    let wrappedBuilder: WrappedBuilder<[Params]> = platformView.getView();
-    this.flutterView?.setWrappedBuilder(wrappedBuilder);
-    this.flutterView?.setPlatformView(platformView);
-
     let nodeController = new EmbeddingNodeController();
 
     nodeController.setRenderOption(platformView, surfaceId.toString(), NodeRenderType.RENDER_TYPE_TEXTURE,
@@ -785,12 +943,15 @@ export default class PlatformViewsController implements PlatformViewsHandler {
       },
       {},
       undefined));
+    let params = dvModel.getLayoutParams() as Record<string, Any>;
+    this.attachTextInputHandoffOnTouch(params, surfaceId);
 
     let viewWrapper: PlatformViewWrapper = new PlatformViewWrapper();
-    viewWrapper.addDvModel(dvModel);
+    viewWrapper.setView(platformView);
+    viewWrapper.setSurfaceId(surfaceId.toString());
+    viewWrapper.setDvModel(dvModel);
     this.viewWrappers.set(surfaceId, viewWrapper);
-    this.flutterView?.getDVModel().children.push(viewWrapper.getDvModel());
-    platformView.onFlutterViewAttached(this.flutterView!.getDVModel());
-    this.platformViews.set(surfaceId, platformView!);
+    this.rootDVModel.children.push(viewWrapper.getDvModel());
+    platformView.onFlutterViewAttached(this.rootDVModel);
   }
 }

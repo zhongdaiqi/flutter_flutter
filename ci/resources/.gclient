@@ -9,6 +9,9 @@ solutions = [
     "name": ".",
     "url": "https://gitcode.com/openharmony-tpc/flutter_flutter.git",
     "safesync_url": "",
+    "custom_vars": {
+      "download_emsdk": True,
+    },
     "custom_deps": {
       "engine/src/flutter/prebuilts/emsdk": "/home/tools/Flutter/repo/emsdk@2514ec738de72cebbba7f4fdba0cf2fabcb779a5",
       "engine/src/flutter/third_party/abseil-cpp": "/home/tools/Flutter/repo/abseil-cpp@ff6504dc527b25fef0f3c531e7dba0ed6b69c162",
@@ -17,7 +20,7 @@ solutions = [
       "engine/src/flutter/third_party/boringssl/src": "/home/tools/Flutter/repo/boringssl@be5be0a4f5ebf00da151a06860deb11a0ffb609f",
       "engine/src/flutter/third_party/brotli": "/home/tools/Flutter/repo/brotli@350100a5bb9d9671aca85213b2ec7a70a361b0cd",
       "engine/src/flutter/third_party/cpu_features/src": "/home/tools/Flutter/repo/cpu_features@936b9ab5515dead115606559502e3864958f7f6e",
-      "engine/src/flutter/third_party/dart": "/home/tools/Flutter/repo/fluttertpc_dart_sdk@fbe3ce7a1bc11b1b3d19d02d98cd3f4054cdb073",
+      "engine/src/flutter/third_party/dart": "/home/tools/Flutter/repo/fluttertpc_dart_sdk@212591d4e97356a07f0c940dfb1530ebd4a674f3",
       "engine/src/flutter/third_party/dart/third_party/binaryen/src": "/home/tools/Flutter/repo/binaryen@8470f1b1f157201d1bc62f3202e474e7043df0ba",
       "engine/src/flutter/third_party/dart/third_party/pkg/ai": "/home/tools/Flutter/repo/ai@64dfa7f138aa4d9bcc06e807858136b7d4d296d3",
       "engine/src/flutter/third_party/dart/third_party/pkg/core": "/home/tools/Flutter/repo/core@b59ecf4ceebe6153e1c0166b7c9a7fdd9458a89d",
@@ -79,7 +82,7 @@ solutions = [
       "engine/src/flutter/third_party/rapidjson": "/home/tools/Flutter/repo/rapidjson@ef3564c5c8824989393b87df25355baf35ff544b",
       "engine/src/flutter/third_party/re2": "/home/tools/Flutter/repo/re2@c84a140c93352cdabbfb547c531be34515b12228",
       "engine/src/flutter/third_party/shaderc": "/home/tools/Flutter/repo/shaderc@37e25539ce199ecaf19fb7f7d27818716d36686d",
-      "engine/src/flutter/third_party/skia": "/home/tools/Flutter/repo/fluttertpc_skia@302d699a100e1317b54bff76ec7157df7c431913",
+      "engine/src/flutter/third_party/skia": "/home/tools/Flutter/repo/fluttertpc_skia@415cf7316f24321810e4008eed42a6166822fe42",
       "engine/src/flutter/third_party/sqlite": "/home/tools/Flutter/repo/sqlite@0f61bd2023ba94423b4e4c8cfb1a23de1fe6a21c",
       "engine/src/flutter/third_party/swiftshader": "/home/tools/Flutter/repo/fluttertpc_swiftshader@1d62dd49e04056e5ad006821d1ee38e8358cef7a",
       "engine/src/flutter/third_party/vulkan-deps": "/home/tools/Flutter/repo/fluttertpc_vulkan-deps@8739b8400449c9c4d96862aa7e3863a0a58637cf",

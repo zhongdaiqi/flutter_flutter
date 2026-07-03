@@ -8,6 +8,7 @@
 #define FLUTTER_FML_PLATFORM_OHOS_HIAPPEVENT_OHOS_HIAPPEVENT_H_
 
 #include <hiappevent/hiappevent.h>
+#include <hitrace/trace.h>
 #include <vector>
 #include <atomic>
 #include "flutter/fml/platform/ohos/dynamic_library_loader.h"
@@ -33,6 +34,18 @@ using AddFunc = int64_t (*)(HiAppEvent_Processor* processor);
 
 using DestroyProcessor = void (*)(HiAppEvent_Processor* processor);
 
+using ReportFrameworkMemAnomaly = void(*)(int32_t fwType,
+                                          const char* fwVer, const char* description);
+
+using StartAsyncTraceExFunc = void (*)(uint64_t level,
+                                       const char* name,
+                                       int32_t taskId,
+                                       const char* customCategory,
+                                       const char* customArgs);
+using FinishAsyncTraceExFunc = void (*)(uint64_t level,
+                                        const char* name,
+                                        int32_t taskId);
+
 typedef struct MissedFrameInfo {
   int64_t utc_time_stamp_millis;
   int64_t vsync_start_time_micros;
@@ -44,6 +57,11 @@ typedef struct MissedFrameInfo {
   uint64_t frame_number;
   int vsync_transitions_missed;
  } MissedFrameInfo;
+
+enum class OhosDropFrameReason {
+  kCommon,
+  kScroll
+};
 
 enum class OhosHiappEventFlag {
   kSingleFlag,
@@ -64,6 +82,10 @@ extern std::atomic<int> ScrollStatus;
 extern std::atomic<uint64_t> scroll_start_frame_;
 extern std::atomic<uint64_t> scroll_end_frame_;
 
+// Scroll start/end UTC time (milliseconds since epoch)
+extern std::atomic<int64_t> scroll_start_time_utc_ms;
+extern std::atomic<int64_t> scroll_end_time_utc_ms;
+
 // Last frame number observed by rasterizer (atomic)
 extern std::atomic<uint64_t> last_frame_number_;
 
@@ -75,6 +97,8 @@ class OhosHiappEventDDL {
   void Init(void);
 
   static std::shared_ptr<OhosHiappEventDDL> GetInstance(void);
+
+  static const char* GetFlutterVersion();
 
   void ReportJANKEvent(const MissedFrameInfo& missed_frame_info);
 
@@ -96,6 +120,8 @@ class OhosHiappEventDDL {
   void OnScrollStart();
   void OnScrollEndAndFlush();
 
+  void ReportMemoryUsage(int64_t oldUsed, int64_t newUsed);
+
  private:
   int WriteSingleFrame(void);
 
@@ -103,12 +129,18 @@ class OhosHiappEventDDL {
 
   int WriteScrolledFrame(void);
 
+  void WriteJANKEventToTrace(const MissedFrameInfo& missed_frame_info, OhosDropFrameReason reason);
+
   CreateProcessorFunc createProcessorFunc_ = nullptr;
   SetReportRouteFunc setReportRouteFunc_ = nullptr;
   SetReportPoliceFunc setReportPoliceFunc_ = nullptr;
   SetReportEventFunc setReportEventFunc_ = nullptr;
   AddFunc addFunc_ = nullptr;
   DestroyProcessor destroyProcessor_ = nullptr;
+  ReportFrameworkMemAnomaly reportFrameworkMemAnomaly_ = nullptr;
+
+  StartAsyncTraceExFunc startAsyncTraceExFunc_ = nullptr;
+  FinishAsyncTraceExFunc finishAsyncTraceExFunc_ = nullptr;
 
   int apiVersion_ = 0;
 

@@ -131,4 +131,8 @@ bool ImageDescriptor::get_pixels(const SkPixmap& pixmap) const {
                                pixmap.rowBytes());
 }
 
+uint32_t ImageDescriptor::get_colorspace() {
+  return generator_->GetColorSpace(0);
+}
+
 }  // namespace flutter

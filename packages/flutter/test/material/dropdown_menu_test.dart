@@ -2254,7 +2254,10 @@ void main() {
     await tester.tap(find.byType(DropdownMenu<TestMenu>));
     await tester.pump();
     final bool isMobile = switch (themeData.platform) {
-      TargetPlatform.android || TargetPlatform.iOS || TargetPlatform.fuchsia => true,
+      TargetPlatform.android ||
+      TargetPlatform.iOS ||
+      TargetPlatform.fuchsia ||
+      TargetPlatform.ohos => true,
       TargetPlatform.macOS || TargetPlatform.linux || TargetPlatform.windows => false,
     };
     int expectedCount = 1;
@@ -4153,7 +4156,10 @@ void main() {
       // on desktop platforms, but not on mobile platforms. Therefore, on desktop
       // platforms, it takes 3 tabs to reach the icon button.
       final int tabCount = switch (defaultTargetPlatform) {
-        TargetPlatform.iOS || TargetPlatform.android || TargetPlatform.fuchsia => 2,
+        TargetPlatform.iOS ||
+        TargetPlatform.android ||
+        TargetPlatform.fuchsia ||
+        TargetPlatform.ohos => 2,
         TargetPlatform.macOS || TargetPlatform.linux || TargetPlatform.windows => 3,
       };
       for (int i = 0; i < tabCount; i++) {

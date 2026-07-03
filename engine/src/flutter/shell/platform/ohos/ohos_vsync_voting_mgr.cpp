@@ -112,10 +112,16 @@ void OhosVsyncVotingMgr::VoteAnimationValue(AnimationType AN_type,
 
   double velocity_tmp = std::abs(velocity);
   if (device_pixel_ratio != 0.0) {
-    // V(millimeter) = V(pixel) * 25.4 / (device_pixel_ratio * 160)
-    velocity_tmp = velocity_tmp / (device_pixel_ratio * PHYSICAL_PIXEL_DENSITY);
-    velocity_tmp = velocity_tmp * INCH_2_MILL;
+    /// V_Logical_Pixel(millimeter) = V(pixel) * 25.4 / (device_pixel_ratio * 160)
+    /// V_Physical_Pixel(millimeter) = V_Logical_Pixel(millimeter) * device_pixel_ratio
+    /// => V_Physical_Pixel(millimeter) = V(pixel) * 25.4 / 160
+    velocity_tmp = velocity_tmp * INCH_2_MILL / PHYSICAL_PIXEL_DENSITY;
   }
+
+  std::ostringstream oss;
+  oss << "AN_type=" << static_cast<int>(AN_type) << " V=" << velocity_tmp;
+  std::string trace_str = oss.str();
+  TRACE_EVENT0("flutter", trace_str.c_str());
 
   switch (AN_type) {
     case AnimationType::AN_TYPE_TRANSLATE:
@@ -359,13 +365,13 @@ void OhosVsyncVotingMgr::VotingByNativeVsync(OH_NativeVSync* handle) {
   std::ostringstream oss;
   oss << "{" << range.min << "," << range.max << "," << range.expected << "}";
   std::string rangeStr = oss.str();
-  FML_DLOG(INFO) << "SetExpectedFrameRateRange : " << rangeStr.c_str();
+  FML_LOG(INFO) << "OH_NativeVSync_SetExpectedFrameRateRange() calling with range: " << rangeStr.c_str();
   TRACE_EVENT1("flutter", "SetExpectedFrameRateRange",
     "range", rangeStr.c_str());
 
   ret = func_SetExpectedFrameRateRange_symbol_handle_(handle, &range);
   if (ret != 0) {
-    FML_LOG(ERROR) << "SetExpectedFrameRateRange failed, ret = " << ret;
+    FML_LOG(ERROR) << "OH_NativeVSync_SetExpectedFrameRateRange() failed, ret = " << ret;
   }
 
   return;
@@ -397,7 +403,7 @@ void OhosVsyncVotingMgr::VotingBySelf() {
   std::ostringstream oss;
   oss << "{" << range.min << "," << range.max << "," << range.expected << "}";
   std::string range_str = oss.str();
-  FML_LOG(INFO) << "BySelf SetExpectedFrameRateRange : " << range_str.c_str();
+  FML_LOG(INFO) << "OH_NativeVSync_SetExpectedFrameRateRange() BySelf calling with range: " << range_str.c_str();
   TRACE_EVENT1("flutter", "BySelf SetExpectedFrameRateRange", "range",
                range_str.c_str());
 
@@ -420,7 +426,7 @@ void OhosVsyncVotingMgr::VotingBySelf() {
     }
     ret = func_SetExpectedFrameRateRange_symbol_handle_(handle, &range);
     if (ret != 0) {
-      FML_LOG(ERROR) << "BySelf SetExpectedFrameRateRange failed, ret = " << ret;
+      FML_LOG(ERROR) << "OH_NativeVSync_SetExpectedFrameRateRange() BySelf failed, ret = " << ret;
     }
   }
 

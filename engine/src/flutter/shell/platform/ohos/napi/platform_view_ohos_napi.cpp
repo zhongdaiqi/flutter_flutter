@@ -49,6 +49,8 @@ std::shared_ptr<std::set<int>> PlatformViewOHOSNapi::all_refresh_rates =
     std::make_shared<std::set<int>>(std::initializer_list<int>{60});
 double PlatformViewOHOSNapi::display_density_pixels = 1.0;
 
+constexpr int TOUCH_UP_PERFORMANCE_SECTION = 3000; // 3s
+
 napi_env PlatformViewOHOSNapi::env_;
 std::vector<std::string> PlatformViewOHOSNapi::system_languages;
 
@@ -661,6 +663,9 @@ napi_value PlatformViewOHOSNapi::nativeRunBundleAndSnapshotFromLibrary(
 
   NativeResourceManager* ResourceManager =
       OH_ResourceManager_InitNativeResourceManager(env, args[4]);
+  if (ResourceManager == nullptr) {
+    LOGE("OH_ResourceManager_InitNativeResourceManager failed");
+  }
 
   std::vector<std::string> entrypointArgs;
   if (fml::napi::kSuccess !=
@@ -1917,6 +1922,9 @@ napi_value PlatformViewOHOSNapi::nativeRegisterPixelMap(
   NAPI_CALL(env, napi_get_value_int64(env, args[0], &shell_holder));
   NAPI_CALL(env, napi_get_value_int64(env, args[1], &textureId));
   NativePixelMap* nativePixelMap = OH_PixelMap_InitNativePixelMap(env, args[2]);
+  if (nativePixelMap == nullptr) {
+    FML_LOG(ERROR) << "OH_PixelMap_InitNativePixelMap failed";
+  }
   OH_NativeBuffer* native_buffer = GetNativeBufferFromPixelMap(env, args[2]);
 
   OHOS_SHELL_HOLDER->GetPlatformView()->RegisterExternalTextureByPixelMap(
@@ -1936,6 +1944,9 @@ napi_value PlatformViewOHOSNapi::nativeSetTextureBackGroundPixelMap(
   NAPI_CALL(env, napi_get_value_int64(env, args[0], &shell_holder));
   NAPI_CALL(env, napi_get_value_int64(env, args[1], &textureId));
   NativePixelMap* nativePixelMap = OH_PixelMap_InitNativePixelMap(env, args[2]);
+  if (nativePixelMap == nullptr) {
+    FML_LOG(ERROR) << "OH_PixelMap_InitNativePixelMap failed";
+  }
   OH_NativeBuffer* native_buffer = GetNativeBufferFromPixelMap(env, args[2]);
 
   OHOS_SHELL_HOLDER->GetPlatformView()->SetExternalTextureBackGroundPixelMap(
@@ -2436,6 +2447,84 @@ napi_value PlatformViewOHOSNapi::nativeLookupCallbackInformation(
                                   callbackParam);
   if (ret != napi_ok) {
     FML_DLOG(ERROR) << "nativeLookupCallbackInformation init fail ";
+    napi_create_int32(env, -1, &result);
+    napi_close_handle_scope(env, scope);
+    return result;
+  }
+  napi_delete_reference(env, callbck_napi_obj);
+  napi_create_int32(env, 0, &result);
+  napi_close_handle_scope(env, scope);
+  return result;
+}
+
+napi_value PlatformViewOHOSNapi::nativeLookupCallbackInformationBigInt(
+    napi_env env,
+    napi_callback_info info) {
+  napi_value result;
+  size_t argc = 2;
+  napi_value args[2] = {nullptr};
+
+  napi_handle_scope scope;
+  napi_open_handle_scope(env, &scope);
+  napi_status ret = napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+  if (ret != napi_ok) {
+    LOGE("nativeLookupCallbackInformationBigInt napi_get_cb_info error");
+    napi_create_int32(env, -1, &result);
+    napi_close_handle_scope(env, scope);
+    return result;
+  }
+
+  int64_t handle;
+  bool lossless;
+  ret = napi_get_value_bigint_int64(env, args[1], &handle, &lossless);
+  if (ret != napi_ok) {
+    LOGE(
+        "nativeLookupCallbackInformationBigInt napi_get_value_bigint_int64 "
+        "error");
+    napi_create_int32(env, -1, &result);
+    napi_close_handle_scope(env, scope);
+    return result;
+  }
+
+  if (!lossless) {
+    LOGE("nativeLookupCallbackInformationBigInt handle exceeds int64_t range");
+    napi_create_int32(env, -1, &result);
+    napi_close_handle_scope(env, scope);
+    return result;
+  }
+
+  LOGD("nativeLookupCallbackInformationBigInt::handle : %{public}ld", handle);
+  auto cbInfo = flutter::DartCallbackCache::GetCallbackInformation(handle);
+  if (cbInfo == nullptr) {
+    LOGE(
+        "nativeLookupCallbackInformationBigInt DartCallbackCache "
+        "GetCallbackInformation nullptr");
+    napi_create_int32(env, -1, &result);
+    napi_close_handle_scope(env, scope);
+    return result;
+  }
+
+  napi_ref callbck_napi_obj;
+  ret = napi_create_reference(env, args[0], 1, &callbck_napi_obj);
+  if (ret != napi_ok) {
+    LOGE("nativeLookupCallbackInformationBigInt napi_create_reference error");
+    napi_create_int32(env, -1, &result);
+    napi_close_handle_scope(env, scope);
+    return result;
+  }
+
+  napi_value callbackParam[3];
+  napi_create_string_utf8(env, cbInfo->name.c_str(), NAPI_AUTO_LENGTH,
+                          &callbackParam[0]);
+  napi_create_string_utf8(env, cbInfo->class_name.c_str(), NAPI_AUTO_LENGTH,
+                          &callbackParam[1]);
+  napi_create_string_utf8(env, cbInfo->library_path.c_str(), NAPI_AUTO_LENGTH,
+                          &callbackParam[2]);
+
+  ret = fml::napi::InvokeJsMethod(env, callbck_napi_obj, "init", 3,
+                                  callbackParam);
+  if (ret != napi_ok) {
+    FML_DLOG(ERROR) << "nativeLookupCallbackInformationBigInt init fail ";
     napi_create_int32(env, -1, &result);
     napi_close_handle_scope(env, scope);
     return result;
@@ -3120,6 +3209,67 @@ napi_value PlatformViewOHOSNapi::nativeNotifyPageChanged(napi_env env, napi_call
     napi_close_handle_scope(env, scope);
     return resultValue;
   }
+}
+
+/**
+ * @brief  Send high frame rate request when LTPO is enabled
+ * @note
+ * @param  shell_holder_id: int64_t
+ * @return napi_value
+ */
+napi_value PlatformViewOHOSNapi::nativeLTPODispatchHighFrameRate(
+    napi_env env,
+    napi_callback_info info) {
+  FML_LOG(INFO) << "PlatformViewOHOSNapi::nativeLTPODispatchHighFrameRate";
+
+  size_t argc = 1;
+  napi_value args[1] = {nullptr};
+  napi_status ret = napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+  if (ret != napi_ok) {
+    FML_LOG(ERROR) << "PlatformViewOHOSNapi::nativeLTPODispatchHighFrameRate "
+                      "napi_get_cb_info error:" << ret;
+    return nullptr;
+  }
+
+  int64_t shell_holder_id;
+  ret = napi_get_value_int64(env, args[0], &shell_holder_id);
+  if (ret != napi_ok) {
+    FML_LOG(ERROR) << "PlatformViewOHOSNapi::nativeLTPODispatchHighFrameRate "
+                      "napi_get_value_int64 error:" << ret;
+    return nullptr;
+  }
+
+  int64_t upTimestamp = fml::TimePoint::Now().ToEpochDelta().ToMilliseconds();
+  fml::closure task_voting_touch_up = [timestamp = upTimestamp](void) {
+    std::shared_ptr<OhosVsyncVotingMgr> votingMgr = OhosVsyncVotingMgr::GetInstance();
+    if (votingMgr != nullptr) {
+      votingMgr->VoteTouchValue(VVMTouchType::TOUCH_TYPE_UP, timestamp);
+    }
+  };
+
+  fml::closure task_voting_touch_up_3s_later = [timestamp = upTimestamp](void) {
+    std::shared_ptr<OhosVsyncVotingMgr> votingMgr = OhosVsyncVotingMgr::GetInstance();
+    if (votingMgr != nullptr) {
+      votingMgr->VoteTouchValue(
+        VVMTouchType::TOUCH_TYPE_UP_3_SEC_AFTER, timestamp + TOUCH_UP_PERFORMANCE_SECTION);
+    }
+  };
+  auto ohos_shell_holder = reinterpret_cast<OHOSShellHolder*>(shell_holder_id);
+  if (ohos_shell_holder == nullptr) {
+      FML_LOG(ERROR) << "nativeLTPODispatchHighFrameRate: ohos_shell_holder is null";
+      return nullptr;
+  }
+  auto platform_view = ohos_shell_holder->GetPlatformView();
+  if (!platform_view) {
+      FML_LOG(ERROR) << "nativeLTPODispatchHighFrameRate: platform_view is null";
+      return nullptr;
+  }
+
+  platform_view->RunTask(OhosThreadType::kIO, task_voting_touch_up);
+  platform_view->RunTask(OhosThreadType::kIO, task_voting_touch_up_3s_later,
+      TOUCH_UP_PERFORMANCE_SECTION);
+
+  return nullptr;
 }
 
 }  // namespace flutter

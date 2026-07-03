@@ -144,9 +144,19 @@ bool SemanticsTree::UpdateNextFocusWhenDisappear(
   // [2]: Failed to find node B, so focus fails.
   bool request_focused_node_need_update =
       !need_request_focused_node_ ||
-      need_remove_ids.count(need_request_focused_node_->id) != 0;
+      need_remove_ids.count(need_request_focused_node_->id) != 0 ||
+      !need_request_focused_node_->IsVisible() ||
+      !need_request_focused_node_->IsFocusable();
 
-  if (in_request_progress_ && request_focused_node_need_update) {
+  bool force_update = need_request_focused_node_ &&
+                      (need_remove_ids.count(need_request_focused_node_->id) != 0 ||
+                       !need_request_focused_node_->IsVisible() ||
+                       !need_request_focused_node_->IsFocusable());
+
+  bool need_search_from_root = !focused_node_ && !need_request_focused_node_;
+
+  if ((in_request_progress_ && request_focused_node_need_update) ||
+      force_update || need_search_from_root) {
     // if focused_node is not null, focused_node cannot be root and must have
     // parent.
     if (focused_node_) {
@@ -244,7 +254,7 @@ bool SemanticsTree::FillNodeInfo(SemanticsNodeExtend* node,
   assert(node->parentNode || node->id == 0);
   auto info = OH_ArkUI_AddAndGetAccessibilityElementInfo(list);
   if (info != nullptr) {
-    node->FillElementInfo(info);
+    node->FillElementInfo(info, true);
   } else {
     FML_DLOG(ERROR) << "ohos_semantics_tree -> "
                        "OH_ArkUI_AddAndGetAccessibilityElementInfo -> "
@@ -523,6 +533,9 @@ void SemanticsTree::UpdateFocusableNodesInfo(
         // Link to the first focusable node
         node->nextFocusableNode = firstFocusableNode;
       }
+      if (!node->previousFocusableNode) {
+        node->previousFocusableNode = lastFocusableNode;
+      }
       firstFocusableNode = node;
     }
   }
@@ -543,6 +556,7 @@ void SemanticsTree::UpdateFocusableNodesInfo(
       auto node = FindNodeById(visitorOrder[i]);
       if (node) {
         node->previousFocusableNode = lastFocusableNode;
+        node->nextFocusableNode = firstFocusableNode;
       }
     }
   }
@@ -587,5 +601,39 @@ void SemanticsTree::ClearSemanticsTree() {
   in_request_progress_ = false;
   input_focused_node_ = nullptr;
   last_input_focused_node_ = nullptr;
+  previous_routes_.clear();
+  previous_route_id_ = 0;
+}
+
+void SemanticsTree::CollectRoutes(std::vector<int32_t>& routes) {
+  // Collect all node IDs that have the scopesRoute flag set.
+  // These represent the navigation stack of the Flutter app.
+  for (auto& pair : all_semantics_nodes_) {
+    auto node = pair.second;
+    if (node && node->flags.scopesRoute && node->isExist) {
+      routes.push_back(node->id);
+    }
+  }
+}
+
+bool SemanticsTree::DetectRouteChange() {
+  std::vector<int32_t> new_routes;
+  CollectRoutes(new_routes);
+
+  // Get the current top-most route ID
+  int32_t new_route_id = new_routes.empty() ? 0 : new_routes.back();
+
+  // Detect route change by comparing:
+  // 1. The top-most route ID changed, OR
+  // 2. The route stack size changed
+  bool route_changed = (!new_routes.empty() &&
+      (new_route_id != previous_route_id_ ||
+       new_routes.size() != previous_routes_.size()));
+
+  // Update cached route information
+  previous_routes_ = new_routes;
+  previous_route_id_ = new_route_id;
+
+  return route_changed;
 }
 }  // namespace flutter

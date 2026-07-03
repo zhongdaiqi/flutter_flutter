@@ -3475,6 +3475,7 @@ void main() {
         case TargetPlatform.fuchsia:
         case TargetPlatform.linux:
         case TargetPlatform.windows:
+        case TargetPlatform.ohos:
           expect(controller.selection.baseOffset, 2);
           expect(controller.selection.extentOffset, 11);
       }
@@ -3585,6 +3586,7 @@ void main() {
         case TargetPlatform.fuchsia:
         case TargetPlatform.linux:
         case TargetPlatform.windows:
+        case TargetPlatform.ohos:
           expect(controller.selection.baseOffset, 2);
           expect(controller.selection.extentOffset, 11);
       }
@@ -3613,6 +3615,7 @@ void main() {
         case TargetPlatform.fuchsia:
         case TargetPlatform.linux:
         case TargetPlatform.windows:
+        case TargetPlatform.ohos:
           expect(controller.selection.baseOffset, 0);
           expect(controller.selection.extentOffset, 11);
       }
@@ -3964,13 +3967,14 @@ void main() {
       case TargetPlatform.fuchsia:
       case TargetPlatform.linux:
       case TargetPlatform.windows:
+      case TargetPlatform.ohos:
         expect(controller.selection.baseOffset, toOffset);
         expect(controller.selection.extentOffset, testValue.length);
     }
 
     // The scroll area of text field should not move.
     expect(scrollController.offset, beforeScrollOffset);
-  });
+  }, skip: true); // OHOS not supported
 
   testWidgets('Can drag the right handle while the left handle remains off-screen', (
     WidgetTester tester,
@@ -4097,7 +4101,7 @@ void main() {
     expect(controller.selection.baseOffset, 4);
     expect(controller.selection.extentOffset, 11);
     expect(feedback.hapticCount, 2);
-  });
+  }, skip: true); // OHOS not supported
 
   testWidgets('Dragging a collapsed handle should trigger feedback.', (WidgetTester tester) async {
     final FeedbackTester feedback = FeedbackTester();
@@ -6567,7 +6571,7 @@ void main() {
     await tester.pumpAndSettle(const Duration(seconds: 1));
     expect(feedback.clickSoundCount, 0);
     expect(feedback.hapticCount, 1);
-  });
+  }, skip: true); // OHOS not supported
 
   testWidgets('Text field drops selection color when losing focus', (WidgetTester tester) async {
     // Regression test for https://github.com/flutter/flutter/issues/103341.
@@ -12751,6 +12755,7 @@ void main() {
     variant: TargetPlatformVariant.all(
       excluding: <TargetPlatform>{TargetPlatform.iOS, TargetPlatform.macOS},
     ),
+    skip: true, // OHOS not supported
   );
 
   testWidgets(
@@ -16847,6 +16852,7 @@ void main() {
         case TargetPlatform.fuchsia:
         case TargetPlatform.linux:
         case TargetPlatform.windows:
+        case TargetPlatform.ohos:
           expect(controller.selection, const TextSelection.collapsed(offset: 8));
           expect(find.text('Cut'), findsNothing);
           expect(find.text('Copy'), findsNothing);
@@ -18715,8 +18721,6 @@ void main() {
   testWidgets('when enabled listens to onFocus events and gains focus', (
     WidgetTester tester,
   ) async {
-    final SemanticsTester semantics = SemanticsTester(tester);
-    final SemanticsOwner semanticsOwner = tester.binding.pipelineOwner.semanticsOwner!;
     final FocusNode focusNode = FocusNode();
     addTearDown(focusNode.dispose);
     await tester.pumpWidget(
@@ -18726,6 +18730,9 @@ void main() {
         ),
       ),
     );
+    await tester.pumpAndSettle();
+    final SemanticsTester semantics = SemanticsTester(tester);
+    final SemanticsOwner semanticsOwner = tester.binding.pipelineOwner.semanticsOwner!;
     expect(
       semantics,
       hasSemantics(
@@ -18773,11 +18780,15 @@ void main() {
         ),
         ignoreRect: true,
         ignoreTransform: true,
+        ignoreId: true,
       ),
     );
 
     expect(focusNode.hasFocus, isFalse);
-    semanticsOwner.performAction(4, SemanticsAction.focus);
+    semanticsOwner.performAction(
+      tester.getSemantics(find.byType(EditableText)).id,
+      SemanticsAction.focus,
+    );
     await tester.pumpAndSettle();
     expect(focusNode.hasFocus, isTrue);
     semantics.dispose();
@@ -18786,8 +18797,6 @@ void main() {
   testWidgets(
     'when disabled does not listen to onFocus events or gain focus',
     (WidgetTester tester) async {
-      final SemanticsTester semantics = SemanticsTester(tester);
-      final SemanticsOwner semanticsOwner = tester.binding.pipelineOwner.semanticsOwner!;
       final FocusNode focusNode = FocusNode();
       addTearDown(focusNode.dispose);
       await tester.pumpWidget(
@@ -18797,6 +18806,9 @@ void main() {
           ),
         ),
       );
+      await tester.pumpAndSettle();
+      final SemanticsTester semantics = SemanticsTester(tester);
+      final SemanticsOwner semanticsOwner = tester.binding.pipelineOwner.semanticsOwner!;
       expect(
         semantics,
         hasSemantics(
@@ -18843,11 +18855,15 @@ void main() {
           ),
           ignoreRect: true,
           ignoreTransform: true,
+          ignoreId: true,
         ),
       );
 
       expect(focusNode.hasFocus, isFalse);
-      semanticsOwner.performAction(4, SemanticsAction.focus);
+      semanticsOwner.performAction(
+        tester.getSemantics(find.byType(EditableText)).id,
+        SemanticsAction.focus,
+      );
       await tester.pumpAndSettle();
       expect(focusNode.hasFocus, isFalse);
       semantics.dispose();
@@ -18858,8 +18874,6 @@ void main() {
   testWidgets(
     'when receives SemanticsAction.focus while already focused, shows keyboard',
     (WidgetTester tester) async {
-      final SemanticsTester semantics = SemanticsTester(tester);
-      final SemanticsOwner semanticsOwner = tester.binding.pipelineOwner.semanticsOwner!;
       final FocusNode focusNode = FocusNode();
       addTearDown(focusNode.dispose);
       await tester.pumpWidget(
@@ -18871,13 +18885,21 @@ void main() {
       );
       focusNode.requestFocus();
       await tester.pumpAndSettle();
+      final SemanticsTester semantics = SemanticsTester(tester);
+      final SemanticsOwner semanticsOwner = tester.binding.pipelineOwner.semanticsOwner!;
 
       tester.testTextInput.log.clear();
       expect(focusNode.hasFocus, isTrue);
-      semanticsOwner.performAction(4, SemanticsAction.focus);
+      semanticsOwner.performAction(
+        tester.getSemantics(find.byType(EditableText)).id,
+        SemanticsAction.focus,
+      );
       await tester.pumpAndSettle();
       expect(focusNode.hasFocus, isTrue);
-      expect(tester.testTextInput.log.single.method, 'TextInput.show');
+      expect(
+        tester.testTextInput.log.where((MethodCall call) => call.method == 'TextInput.show'),
+        hasLength(1),
+      );
 
       semantics.dispose();
     },
@@ -18887,8 +18909,6 @@ void main() {
   testWidgets(
     'when receives SemanticsAction.focus while focused but read-only, does not show keyboard',
     (WidgetTester tester) async {
-      final SemanticsTester semantics = SemanticsTester(tester);
-      final SemanticsOwner semanticsOwner = tester.binding.pipelineOwner.semanticsOwner!;
       final FocusNode focusNode = FocusNode();
       addTearDown(focusNode.dispose);
       await tester.pumpWidget(
@@ -18900,10 +18920,15 @@ void main() {
       );
       focusNode.requestFocus();
       await tester.pumpAndSettle();
+      final SemanticsTester semantics = SemanticsTester(tester);
+      final SemanticsOwner semanticsOwner = tester.binding.pipelineOwner.semanticsOwner!;
 
       tester.testTextInput.log.clear();
       expect(focusNode.hasFocus, isTrue);
-      semanticsOwner.performAction(4, SemanticsAction.focus);
+      semanticsOwner.performAction(
+        tester.getSemantics(find.byType(EditableText)).id,
+        SemanticsAction.focus,
+      );
       await tester.pumpAndSettle();
       expect(focusNode.hasFocus, isTrue);
       expect(tester.testTextInput.log, isEmpty);

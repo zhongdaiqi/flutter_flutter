@@ -4,12 +4,9 @@
 * found in the LICENSE_KHZG file.
 */
 
-import OhosTouchProcessor from '../../embedding/ohos/OhosTouchProcessor';
 import { DVModel, DVModelParameters } from '../../view/DynamicView/dynamicView';
-import { createDVModelFromJson } from '../../view/DynamicView/dynamicViewJson';
-import { RootDvModeManager } from './RootDvModelManager';
-import matrix4 from '@ohos.matrix4'
-import Log from '../../util/Log';
+import OhosTouchProcessor from '../../embedding/ohos/OhosTouchProcessor';
+import PlatformView from './PlatformView';
 import Any from '../common/Any';
 
 const TAG: string = "PlatformViewWrapper";
@@ -33,6 +30,9 @@ export class PlatformViewWrapper {
   private bufferHeight: number = 0;
   private touchProcessor: OhosTouchProcessor | null = null;
   private model: DVModel | undefined;
+  private view: PlatformView | undefined;
+  private surfaceId: string | undefined;
+  private direction: number | undefined;
 
   /**
    * Sets the touch processor for handling touch events.
@@ -67,7 +67,6 @@ export class PlatformViewWrapper {
       let params2 = params as Record<string, Any>;
       params2[key] = element;
     }
-
   /**
    * Gets a parameter value from the DVModelParameters.
    * @param params - The parameters object to read from
@@ -100,12 +99,32 @@ export class PlatformViewWrapper {
     this.setParams(this.model.params, "height", this.getParams(parameters, "height"));
   }
 
-  /**
-   * Adds a DynamicView model to this wrapper.
-   * @param model - The DVModel to add
-   */
-  public addDvModel(model: DVModel): void {
-    this.model = model
+  public setDvModel(model: DVModel) {
+    this.model = model;
+  }
+
+  public setView(view: PlatformView) {
+    this.view = view;
+  }
+
+  public setSurfaceId(id: string) {
+    this.surfaceId = id;
+  }
+
+  public setDirection(direction: number) {
+    this.direction = direction;
+  }
+
+  public getDirection(): number {
+    return this.direction!;
+  }
+
+  public getView(): PlatformView {
+    return this.view!;
+  }
+
+  public getSurfaceId(): string {
+    return this.surfaceId!
   }
 }
 

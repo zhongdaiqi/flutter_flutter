@@ -6,6 +6,7 @@
 
 #include "ohos_image_generator.h"
 
+#include <native_color_space_manager/native_color_space_manager.h>
 #include <multimedia/image_framework/image/image_common.h>
 #include <multimedia/image_framework/image/image_source_native.h>
 #include <multimedia/image_framework/image/pixelmap_native.h>
@@ -123,6 +124,7 @@ OHOSImageGenerator::OHOSImageGenerator(OH_ImageSourceNative* image_source,
   OH_ImageSource_Info* info = nullptr;
   OH_ImageSourceInfo_Create(&info);
   if (info == nullptr) {
+    FML_LOG(ERROR) << "OH_ImageSourceInfo_Create() failed, returned nullptr";
     return;
   }
 
@@ -145,6 +147,7 @@ OHOSImageGenerator::OHOSImageGenerator(OH_ImageSourceNative* image_source,
   OH_ImageSourceInfo_GetHeight(info, &height);
   OH_ImageSourceInfo_GetDynamicRange(info, &is_hdr_);
   OH_ImageSourceInfo_Release(info);
+  FML_LOG(INFO) << "Image info: width=" << width << ", height=" << height << ", is_hdr=" << is_hdr_;
   if (rotate_degree_ == 90.f || rotate_degree_ == 270.f) {
     origin_image_info_ = SkImageInfo::Make(
         height, width, kRGBA_8888_SkColorType, kPremul_SkAlphaType);
@@ -275,7 +278,7 @@ bool OHOSImageGenerator::GetPixels(const SkImageInfo& info,
                      << to_string();
       return false;
     }
-    if (image_pixelmap && frame_count_ > 1 &&
+    if (image_pixelmap &&
         total_cached_bytes_ <= kMaxGlobalCacheSize - buffer_size) {
       // Cache animated images to improve performance.
       cached_pixelmaps_[frame_index] = image_pixelmap;
@@ -285,6 +288,16 @@ bool OHOSImageGenerator::GetPixels(const SkImageInfo& info,
   } else {
     return false;
   }
+}
+
+ uint32_t OHOSImageGenerator::GetColorSpace(unsigned int frame_index) {
+  if (cached_colorspaces_.find(frame_index) != cached_colorspaces_.end()) {
+    return cached_colorspaces_[frame_index];
+  }
+  if (cached_pixelmaps_.find(frame_index) != cached_pixelmaps_.end()) {
+    return cached_pixelmaps_[frame_index]->color_space_;
+  }
+  return 0;
 }
 
 std::shared_ptr<ImageGenerator> OHOSImageGenerator::MakeFromData(
@@ -352,11 +365,20 @@ OHOSImageGenerator::CreatePixelMap(int width, int height, int frame_index) {
   // This could be time-consuming.
   err_code =
       OH_ImageSourceNative_CreatePixelmap(image_source_, opts, &pixelmap);
+  OH_NativeColorSpaceManager* mgr = nullptr;
+  auto colorspace_res = OH_PixelmapNative_GetColorSpaceNative(pixelmap, &mgr);
+
+  auto colorspace_name = 0;
+  if (colorspace_res == IMAGE_SUCCESS) {
+    colorspace_name = OH_NativeColorSpaceManager_GetColorSpaceName(mgr);
+  }
+  cached_colorspaces_[frame_index] = colorspace_name;
   if (pixelmap && err_code == IMAGE_SUCCESS) {
     if (need_flip_) {
       OH_PixelmapNative_Flip(pixelmap, need_flip_, false);
     }
     auto image_pixelmap = std::make_shared<PixelMapOHOS>(pixelmap);
+    image_pixelmap->setColorSpace(colorspace_name);
     FML_LOG(INFO) << "Create Pixelmap size:"
                   << std::to_string(image_pixelmap->width_) << "*"
                   << std::to_string(image_pixelmap->height_) << " stride "

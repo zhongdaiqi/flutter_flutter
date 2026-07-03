@@ -15,7 +15,7 @@ vars = {
   'skia_git': 'https://skia.googlesource.com',
   'llvm_git': 'https://llvm.googlesource.com',
   'ohos_git': 'https://gitcode.com/openharmony-sig',
-  'skia_revision': '302d699a100e1317b54bff76ec7157df7c431913',
+  'skia_revision': '415cf7316f24321810e4008eed42a6166822fe42',
 
   # WARNING: DO NOT EDIT canvaskit_cipd_instance MANUALLY
   # See `lib/web_ui/README.md` for how to roll CanvasKit to a new version.
@@ -301,7 +301,7 @@ deps = {
   #  Var('flutter_git') + '/third_party/protobuf-gn' + '@' + Var('dart_protobuf_gn_rev'),
 
   'engine/src/flutter/third_party/dart':
-   Var('ohos_git') + '/fluttertpc_dart_sdk.git' + '@' + 'fbe3ce7a1bc11b1b3d19d02d98cd3f4054cdb073',
+   Var('ohos_git') + '/fluttertpc_dart_sdk.git' + '@' + '212591d4e97356a07f0c940dfb1530ebd4a674f3',
 
   # WARNING: Unused Dart dependencies in the list below till "WARNING:" marker are removed automatically - see create_updated_flutter_deps.py.
 

@@ -143,6 +143,7 @@ class FlutterAbilityAndEntryDelegate implements ExclusiveAppComponent<UIAbility>
       this.host?.getDartEntrypointFunctionName() ?? ''
     );
     this.flutterEngine?.dartExecutor.executeDartEntrypoint(dartEntrypoint, this.host?.getDartEntrypointArgs());
+    this.flutterEngine?.getSplitViewConfigSystemChannel()?.sendConfigToFlutter();
   }
 
   private maybeGetInitialRouteFromIntent(want: Want): string {
@@ -289,6 +290,7 @@ class FlutterAbilityAndEntryDelegate implements ExclusiveAppComponent<UIAbility>
     if (this.flutterEngine && this.host?.attachToEngineAutomatically()) {
       this.flutterView.attachToFlutterEngine(this.flutterEngine!!);
     }
+    this.platformPlugin?.setFlutterView(this.flutterView);
     return this.flutterView
   }
 
