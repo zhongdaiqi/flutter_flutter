@@ -1,4 +1,13 @@
 # Changelog
+
+## 7.0.0.24
+
+- Fix OHOS platform view active touch cancellation,([652a8520d2](https://gitcode.com/CPF-Flutter/flutter_engine/commit/652a8520d24ec4db0966726c5c516331450b59f1))
+- Fix the issue where Shift + left arrow can only select one character,([084b2dbb90](https://gitcode.com/CPF-Flutter/flutter_engine/commit/084b2dbb904af34790e06ec87e6558613a70f724))
+- fix NavigationChannel crash,([1475453b13](https://gitcode.com/CPF-Flutter/flutter_engine/commit/1475453b13faab16aabedab98e5de489ab4f51f5))
+- fix White screen issue when restoring after minimizing the window,([130c1e9a1c](https://gitcode.com/CPF-Flutter/flutter_engine/commit/130c1e9a1c2c45bdcec0d175e3ec456514ce04d9))
+- flutter项目Web页面，支持鼠标拖拽调整尺寸,([5f9bc18b45](https://gitcode.com/CPF-Flutter/flutter_engine/commit/5f9bc18b452fdc4c25c82f7219f383c192d777d4))
+
 ## 7.0.0.24
 - fix napi lookupcallbackinformation parameter type ([ccb3d654](https://gitcode.com/openharmony-tpc/flutter_engine/commit/ccb3d6543fad1c8894b442f311a153902ae6814e?ref=oh-3.22.3-dev&prId=1341))
 - 解决旋转屏幕锁定问题 ([55e17456](https://gitcode.com/openharmony-tpc/flutter_engine/commit/55e174563bf5cceb442b7c5a3516de8b273acfdb?ref=0506&prId=1334))
