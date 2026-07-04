@@ -1,4 +1,19 @@
 # Changelog
+
+##  3.35.7-ohos-0.0.4-beta
+
+- 分栏功能中，当栈顶是弹窗时，不要拦截pop函数,([fb4835112ea](https://gitcode.com/CPF-Flutter/flutter_flutter/commit/fb4835112eaa084174feffb8744d524bab7af4cd))
+- Fix OHOS platform view active touch cancellation,([f7f2762e452](https://gitcode.com/CPF-Flutter/flutter_flutter/commit/f7f2762e452a045e1a78dca6058a2e29b2506274))
+- Fix the issue where Shift + left arrow can only select one character,([6fe60ad2a0b](https://gitcode.com/CPF-Flutter/flutter_flutter/commit/6fe60ad2a0b6df6376ed321dce071442a1e53be0))
+- Supports password vault functionality,([dc411d6ae69](https://gitcode.com/CPF-Flutter/flutter_flutter/commit/dc411d6ae696edafc23bc98f0df71c237bb11e8c))
+- Frame Buffer PTS Optimization for Delayed Frame Presentation,([b352bf7e029](https://gitcode.com/CPF-Flutter/flutter_flutter/commit/b352bf7e029688ec36786ea0430b1696611bbef0))
+- fix NavigationChannel crash,([123ec7f1b4c](https://gitcode.com/CPF-Flutter/flutter_flutter/commit/123ec7f1b4cabd1ba5c2e0a5b373bf6ff78b99d3))
+- fix White screen issue when restoring after minimizing the window,([2cff64a928a](https://gitcode.com/CPF-Flutter/flutter_flutter/commit/2cff64a928aafbbd98bd1cd4e06a1fdb55481b4c))
+- Frame Buffer PTS Optimization for Delayed Frame Presentation,([48ffa405539](https://gitcode.com/CPF-Flutter/flutter_flutter/commit/48ffa405539a21009d13de4b31bd206a1105ad75))
+- [OHOS] Fix PixelMap ReadPixels temp buffer cleanup,([f76e5b91ad7](https://gitcode.com/CPF-Flutter/flutter_flutter/commit/f76e5b91ad7609a1a1a71f4ef9db6012b2f9cf23))
+- [OHOS] Restore PixelMap ReadPixels tight-row semantics,([194f88db225](https://gitcode.com/CPF-Flutter/flutter_flutter/commit/194f88db225f1f866204bcbc431e8244ffc82277))
+- fix：修复性能雷达滑动丢帧上报字段值问题,([71b4231d67f](https://gitcode.com/CPF-Flutter/flutter_flutter/commit/71b4231d67f8009547d58dd0515f2a148522cfc6))
+
 ## 3.35.7-ohos-0.0.3
 - Addressed the issue where cropping with original dimensions in a transformed coordinate system resulted in a size mismatch.,([2c887c51c4](https://gitcode.com/openharmony-tpc/flutter_flutter/commit/2c887c51c4367b1afd531c5cf91de0e31c306c84))
 - pick pr1239修复软键盘直接弹起到界面上问题,([a3d23abde7](https://gitcode.com/openharmony-tpc/flutter_flutter/commit/a3d23abde73a0b62b4078676510856634c991086))
