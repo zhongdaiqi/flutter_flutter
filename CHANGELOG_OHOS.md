@@ -1,4 +1,15 @@
 # Changelog
+
+## 3.27.4-ohos-1.0.7
+
+- Fix OHOS platform view active touch cancellation,([7dda026b45](https://gitcode.com/CPF-Flutter/flutter_flutter/commit/7dda026b452ca8e813d3c7351e157ed40542b98b))
+- Fix the issue where Shift + left arrow can only select one character,([1d7991bc9a](https://gitcode.com/CPF-Flutter/flutter_flutter/commit/1d7991bc9a22114d50a34cefcb4a0ba183c1835e))
+- Frame Buffer PTS Optimization for Delayed Frame Presentation,([31b54a9e6a](https://gitcode.com/CPF-Flutter/flutter_flutter/commit/31b54a9e6a5dbb48bd23b713e308b71a478ab4f5))
+- fix NavigationChannel crash,([5906f788c0](https://gitcode.com/CPF-Flutter/flutter_flutter/commit/5906f788c01aea3fd05a91a87b1b6ae31fc0559b))
+- fix White screen issue when restoring after minimizing the window,([262d97978a](https://gitcode.com/CPF-Flutter/flutter_flutter/commit/262d97978ab5e9eb27e5d34f48c2895d6a0e7fb9))
+- Frame Buffer PTS Optimization for Delayed Frame Presentation,([8d2ea0fad7](https://gitcode.com/CPF-Flutter/flutter_flutter/commit/8d2ea0fad70bcd8c180f3509473ff5adc1775cbb))
+- flutter项目Web页面，支持鼠标拖拽调整尺寸,([a50f111104](https://gitcode.com/CPF-Flutter/flutter_flutter/commit/a50f111104e49dd68e4135a4988cbaab6b7b200b))
+
 ## 3.27.4-ohos-1.0.6
 - fix: clamp text selection range to prevent RangeError in IME operations,([ee0cda7f4c](https://gitcode.com/openharmony-tpc/flutter_engine/commit/ee0cda7f4cb0cdaed81523000eddafdd76f32113))
 - 修复鼠标左右键按键异常,([956ecd2d62](https://gitcode.com/openharmony-tpc/flutter_engine/commit/956ecd2d625a622ce079e7904ef2f0e1bd72f170))
