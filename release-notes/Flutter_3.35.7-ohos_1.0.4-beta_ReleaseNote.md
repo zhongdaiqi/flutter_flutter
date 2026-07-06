@@ -9,10 +9,8 @@
 
 **问题修复**
 
-- 分栏功能中，当栈顶是弹窗时，不要拦截pop函数
 - Fix OHOS platform view active touch cancellation
 - Fix the issue where Shift + left arrow can only select one character
-- Supports password vault functionality
 - Frame Buffer PTS Optimization for Delayed Frame Presentation
 - fix NavigationChannel crash
 - fix White screen issue when restoring after minimizing the window
@@ -25,10 +23,10 @@
 - 引擎构建最低要求 API：**待发布最新API**
 - 应用构建目标 API：**待发布最新API**
 - 应用最低运行 API：**待发布最新API**
-- Flutter SDK：**3.35.7-ohos-0.0.4-beta**（由于flutter版本解析规则，为了避免版本比较解析失败，将显示为3.35.8-ohos-0.0.4-beta）
+- Flutter SDK：**3.35.7-ohos-1.0.4-beta**（由于flutter版本解析规则，为了避免版本比较解析失败，将显示为3.35.8-ohos-1.0.4-beta）
 
 ## Changelog
-- [3.35.7-ohos-0.0.4-beta](../CHANGELOG_OHOS.md)
+- [3.35.7-ohos-1.0.4-beta](../CHANGELOG_OHOS.md)
 
 ## 赋能文档
 - [文档链接](https://gitcode.com/openharmony-tpc/flutter_samples/tree/master/ohos/docs)
