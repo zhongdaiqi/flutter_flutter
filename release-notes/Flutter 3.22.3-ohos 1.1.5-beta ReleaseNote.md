@@ -15,6 +15,14 @@
 - Fix the issue where Shift + left arrow can only select one character
 - fix NavigationChannel crash
 - fix White screen issue when restoring after minimizing the window
+- Fixed the issue of small mouse scroll step value
+- fix：修复性能雷达滑动丢帧上报字段值问题
+- Fix the issue of DPI repeatedly redirecting to the same page
+- Fix the issue of DPI conflicting with Dart's adaptive behavior
+- 修复物理键盘输入对称符号光标位置错误
+- fix status bar icons turn gray when statusBarIconBrightness not set
+- 修复鼠标左右键按键异常
+- fix green border not update
 
 ---
 
@@ -22,7 +30,7 @@
 - 引擎构建最低要求 API：**待发布最新API**
 - 应用构建目标 API：**待发布最新API**
 - 应用最低运行 API：**待发布最新API**
-- Flutter SDK：**3.22.3-ohos-1.1.4-beta**（版本显示为3.22.4-ohos-1.1.4-beta，确保解析兼容）
+- Flutter SDK：**3.22.3-ohos-1.1.5-beta**（版本显示为3.22.4-ohos-1.1.5-beta，确保解析兼容）
 
 ---
 
