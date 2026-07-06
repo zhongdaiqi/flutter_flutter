@@ -14,6 +14,15 @@
 - Fix the issue where Shift + left arrow can only select one character
 - fix NavigationChannel crash
 - fix White screen issue when restoring after minimizing the window
+- Fixed the issue of small mouse scroll step value
+- fix：修复性能雷达滑动丢帧上报字段值问题
+- Fix the issue of DPI repeatedly redirecting to the same page
+- fix TextField accessibility read content
+- Fix the issue of DPI conflicting with Dart's adaptive behavior
+- 修复物理键盘输入对称符号光标位置错误
+- fix status bar icons turn gray when statusBarIconBrightness not set
+- 修复鼠标左右键按键异常
+- fix green border not update
 
 ---
 
