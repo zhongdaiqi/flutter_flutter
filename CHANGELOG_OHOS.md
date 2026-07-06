@@ -1,5 +1,5 @@
 # Changelog
-##  3.35.7-ohos-0.0.4
+##  3.35.7-ohos-1.0.3
 
 - Fix OHOS platform view active touch cancellation,([f7f2762e452](https://gitcode.com/CPF-Flutter/flutter_flutter/commit/f7f2762e452a045e1a78dca6058a2e29b2506274))
 - Fix the issue where Shift + left arrow can only select one character,([6fe60ad2a0b](https://gitcode.com/CPF-Flutter/flutter_flutter/commit/6fe60ad2a0b6df6376ed321dce071442a1e53be0))
