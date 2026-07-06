@@ -1,6 +1,6 @@
 # Changelog
 
-## 7.0.0.24
+## 7.0.0.32
 
 - Fix OHOS platform view active touch cancellation,([652a8520d2](https://gitcode.com/CPF-Flutter/flutter_engine/commit/652a8520d24ec4db0966726c5c516331450b59f1))
 - Fix the issue where Shift + left arrow can only select one character,([084b2dbb90](https://gitcode.com/CPF-Flutter/flutter_engine/commit/084b2dbb904af34790e06ec87e6558613a70f724))
