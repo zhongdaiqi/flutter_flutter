@@ -1,12 +1,20 @@
 # Changelog
 
-## 7.0.0.24
+## 7.0.0.32
 
-- Fix OHOS platform view active touch cancellation,([652a8520d2](https://gitcode.com/CPF-Flutter/flutter_engine/commit/652a8520d24ec4db0966726c5c516331450b59f1))
-- Fix the issue where Shift + left arrow can only select one character,([084b2dbb90](https://gitcode.com/CPF-Flutter/flutter_engine/commit/084b2dbb904af34790e06ec87e6558613a70f724))
-- fix NavigationChannel crash,([1475453b13](https://gitcode.com/CPF-Flutter/flutter_engine/commit/1475453b13faab16aabedab98e5de489ab4f51f5))
-- fix White screen issue when restoring after minimizing the window,([130c1e9a1c](https://gitcode.com/CPF-Flutter/flutter_engine/commit/130c1e9a1c2c45bdcec0d175e3ec456514ce04d9))
-- flutter项目Web页面，支持鼠标拖拽调整尺寸,([5f9bc18b45](https://gitcode.com/CPF-Flutter/flutter_engine/commit/5f9bc18b452fdc4c25c82f7219f383c192d777d4))
+- Fix OHOS platform view active touch cancellation,([652a8520d2](https://gitcode.com/CPF-Flutter/flutter_flutter/commit/652a8520d24ec4db0966726c5c516331450b59f1))
+- Fix the issue where Shift + left arrow can only select one character,([084b2dbb90](https://gitcode.com/CPF-Flutter/flutter_flutter/commit/084b2dbb904af34790e06ec87e6558613a70f724))
+- fix NavigationChannel crash,([1475453b13](https://gitcode.com/CPF-Flutter/flutter_flutter/commit/1475453b13faab16aabedab98e5de489ab4f51f5))
+- fix White screen issue when restoring after minimizing the window,([130c1e9a1c](https://gitcode.com/CPF-Flutter/flutter_flutter/commit/130c1e9a1c2c45bdcec0d175e3ec456514ce04d9))
+- flutter项目Web页面，支持鼠标拖拽调整尺寸,([5f9bc18b45](https://gitcode.com/CPF-Flutter/flutter_flutter/commit/5f9bc18b452fdc4c25c82f7219f383c192d777d4))
+- Fixed the issue of small mouse scroll step value,([6a3dc2ea7c](https://gitcode.com/CPF-Flutter/flutter_flutter/commit/6a3dc2ea7ca2888dd7ecaa37620ee78ddd737e0a))
+- fix：修复性能雷达滑动丢帧上报字段值问题,([9c3262271d](https://gitcode.com/CPF-Flutter/flutter_flutter/commit/9c3262271d5f37eea3bc2b482cd506175adba6b3))
+- Fix the issue of DPI repeatedly redirecting to the same page,([cd0bd2d7d1](https://gitcode.com/CPF-Flutter/flutter_flutter/commit/cd0bd2d7d1b8db9fe24183afb23a7e1ffefdd2d2))
+- Fix the issue of DPI conflicting with Dart's adaptive behavior,([3abb6e2f07](https://gitcode.com/CPF-Flutter/flutter_flutter/commit/3abb6e2f07a7da6abbdd129e1967b311db602ca7))
+- 修复物理键盘输入对称符号光标位置错误,([7c0ab23890](https://gitcode.com/CPF-Flutter/flutter_flutter/commit/7c0ab238900af5e0dbf5101bc02ba2272dcd0979))
+- fix status bar icons turn gray when statusBarIconBrightness not set,([0b9c6ebeff](https://gitcode.com/CPF-Flutter/flutter_flutter/commit/0b9c6ebeff8abe4098036081eec1b601305bd04a))
+- 修复鼠标左右键按键异常,([a794b243a5](https://gitcode.com/CPF-Flutter/flutter_flutter/commit/a794b243a5e34f75b8709f6dfc84944a631ad9cc))
+- fix green border not update,([0868ab97e6](https://gitcode.com/CPF-Flutter/flutter_flutter/commit/0868ab97e6a2fd7e3fc8ed19db905b665861ebda))
 
 ## 7.0.0.24
 - fix napi lookupcallbackinformation parameter type ([ccb3d654](https://gitcode.com/openharmony-tpc/flutter_engine/commit/ccb3d6543fad1c8894b442f311a153902ae6814e?ref=oh-3.22.3-dev&prId=1341))
