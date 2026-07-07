@@ -2,11 +2,32 @@
 
 ## 7.0.0.32
 
+- flutter项目Web页面，支持鼠标拖拽调整尺寸,([5f9bc18b45](https://gitcode.com/CPF-Flutter/flutter_engine/commit/5f9bc18b452fdc4c25c82f7219f383c192d777d4))
+- add lookupCallbackInformationBigInt,([db4dbbd7fd](https://gitcode.com/CPF-Flutter/flutter_engine/commit/db4dbbd7fd7f67a6be24f0b6623fb5f184a25068))
+- PlatformViewController解耦FlutterView,([93fb5e26c9](https://gitcode.com/CPF-Flutter/flutter_engine/commit/93fb5e26c970ebde6c945d1a7dcc5128c32d29f1))
 - Fix OHOS platform view active touch cancellation,([652a8520d2](https://gitcode.com/CPF-Flutter/flutter_engine/commit/652a8520d24ec4db0966726c5c516331450b59f1))
 - Fix the issue where Shift + left arrow can only select one character,([084b2dbb90](https://gitcode.com/CPF-Flutter/flutter_engine/commit/084b2dbb904af34790e06ec87e6558613a70f724))
 - fix NavigationChannel crash,([1475453b13](https://gitcode.com/CPF-Flutter/flutter_engine/commit/1475453b13faab16aabedab98e5de489ab4f51f5))
 - fix White screen issue when restoring after minimizing the window,([130c1e9a1c](https://gitcode.com/CPF-Flutter/flutter_engine/commit/130c1e9a1c2c45bdcec0d175e3ec456514ce04d9))
-- flutter项目Web页面，支持鼠标拖拽调整尺寸,([5f9bc18b45](https://gitcode.com/CPF-Flutter/flutter_engine/commit/5f9bc18b452fdc4c25c82f7219f383c192d777d4))
+- Fixed the issue of small mouse scroll step value,([6a3dc2ea7c](https://gitcode.com/CPF-Flutter/flutter_engine/commit/6a3dc2ea7ca2888dd7ecaa37620ee78ddd737e0a))
+- fix：修复性能雷达滑动丢帧上报字段值问题,([9c3262271d](https://gitcode.com/CPF-Flutter/flutter_engine/commit/9c3262271d5f37eea3bc2b482cd506175adba6b3))
+- 捕获componentUtils.getRectangleById异常,([7b19957532](https://gitcode.com/CPF-Flutter/flutter_engine/commit/7b19957532ee461cbb6f98d49bbd0a1df30a30b3))
+- Fix the issue of DPI repeatedly redirecting to the same page,([cd0bd2d7d1](https://gitcode.com/CPF-Flutter/flutter_engine/commit/cd0bd2d7d1b8db9fe24183afb23a7e1ffefdd2d2))
+- fix TextField accessibility read content,([ff3835dcf0](https://gitcode.com/CPF-Flutter/flutter_engine/commit/ff3835dcf041c9192cd6faf22dfa5fe003a8fce4))
+- Fix the issue of DPI conflicting with Dart's adaptive behavior,([3abb6e2f07](https://gitcode.com/CPF-Flutter/flutter_engine/commit/3abb6e2f07a7da6abbdd129e1967b311db602ca7))
+- 修复物理键盘输入对称符号光标位置错误,([7c0ab23890](https://gitcode.com/CPF-Flutter/flutter_engine/commit/7c0ab238900af5e0dbf5101bc02ba2272dcd0979))
+- fix: shorter candidate would cause preview text issue,([5ca901c29a](https://gitcode.com/CPF-Flutter/flutter_engine/commit/5ca901c29a04314bd6e377e1f89081dbc74d6855))
+- fix napi lookupcallbackinformation,([7e1ce1d833](https://gitcode.com/CPF-Flutter/flutter_engine/commit/7e1ce1d8335a8daf3765aa5d1e49e66a57c0ac07))
+- fix napi lookupcallbackinformation,([05efeabf31](https://gitcode.com/CPF-Flutter/flutter_engine/commit/05efeabf310377ee801a470ffdff61d2d08e5c6e))
+- fix lookupCallbackInformation error,([84df302696](https://gitcode.com/CPF-Flutter/flutter_engine/commit/84df30269630d5b38562feec16d5388775e11186))
+- fix lookupCallbackInformation error,([0a917c868f](https://gitcode.com/CPF-Flutter/flutter_engine/commit/0a917c868fe1aec26967f39fddd2dcb183c0f87f))
+- fix: clamp text selection range to prevent RangeError in IME operations,([57fd6802cc](https://gitcode.com/CPF-Flutter/flutter_engine/commit/57fd6802cc62d5ebccef0b9597f933c589e6d09e))
+- fix status bar icons turn gray when statusBarIconBrightness not set,([0b9c6ebeff](https://gitcode.com/CPF-Flutter/flutter_engine/commit/0b9c6ebeff8abe4098036081eec1b601305bd04a))
+- 修复鼠标左右键按键异常,([a794b243a5](https://gitcode.com/CPF-Flutter/flutter_engine/commit/a794b243a5e34f75b8709f6dfc84944a631ad9cc))
+- fix green border not update,([0868ab97e6](https://gitcode.com/CPF-Flutter/flutter_engine/commit/0868ab97e6a2fd7e3fc8ed19db905b665861ebda))
+- 修复鼠标左右键按键异常,([44bf11f715](https://gitcode.com/CPF-Flutter/flutter_engine/commit/44bf11f71536326754dc4a38b73997b27aacb3e1))
+- fix napi lookupcallbackinformation parameter type,([82709afd83](https://gitcode.com/CPF-Flutter/flutter_engine/commit/82709afd83c35178f319fd6e0141e13b104ef1fa))
+- 解决预加载场景渲染异常问题,([e7203b5503](https://gitcode.com/CPF-Flutter/flutter_engine/commit/e7203b5503e1c666819382e97f6e6bb60d0a25e0))
 
 ## 7.0.0.24
 - fix napi lookupcallbackinformation parameter type ([ccb3d654](https://gitcode.com/openharmony-tpc/flutter_engine/commit/ccb3d6543fad1c8894b442f311a153902ae6814e?ref=oh-3.22.3-dev&prId=1341))

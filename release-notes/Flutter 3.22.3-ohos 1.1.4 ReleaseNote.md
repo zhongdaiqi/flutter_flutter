@@ -6,7 +6,9 @@
 ### 主要更新
 **新增特性**
 
-- Flutter 项目 Web 页面支持鼠标拖拽调整窗口尺寸
+- flutter项目Web页面，支持鼠标拖拽调整尺寸
+- add lookupCallbackInformationBigInt
+- PlatformViewController解耦FlutterView
 
 **问题修复**
 
@@ -16,13 +18,23 @@
 - fix White screen issue when restoring after minimizing the window
 - Fixed the issue of small mouse scroll step value
 - fix：修复性能雷达滑动丢帧上报字段值问题
+- 捕获componentUtils.getRectangleById异常
 - Fix the issue of DPI repeatedly redirecting to the same page
 - fix TextField accessibility read content
 - Fix the issue of DPI conflicting with Dart's adaptive behavior
 - 修复物理键盘输入对称符号光标位置错误
+- fix: shorter candidate would cause preview text issue
+- fix napi lookupcallbackinformation
+- fix napi lookupcallbackinformation
+- fix lookupCallbackInformation error
+- fix lookupCallbackInformation error
+- fix: clamp text selection range to prevent RangeError in IME operations
 - fix status bar icons turn gray when statusBarIconBrightness not set
 - 修复鼠标左右键按键异常
 - fix green border not update
+- 修复鼠标左右键按键异常
+- fix napi lookupcallbackinformation parameter type
+- 解决预加载场景渲染异常问题
 
 ---
 
