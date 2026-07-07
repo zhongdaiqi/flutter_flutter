@@ -1,5 +1,5 @@
 ## 版本概述
-本版本为Flutter OpenHarmony平台0.0.3版本，基于Flutter 3.35.7版本适配。本版本支持和完善OpenHarmony平台侧能力，提供平台化Channel、外接纹理、云端SDK等特性，并优化性能。
+本版本为Flutter OpenHarmony平台1.0.4-beta版本，基于Flutter 3.35.7版本适配。本版本支持和完善OpenHarmony平台侧能力，提供平台化Channel、外接纹理、云端SDK等特性，并优化性能。
 
 ### 主要更新
 
