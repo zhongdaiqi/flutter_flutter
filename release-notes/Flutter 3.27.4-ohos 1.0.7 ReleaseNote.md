@@ -5,7 +5,6 @@
 
 ### 主要更新
 **新增特性**
-- flutter项目Web页面，支持鼠标拖拽调整尺寸,([a50f111104](https://gitcode.com/CPF-Flutter/flutter_engine/commit/a50f111104e49dd68e4135a4988cbaab6b7b200b))
 - add lookupCallbackInformationBigInt,([7c4ca16382](https://gitcode.com/CPF-Flutter/flutter_engine/commit/7c4ca16382821e3916e9ec1a088ee6b7801c1976))
 - PlatformViewController解耦FlutterView,([975b470b60](https://gitcode.com/CPF-Flutter/flutter_engine/commit/975b470b60ad4c94e23a39ee52c93c8616908544))
 - Add simple occlusion culling for impeller,([8bf201595c](https://gitcode.com/CPF-Flutter/flutter_engine/commit/8bf201595c5735474fb90636b1fb428f4fcddad6))
