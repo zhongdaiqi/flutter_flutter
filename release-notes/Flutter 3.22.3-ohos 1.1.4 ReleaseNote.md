@@ -6,7 +6,6 @@
 ### 主要更新
 **新增特性**
 
-- flutter项目Web页面，支持鼠标拖拽调整尺寸
 - add lookupCallbackInformationBigInt
 - PlatformViewController解耦FlutterView
 

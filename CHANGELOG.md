@@ -2,7 +2,6 @@
 
 ## 7.0.0.32
 
-- flutter项目Web页面，支持鼠标拖拽调整尺寸,([5f9bc18b45](https://gitcode.com/CPF-Flutter/flutter_engine/commit/5f9bc18b452fdc4c25c82f7219f383c192d777d4))
 - add lookupCallbackInformationBigInt,([db4dbbd7fd](https://gitcode.com/CPF-Flutter/flutter_engine/commit/db4dbbd7fd7f67a6be24f0b6623fb5f184a25068))
 - PlatformViewController解耦FlutterView,([93fb5e26c9](https://gitcode.com/CPF-Flutter/flutter_engine/commit/93fb5e26c970ebde6c945d1a7dcc5128c32d29f1))
 - Fix OHOS platform view active touch cancellation,([652a8520d2](https://gitcode.com/CPF-Flutter/flutter_engine/commit/652a8520d24ec4db0966726c5c516331450b59f1))
