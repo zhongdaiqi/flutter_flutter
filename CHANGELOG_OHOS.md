@@ -6,7 +6,6 @@
 - Fix the issue where Shift + left arrow can only select one character,([1d7991bc9a](https://gitcode.com/CPF-Flutter/flutter_engine/commit/1d7991bc9a22114d50a34cefcb4a0ba183c1835e))
 - fix NavigationChannel crash,([5906f788c0](https://gitcode.com/CPF-Flutter/flutter_engine/commit/5906f788c01aea3fd05a91a87b1b6ae31fc0559b))
 - fix White screen issue when restoring after minimizing the window,([262d97978a](https://gitcode.com/CPF-Flutter/flutter_engine/commit/262d97978ab5e9eb27e5d34f48c2895d6a0e7fb9))
-- flutter项目Web页面，支持鼠标拖拽调整尺寸,([a50f111104](https://gitcode.com/CPF-Flutter/flutter_engine/commit/a50f111104e49dd68e4135a4988cbaab6b7b200b))
 - fix：修复性能雷达滑动丢帧上报字段值问题,([858da8abc3](https://gitcode.com/CPF-Flutter/flutter_engine/commit/858da8abc3231035f2a5f9025d5d850c09f2b776))
 - Fixed the issue of small mouse scroll step value,([615535ca2c](https://gitcode.com/CPF-Flutter/flutter_engine/commit/615535ca2c72c4e655fbe001d9abd8f4851e3926))
 - Fix the issue of DPI repeatedly redirecting to the same page,([8af6fe7553](https://gitcode.com/CPF-Flutter/flutter_engine/commit/8af6fe7553c3b4072f341f3d5121a5ab97dd8650))
