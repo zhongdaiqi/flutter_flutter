@@ -134,6 +134,18 @@ preparation_steps:
     description: Prepare Tester project and sync to target branch
     args: ["main"]
     required: true
+  
+  - name: Prepare Tests
+    script: ci/scripts/clone_project.sh
+    description: Prepare testcases
+    args: ["https://gitcode.com/CPF-Flutter/tests.git", "flutter"]
+    required: true
+
+  - name: Prepare Integration Test
+    script: ci/scripts/prepare_integration_test.sh
+    description: Generate PR info and move tests to archive directory for integration test
+    args: ["oh-3.35.7-dev"]
+    required: true
 
 # Compilation steps - executed in order
 compilation_steps:

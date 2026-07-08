@@ -987,6 +987,7 @@ class StartupTest {
           case DeviceOperatingSystem.fake:
           case DeviceOperatingSystem.fuchsia:
           case DeviceOperatingSystem.linux:
+          case DeviceOperatingSystem.ohos:
             break;
           case DeviceOperatingSystem.ios:
           case DeviceOperatingSystem.macos:
@@ -1153,6 +1154,7 @@ class DevtoolsStartupTest {
         case DeviceOperatingSystem.fuchsia:
         case DeviceOperatingSystem.linux:
         case DeviceOperatingSystem.macos:
+        case DeviceOperatingSystem.ohos:
         case DeviceOperatingSystem.windows:
           break;
       }
@@ -1488,6 +1490,7 @@ class PerfTest {
         case DeviceOperatingSystem.android:
         case DeviceOperatingSystem.androidArm:
         case DeviceOperatingSystem.androidArm64:
+        case DeviceOperatingSystem.ohos:
           recordGPU = true;
         case DeviceOperatingSystem.fake:
         case DeviceOperatingSystem.fuchsia:
@@ -1498,6 +1501,7 @@ class PerfTest {
       }
 
       final bool isAndroid = deviceOperatingSystem == DeviceOperatingSystem.android;
+      final bool isOhos = deviceOperatingSystem == DeviceOperatingSystem.ohos;
       return TaskResult.success(
         data,
         detailFiles: <String>[
@@ -1510,13 +1514,15 @@ class PerfTest {
               'average_vsync_transitions_missed',
               '90th_percentile_vsync_transitions_missed',
               '99th_percentile_vsync_transitions_missed',
-              if (measureCpuGpu && !isAndroid) ...<String>[
+              if (measureCpuGpu && !isAndroid && !isOhos) ...<String>[
                 // See https://github.com/flutter/flutter/issues/68888
+                // OHOS: DevTools does not support CPU/GPU usage collection on OHOS.
                 if (data['average_cpu_usage'] != null) 'average_cpu_usage',
                 if (data['average_gpu_usage'] != null) 'average_gpu_usage',
               ],
-              if (measureMemory && !isAndroid) ...<String>[
+              if (measureMemory && !isAndroid && !isOhos) ...<String>[
                 // See https://github.com/flutter/flutter/issues/68888
+                // OHOS: DevTools does not support memory usage collection on OHOS.
                 if (data['average_memory_usage'] != null) 'average_memory_usage',
                 if (data['90th_percentile_memory_usage'] != null) '90th_percentile_memory_usage',
                 if (data['99th_percentile_memory_usage'] != null) '99th_percentile_memory_usage',
@@ -2011,6 +2017,8 @@ class CompileTest {
         throw Exception('Unsupported option for Fuchsia devices');
       case DeviceOperatingSystem.linux:
         throw Exception('Unsupported option for Linux devices');
+      case DeviceOperatingSystem.ohos:
+        throw Exception('Unsupported option for OHOS devices');
       case DeviceOperatingSystem.windows:
         unawaited(stderr.flush());
         options.insert(0, 'windows');
@@ -2075,6 +2083,8 @@ class CompileTest {
         throw Exception('Unsupported option for Fuchsia devices');
       case DeviceOperatingSystem.linux:
         throw Exception('Unsupported option for Linux devices');
+      case DeviceOperatingSystem.ohos:
+        throw Exception('Unsupported option for OHOS devices');
       case DeviceOperatingSystem.macos:
         unawaited(stderr.flush());
         options.insert(0, 'macos');
@@ -2110,6 +2120,7 @@ class CompileTest {
       case DeviceOperatingSystem.fake:
       case DeviceOperatingSystem.fuchsia:
       case DeviceOperatingSystem.linux:
+      case DeviceOperatingSystem.ohos:
       case DeviceOperatingSystem.windows:
         throw Exception('Called ${CompileTest.getSizesFromDarwinApp} with $operatingSystem.');
     }

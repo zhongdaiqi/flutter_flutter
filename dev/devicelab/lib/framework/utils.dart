@@ -15,6 +15,9 @@ import 'devices.dart';
 import 'host_agent.dart';
 import 'task_result.dart';
 
+/// IPC prefix used to distinguish protocol messages from regular stdout output.
+const String kIpcPrefix = 'DEVICELAB_IPC:';
+
 /// Virtual current working directory, which affect functions, such as [exec].
 String cwd = Directory.current.path;
 
@@ -283,9 +286,10 @@ Future<Process> startProcess(
 }) async {
   final String command = '$executable ${arguments?.join(" ") ?? ""}';
   final String finalWorkingDirectory = workingDirectory ?? cwd;
-  final Map<String, String> newEnvironment = Map<String, String>.from(
-    environment ?? <String, String>{},
-  );
+  // Inherit parent environment and merge with passed-in environment so that
+  // child processes can access system-level variables (e.g. FLUTTER_DEVICELAB_IPC).
+  final Map<String, String> newEnvironment = Map<String, String>.from(Platform.environment)
+    ..addAll(environment ?? <String, String>{});
   newEnvironment['BOT'] = isBot ? 'true' : 'false';
   newEnvironment['LANG'] = 'en_US.UTF-8';
   print('Executing "$command" in "$finalWorkingDirectory" with environment $newEnvironment');
