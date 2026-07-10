@@ -1,0 +1,48 @@
+name: 功能请求
+description: 为 Flutter 提出新想法。
+labels: ['feature', 'triage']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        感谢使用 Flutter！
+
+        如需帮助，请查阅文档或在 Stack Overflow 上提问：
+
+          - https://flutter.dev/
+          - https://api.flutter.dev/
+          - https://stackoverflow.com/questions/tagged/flutter?sort=frequent
+  - type: markdown
+    attributes:
+      value: |
+
+        填写表单前，请确认以下事项：
+        - 已搜索[已有的 Issue](https://gitcode.com/CPF-Flutter/flutter_flutter/issues)
+        - 已阅读[提交 Bug 指南](https://docs.flutter.dev/resources/bug-reports)
+
+  - type: textarea
+    attributes:
+      label: 使用场景
+      description: |
+        请说明你遇到的问题，以及为什么需要这个新功能。
+
+        你的功能请求是否与某个问题相关？请清晰简洁地描述该问题。
+
+        请描述你考虑过的替代方案。pub.dev 上是否已有解决此问题的 Flutter 库？
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: 提案
+      description: |
+        简要但准确地描述你希望 Flutter 实现什么功能。
+
+        可附上以下材料来展示你的设想：
+         * 图片
+         * 视频
+         * 代码示例
+
+        该功能是否必须由 Flutter 直接提供，还是可以由 pub.dev 上的第三方插件实现？
+        如果可以由插件实现，建议直接实现并发布该插件，而非提交 Issue。
+    validations:
+      required: true
