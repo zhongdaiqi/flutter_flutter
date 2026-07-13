@@ -4602,7 +4602,7 @@ class NavigatorState extends State<Navigator> with TickerProviderStateMixin, Res
             navigator: this,
             previousPresent: _getRouteBefore(index, _RouteEntry.willBePresentPredicate)?.route,
           );
-          assert(entry.currentState == _RouteLifecycle.removing);
+          assert(entry.currentState.index >= _RouteLifecycle.removing.index);
           continue;
         case _RouteLifecycle.removing:
           if (!canRemoveOrAdd && next != null) {
