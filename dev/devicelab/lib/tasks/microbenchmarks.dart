@@ -42,9 +42,28 @@ TaskFunction createMicrobenchmarkTask({
       Future<Map<String, double>> run() async {
         print('Running $benchmarkPath with seed $seed');
 
+        // On OHOS, use the device's logcat stream (hdc hilog) as a secondary
+        // source of benchmark results. The VM service connection can drop
+        // mid-run, causing `flutter run` to stop forwarding device logs.
+        // Start listening before `flutter run` so the logcat stream's
+        // internal clearLogs() doesn't erase early benchmark output.
+        StreamController<String>? deviceLogController;
+        StreamSubscription<String>? deviceLogSub;
+        if (deviceOperatingSystem == DeviceOperatingSystem.ohos) {
+          deviceLogController = StreamController<String>();
+          deviceLogSub = device.logcat.listen(
+            deviceLogController.add,
+            onError: (_) {},
+            onDone: deviceLogController.close,
+          );
+        }
+
         final Process flutterProcess = await inDirectory(appDir, () async {
           final List<String> options = <String>[
-            '-v',
+            // On OHOS, -v produces excessive output that can block the stdout
+            // pipe between flutter run and readJsonResults, causing benchmark
+            // results to be lost when the app exits. Skip -v on OHOS.
+            if (deviceOperatingSystem != DeviceOperatingSystem.ohos) '-v',
             // --release doesn't work on iOS due to code signing issues
             '--profile',
             '--no-publish-port',
@@ -57,7 +76,15 @@ TaskFunction createMicrobenchmarkTask({
           ];
           return startFlutter('run', options: options, environment: environment);
         });
-        return readJsonResults(flutterProcess);
+        try {
+          return await readJsonResults(
+            flutterProcess,
+            deviceLogStream: deviceLogController?.stream,
+          );
+        } finally {
+          await deviceLogSub?.cancel();
+          await deviceLogController?.close();
+        }
       }
 
       return run();

@@ -76,6 +76,9 @@ class PluginTest {
       if (runFlutterTest) {
         await plugin.runFlutterTest();
         if (!dartOnlyPlugin) {
+          if (buildTarget == 'hap') {
+            await plugin.example.injectOhosSigningConfig();
+          }
           await plugin.example.runNativeTests(buildTarget);
           if (buildTarget == 'ios') {
             bool runResult = false;
@@ -106,6 +109,9 @@ class PluginTest {
         section('Add plugins');
         await app.addPlugin('plugintest', pluginPath: path.join('..', 'plugintest'));
         await app.addPlugin('path_provider');
+        if (buildTarget == 'hap') {
+          await app.injectOhosSigningConfig();
+        }
         section('Build app');
         await app.build(buildTarget, validateNativeBuildProject: !dartOnlyPlugin);
         if (cocoapodsTransitiveFlutterDependency) {
@@ -196,6 +202,43 @@ class _FlutterProject {
     final String dependency = pluginPath != null ? '$plugin:\n    path: $pluginPath' : '$plugin:';
     content = content.replaceFirst('\ndependencies:\n', '\ndependencies:\n  $dependency\n');
     await pubspec.writeAsString(content, flush: true);
+  }
+
+  Future<void> injectOhosSigningConfig() async {
+    final String? configPath = Platform.environment['OHOS_SIGNING_CONFIG'];
+    if (configPath == null || configPath.isEmpty) {
+      return;
+    }
+    final File configFile = File(configPath);
+    if (!configFile.existsSync()) {
+      return;
+    }
+    final Map<String, dynamic> config =
+        json.decode(configFile.readAsStringSync()) as Map<String, dynamic>;
+
+    final File bpFile = File(path.join(rootPath, 'ohos', 'build-profile.json5'));
+    if (bpFile.existsSync()) {
+      String content = bpFile.readAsStringSync();
+      final String signingStr = '"signingConfigs": ${json.encode(config['signingConfigs'])}';
+      content = content.replaceAll(
+        RegExp(r'"signingConfigs":\s*\[.*?\]', dotAll: true),
+        signingStr,
+      );
+      bpFile.writeAsStringSync(content);
+    }
+
+    final String? bundleName = config['bundleName'] as String?;
+    if (bundleName != null && bundleName.isNotEmpty) {
+      final File appFile = File(path.join(rootPath, 'ohos', 'AppScope', 'app.json5'));
+      if (appFile.existsSync()) {
+        String content = appFile.readAsStringSync();
+        content = content.replaceAll(
+          RegExp(r'"bundleName"\s*:\s*"[^"]*"'),
+          '"bundleName": "$bundleName"',
+        );
+        appFile.writeAsStringSync(content);
+      }
+    }
   }
 
   /// Converts a plugin created from the standard template to a Dart-only

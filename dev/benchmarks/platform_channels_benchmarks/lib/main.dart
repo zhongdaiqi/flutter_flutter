@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 import 'dart:async';
+import 'dart:io' show exit;
 import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart' show kDebugMode;
@@ -234,6 +235,12 @@ Future<void> _runTests() async {
   printer.printToStdout();
   // Signal the end of our benchmark
   print('\n\n╡ ••• Done ••• ╞\n\n');
+  // Wait before exiting to allow `flutter run` to forward all remaining
+  // device logs (hilog on OHOS) to its stdout. Without this delay,
+  // exit(0) drops the VM service connection before all benchmark results
+  // are forwarded, resulting in incomplete data collection.
+  await Future<void>.delayed(const Duration(seconds: 5));
+  exit(0);
 }
 
 class _BenchmarkWidget extends StatefulWidget {
