@@ -1559,7 +1559,7 @@ class OhosDevice extends Device {
         await clearLogs();
         final Process process = await startProcess(hdcPath, <String>['-t', deviceId, 'hilog']);
         process.stdout
-            .transform<String>(utf8.decoder)
+            .transform<String>(const Utf8Decoder(allowMalformed: true))
             .transform<String>(const LineSplitter())
             .listen(
               (String line) {
@@ -1573,7 +1573,7 @@ class OhosDevice extends Device {
               },
             );
         process.stderr
-            .transform<String>(utf8.decoder)
+            .transform<String>(const Utf8Decoder(allowMalformed: true))
             .transform<String>(const LineSplitter())
             .listen(
               (String line) {
