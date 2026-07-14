@@ -134,7 +134,7 @@ preparation_steps:
     description: Prepare Tester project and sync to target branch
     args: ["main"]
     required: true
-  
+
   - name: Prepare Tests
     script: ci/scripts/clone_project.sh
     description: Prepare testcases
@@ -166,7 +166,7 @@ compilation_steps:
     description: Replacing download URL in sysroot scripts
     args: ["flutter_flutter/engine/src/build/linux/sysroot_scripts/install-sysroot.py", "s|https://commondatastorage.googleapis.com|file:///home/tools/Flutter/repo/binary|g"]
     required: true
-  
+
   - name: Patch emsdk packages URL
     script: ci/scripts/replace_in_file.sh
     description: Replacing emsdk packages download URL with local path

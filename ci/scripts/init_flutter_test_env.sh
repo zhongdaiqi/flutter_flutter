@@ -47,6 +47,7 @@ INIT_PACKAGES=(
     "packages/flutter"
     "packages/flutter_test"
     "packages/flutter_tools"
+    "packages/flutter_tools/test/widget_preview_scaffold.shard/widget_preview_scaffold"
     "packages/flutter_driver"
     "packages/integration_test"
     "packages/flutter_localizations"

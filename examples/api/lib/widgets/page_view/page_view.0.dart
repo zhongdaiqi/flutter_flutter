@@ -100,7 +100,10 @@ class _PageViewExampleState extends State<PageViewExample> with TickerProviderSt
       kIsWeb ||
       switch (defaultTargetPlatform) {
         TargetPlatform.macOS || TargetPlatform.linux || TargetPlatform.windows => true,
-        TargetPlatform.android || TargetPlatform.iOS || TargetPlatform.fuchsia => false,
+        TargetPlatform.android ||
+        TargetPlatform.iOS ||
+        TargetPlatform.fuchsia ||
+        TargetPlatform.ohos => false,
       };
 }
 

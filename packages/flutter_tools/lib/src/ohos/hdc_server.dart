@@ -8,8 +8,8 @@ import 'dart:io';
 
 import 'ohos_sdk.dart';
 
-const String HDC_SERVER_KEY = 'HDC_SERVER';
-const String HDC_SERVER_PORT_KEY = 'HDC_SERVER_PORT';
+const HDC_SERVER_KEY = 'HDC_SERVER';
+const HDC_SERVER_PORT_KEY = 'HDC_SERVER_PORT';
 
 ///
 /// return the hdc server config in environment , like 192.168.18.67:8710
@@ -42,10 +42,8 @@ String? getHdcServerPort() {
   return hdcServerPort;
 }
 
-List<String> getHdcCommandCompat(
-    HarmonySdk ohosSdk, String id, List<String> args) {
+List<String> getHdcCommandCompat(HarmonySdk ohosSdk, String id, List<String> args) {
   final String? hdcServer = getHdcServer();
-  final List<String> hdcServerCommand =
-      hdcServer == null ? <String>['-t', id] : <String>['-s', hdcServer];
+  final hdcServerCommand = hdcServer == null ? <String>['-t', id] : <String>['-s', hdcServer];
   return <String>[ohosSdk.hdcPath!, ...hdcServerCommand, ...args];
 }

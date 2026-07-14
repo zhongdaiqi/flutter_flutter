@@ -56,16 +56,16 @@ run_single_test() {
     local test_log="$LOG_DIR/test_${test_idx}_${TIMESTAMP}.log"
     local result_file="$LOG_DIR/result_${test_idx}_${TIMESTAMP}.tmp"
     local start_delay=$((test_idx * 2))
-    
+
     # 后台执行
     {
         # 启动延迟
         [ $test_idx -gt 0 ] && sleep $start_delay
-        
+
         local start_time=$(date +%s)
         local status="PASSED"
         local exit_code=0
-        
+
         # 重试机制（最多3次）
         for retry in 0 1 2; do
             if timeout $UT_TIMEOUT bash -c "cd '$SCRIPT_DIR/../../$path' && $cmd" >> "$test_log" 2>&1; then
@@ -88,18 +88,18 @@ run_single_test() {
                 fi
             fi
         done
-        
+
         local end_time=$(date +%s)
-        
+
         # 写入结果（使用简单格式，更容易解析）
         echo "$test_idx" > "$result_file"
         echo "$name" >> "$result_file"
         echo "$status" >> "$result_file"
         echo "$start_time" >> "$result_file"
         echo "$end_time" >> "$result_file"
-        
+
     } &
-    
+
     PIDS[$test_idx]=$!
 }
 
@@ -107,15 +107,15 @@ run_single_test() {
 collect_results() {
     local total=${#PIDS[@]}
     local completed=0
-    
+
     for idx in "${!PIDS[@]}"; do
         local pid=${PIDS[$idx]}
         local result_file="$LOG_DIR/result_${idx}_${TIMESTAMP}.tmp"
         local test_log="$LOG_DIR/test_${idx}_${TIMESTAMP}.log"
-        
+
         # 等待进程完成
         wait $pid
-        
+
         # 读取结果
         if [ -f "$result_file" ]; then
             local test_idx=$(sed -n '1p' "$result_file")
@@ -124,9 +124,9 @@ collect_results() {
             local start_time=$(sed -n '4p' "$result_file")
             local end_time=$(sed -n '5p' "$result_file")
             local duration=$((end_time - start_time))
-            
+
             completed=$((completed + 1))
-            
+
             case $status in
                 "PASSED")
                     log_info "✓ [$completed/$total] $name (${duration}s)"
@@ -135,7 +135,7 @@ collect_results() {
                     log_warn "✗ [$completed/$total] $name (${duration}s) - $status"
                     ;;
             esac
-            
+
             # 更新计数
             case $status in
                 "PASSED")
@@ -146,17 +146,17 @@ collect_results() {
                     FAILED_TESTS+=("$name")
                     ;;
             esac
-            
+
             # 写入日志
             write_log "$LOG_FILE" "$status" "$name (duration: ${duration}s)"
-            
+
             # 合并详细日志
             if [ -f "$test_log" ]; then
                 echo -e "\n========== $name ==========\n" >> "$LOG_FILE"
                 cat "$test_log" >> "$LOG_FILE"
                 rm -f "$test_log"
             fi
-            
+
             rm -f "$result_file"
         else
             completed=$((completed + 1))
@@ -181,7 +181,7 @@ for idx in "${!ALL_TESTS[@]}"; do
     parsed=$(parse_test_spec "$test_spec" "$UT_DEFAULT_CMD")
     path=$(echo "$parsed" | cut -d'|' -f1)
     cmd=$(echo "$parsed" | cut -d'|' -f2)
-    
+
     run_single_test "$idx" "$path" "$cmd"
 done
 

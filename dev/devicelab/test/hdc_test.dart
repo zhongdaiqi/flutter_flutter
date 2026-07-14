@@ -116,15 +116,15 @@ void main() {
           'pidof com.example.flutter_dfx_sample': '10937',
           'hidumper --mem 10937': '''
 -------------------------------[memory]-------------------------------
-                             Pss         Shared         Shared        Private        Private           Swap        SwapPss           Heap           Heap           Heap 
-                           Total          Clean          Dirty          Clean          Dirty          Total          Total           Size          Alloc           Free 
-                          ( kB )         ( kB )         ( kB )         ( kB )         ( kB )         ( kB )         ( kB )         ( kB )         ( kB )         ( kB ) 
+                             Pss         Shared         Shared        Private        Private           Swap        SwapPss           Heap           Heap           Heap
+                           Total          Clean          Dirty          Clean          Dirty          Total          Total           Size          Alloc           Free
+                          ( kB )         ( kB )         ( kB )         ( kB )         ( kB )         ( kB )         ( kB )         ( kB )         ( kB )         ( kB )
                  ------------------------------------------------------------------------------------------------------------------------------------------------------
-               GL           8716              0              0              0           8716              0              0              0              0              0 
-            Graph          74508              0              0              0          74508              0              0              0              0              0 
-      ark ts heap           4245           5796              0           3964              0           4080           4080              0              0              0 
+               GL           8716              0              0              0           8716              0              0              0              0              0
+            Graph          74508              0              0              0          74508              0              0              0              0              0
+      ark ts heap           4245           5796              0           3964              0           4080           4080              0              0              0
 -----------------------------------------------------------------------------------------------------------------------------------------------------------------------
-            Total         169407         109676          40092          42544          85376          27200          27200          68768          66983           3537 
+            Total         169407         109676          40092          42544          85376          27200          27200          68768          66983           3537
 ''',
         };
         final Map<String, dynamic> stats = await device.getMemoryStats(

@@ -1380,6 +1380,7 @@ class _TextFieldState extends State<TextField>
 
   EditableTextState? get _editableText => editableTextKey.currentState;
 
+  // ignore: unused_field
   PointerDeviceKind _deviceKind = PointerDeviceKind.unknown;
 
   void _requestKeyboard({PointerDeviceKind kind = PointerDeviceKind.unknown}) {
@@ -1443,8 +1444,7 @@ class _TextFieldState extends State<TextField>
       case TargetPlatform.fuchsia:
       case TargetPlatform.android:
       case TargetPlatform.ohos:
-        if (cause == SelectionChangedCause.longPress
-            || cause == SelectionChangedCause.drag) {
+        if (cause == SelectionChangedCause.longPress || cause == SelectionChangedCause.drag) {
           _editableText?.bringIntoView(selection.extent);
         }
     }

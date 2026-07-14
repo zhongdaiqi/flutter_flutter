@@ -23,10 +23,10 @@ import 'debug.dart';
 import 'hardware_keyboard.dart';
 import 'message_codec.dart';
 import 'platform_channel.dart';
-import 'split_view_config_loader.dart';
 import 'raw_keyboard.dart' show RawKeyboard;
 import 'restoration.dart';
 import 'service_extensions.dart';
+import 'split_view_config_loader.dart';
 import 'system_channels.dart';
 import 'system_chrome.dart';
 import 'text_input.dart';
@@ -602,14 +602,11 @@ mixin ServicesBinding on BindingBase, SchedulerBinding {
   /// @Param status :
   /// [start] or [finish]
   void reportNavigatorActivity(String activity, String status, [String? routeName = '']) {
-    SystemChannels.navigation.invokeMethod<void>(
-      'reportNavigatorActivity',
-      <String, String>{
-        'activity': activity,
-        'status': status,
-        'routeName': routeName ?? ''
-      }
-    );
+    SystemChannels.navigation.invokeMethod<void>('reportNavigatorActivity', <String, String>{
+      'activity': activity,
+      'status': status,
+      'routeName': routeName ?? '',
+    });
   }
 }
 
