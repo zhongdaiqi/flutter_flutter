@@ -191,6 +191,9 @@ abstract class Route<T> extends _RoutePlaceholder {
   NavigatorState? get navigator => _navigator;
   NavigatorState? _navigator;
 
+  bool get _installed => _navigator != null;
+  bool _isInstalledIn(NavigatorState state) => _navigator == state;
+
   /// The settings for this route.
   ///
   /// See [RouteSettings] for details.
@@ -227,7 +230,7 @@ abstract class Route<T> extends _RoutePlaceholder {
   void _updateSettings(RouteSettings newSettings) {
     if (_settings != newSettings) {
       _settings = newSettings;
-      if (_navigator != null) {
+      if (_installed) {
         changedInternalState();
       }
     }
@@ -586,7 +589,7 @@ abstract class Route<T> extends _RoutePlaceholder {
   ///
   /// If this is true, then [isActive] is also true.
   bool get isCurrent {
-    if (_navigator == null) {
+    if (!_installed) {
       return false;
     }
     final _RouteEntry? currentRouteEntry = _navigator!._lastRouteEntryWhereOrNull(
@@ -603,7 +606,7 @@ abstract class Route<T> extends _RoutePlaceholder {
   /// If [isFirst] and [isCurrent] are both true then this is the only route on
   /// the navigator (and [isActive] will also be true).
   bool get isFirst {
-    if (_navigator == null) {
+    if (!_installed) {
       return false;
     }
     final _RouteEntry? currentRouteEntry = _navigator!._firstRouteEntryWhereOrNull(
@@ -618,7 +621,7 @@ abstract class Route<T> extends _RoutePlaceholder {
   /// Whether there is at least one active route underneath this route.
   @protected
   bool get hasActiveRouteBelow {
-    if (_navigator == null) {
+    if (!_installed) {
       return false;
     }
     for (final _RouteEntry entry in _navigator!._history) {
@@ -3221,7 +3224,7 @@ class _RouteEntry extends RouteTransitionRecord {
     );
     assert(navigator._debugLocked);
     assert(
-      route._navigator == null,
+      !route._installed,
       'The pushed route has already been used. When pushing a route, a new '
       'Route object must be provided.',
     );
@@ -3308,7 +3311,7 @@ class _RouteEntry extends RouteTransitionRecord {
   /// refuses to be popped.
   bool handlePop({required NavigatorState navigator, required Route<dynamic>? previousPresent}) {
     assert(navigator._debugLocked);
-    assert(route._navigator == navigator);
+    assert(route._isInstalledIn(navigator));
     currentState = _RouteLifecycle.popping;
     if (route._popCompleter.isCompleted) {
       // This is a page-based route popped through the Navigator.pop. The
@@ -3342,15 +3345,21 @@ class _RouteEntry extends RouteTransitionRecord {
     required Route<dynamic>? previousPresent,
   }) {
     assert(navigator._debugLocked);
-    assert(route._navigator == navigator);
-    currentState = _RouteLifecycle.removing;
+    if (route._isInstalledIn(navigator)) {
+      currentState = _RouteLifecycle.removing;
+    } else {
+      // This route is still waiting to be added while a top-most push or pop
+      // animation is still on-going. In this case, this route can be disposed
+      // directly since nothing has been initialized yet.
+      currentState = _RouteLifecycle.dispose;
+    }
     if (_reportRemovalToObserver) {
       navigator._observedRouteDeletions.add(_NavigatorRemoveObservation(route, previousPresent));
     }
   }
 
   void didAdd({required NavigatorState navigator, required bool isNewFirst}) {
-    assert(route._navigator == null);
+    assert(!route._installed);
     route._navigator = navigator;
     route.install();
     assert(route.overlayEntries.isNotEmpty);
@@ -3453,7 +3462,7 @@ class _RouteEntry extends RouteTransitionRecord {
             if (!navigator._entryWaitingForSubTreeDisposal.remove(this)) {
               // This route must have been destroyed as a result of navigator
               // force dispose.
-              assert(route._navigator == null && !navigator.mounted);
+              assert(!route._installed && !navigator.mounted);
               return;
             }
             assert(currentState == _RouteLifecycle.disposing);
@@ -4580,9 +4589,12 @@ class NavigatorState extends State<Navigator> with TickerProviderStateMixin, Res
           assert(entry.currentState == _RouteLifecycle.remove);
           continue;
         case _RouteLifecycle.remove:
-          if (!seenTopActiveRoute) {
+          // Routes that are not yet added (_installed == false) will exit as if
+          // they have never been on the navigator. They shouldn't announce
+          // their presence.
+          if (!seenTopActiveRoute && entry.route._installed) {
             if (poppedRoute != null) {
-              entry.route.didPopNext(poppedRoute);
+              entry.handleDidPopNext(poppedRoute);
             }
             poppedRoute = null;
           }
@@ -4590,7 +4602,7 @@ class NavigatorState extends State<Navigator> with TickerProviderStateMixin, Res
             navigator: this,
             previousPresent: _getRouteBefore(index, _RouteEntry.willBePresentPredicate)?.route,
           );
-          assert(entry.currentState == _RouteLifecycle.removing);
+          assert(entry.currentState.index >= _RouteLifecycle.removing.index);
           continue;
         case _RouteLifecycle.removing:
           if (!canRemoveOrAdd && next != null) {
@@ -5173,7 +5185,7 @@ class NavigatorState extends State<Navigator> with TickerProviderStateMixin, Res
       _debugLocked = true;
       return true;
     }());
-    assert(entry.route._navigator == null);
+    assert(!entry.route._installed);
     assert(
       entry.currentState == _RouteLifecycle.push ||
           (_splitViewPolicy != null && entry.currentState == _RouteLifecycle.add),
@@ -5257,7 +5269,7 @@ class NavigatorState extends State<Navigator> with TickerProviderStateMixin, Res
     Route<T> newRoute, {
     TO? result,
   }) {
-    assert(newRoute._navigator == null);
+    assert(!newRoute._installed);
     _pushReplacementEntry(
       _RouteEntry(newRoute, pageBased: false, initialState: _RouteLifecycle.pushReplace),
       result,
@@ -5323,7 +5335,7 @@ class NavigatorState extends State<Navigator> with TickerProviderStateMixin, Res
       _debugLocked = true;
       return true;
     }());
-    assert(entry.route._navigator == null);
+    assert(!entry.route._installed);
     assert(_history.isNotEmpty);
     assert(
       _history.any(_RouteEntry.isPresentPredicate),
@@ -5368,7 +5380,7 @@ class NavigatorState extends State<Navigator> with TickerProviderStateMixin, Res
   ///    restored during state restoration.
   @optionalTypeArgs
   Future<T?> pushAndRemoveUntil<T extends Object?>(Route<T> newRoute, RoutePredicate predicate) {
-    assert(newRoute._navigator == null);
+    assert(!newRoute._installed);
     assert(newRoute.overlayEntries.isEmpty);
     _pushEntryAndRemoveUntil(
       _RouteEntry(newRoute, pageBased: false, initialState: _RouteLifecycle.push),
@@ -5438,7 +5450,7 @@ class NavigatorState extends State<Navigator> with TickerProviderStateMixin, Res
       _debugLocked = true;
       return true;
     }());
-    assert(entry.route._navigator == null);
+    assert(!entry.route._installed);
     assert(entry.route.overlayEntries.isEmpty);
     assert(entry.currentState == _RouteLifecycle.push);
     int index = _history.length - 1;
@@ -5471,7 +5483,7 @@ class NavigatorState extends State<Navigator> with TickerProviderStateMixin, Res
   @optionalTypeArgs
   void replace<T extends Object?>({required Route<dynamic> oldRoute, required Route<T> newRoute}) {
     assert(!_debugLocked);
-    assert(oldRoute._navigator == this);
+    assert(oldRoute._isInstalledIn(this));
     _replaceEntry(
       _RouteEntry(newRoute, pageBased: false, initialState: _RouteLifecycle.replace),
       oldRoute,
@@ -5493,7 +5505,7 @@ class NavigatorState extends State<Navigator> with TickerProviderStateMixin, Res
     required RestorableRouteBuilder<T> newRouteBuilder,
     Object? arguments,
   }) {
-    assert(oldRoute._navigator == this);
+    assert(oldRoute._isInstalledIn(this));
     assert(
       _debugIsStaticCallback(newRouteBuilder),
       'The provided routeBuilder must be a static function.',
@@ -5521,7 +5533,7 @@ class NavigatorState extends State<Navigator> with TickerProviderStateMixin, Res
       return true;
     }());
     assert(entry.currentState == _RouteLifecycle.replace);
-    assert(entry.route._navigator == null);
+    assert(!entry.route._installed);
     final int index = _history.indexWhere(_RouteEntry.isRoutePredicate(oldRoute));
     assert(index >= 0, 'This Navigator does not contain the specified oldRoute.');
     assert(
@@ -5557,8 +5569,8 @@ class NavigatorState extends State<Navigator> with TickerProviderStateMixin, Res
     required Route<dynamic> anchorRoute,
     required Route<T> newRoute,
   }) {
-    assert(newRoute._navigator == null);
-    assert(anchorRoute._navigator == this);
+    assert(!newRoute._installed);
+    assert(anchorRoute._isInstalledIn(this));
     _replaceEntryBelow(
       _RouteEntry(newRoute, pageBased: false, initialState: _RouteLifecycle.replace),
       anchorRoute,
@@ -5581,7 +5593,7 @@ class NavigatorState extends State<Navigator> with TickerProviderStateMixin, Res
     required RestorableRouteBuilder<T> newRouteBuilder,
     Object? arguments,
   }) {
-    assert(anchorRoute._navigator == this);
+    assert(anchorRoute._isInstalledIn(this));
     assert(
       _debugIsStaticCallback(newRouteBuilder),
       'The provided routeBuilder must be a static function.',
@@ -5671,7 +5683,7 @@ class NavigatorState extends State<Navigator> with TickerProviderStateMixin, Res
     if (lastEntry == null) {
       return false;
     }
-    assert(lastEntry.route._navigator == this);
+    assert(lastEntry.route._isInstalledIn(this));
 
     // TODO(justinmc): When the deprecated willPop method is removed, delete
     // this code and use only popDisposition, below.
@@ -5832,7 +5844,7 @@ class NavigatorState extends State<Navigator> with TickerProviderStateMixin, Res
       _debugLocked = true;
       return true;
     }());
-    assert(route._navigator == this);
+    assert(route._isInstalledIn(this));
     final bool wasCurrent = route.isCurrent;
     final _RouteEntry entry = _history.firstWhere(_RouteEntry.isRoutePredicate(route));
     entry.complete(result);
@@ -5857,7 +5869,7 @@ class NavigatorState extends State<Navigator> with TickerProviderStateMixin, Res
       _debugLocked = true;
       return true;
     }());
-    assert(anchorRoute._navigator == this);
+    assert(anchorRoute._isInstalledIn(this));
     final int anchorIndex = _history.indexWhere(_RouteEntry.isRoutePredicate(anchorRoute));
     assert(anchorIndex >= 0, 'This Navigator does not contain the specified anchorRoute.');
     assert(
