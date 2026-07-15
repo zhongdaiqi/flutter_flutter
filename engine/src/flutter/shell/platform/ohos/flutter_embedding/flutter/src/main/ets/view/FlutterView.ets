@@ -289,6 +289,9 @@ export class FlutterView {
   private flutterEngine: FlutterEngine | null = null
   private id: string = ""
   private isActive: boolean = true
+  private pageVisible: boolean = false;
+  private areaVisible: boolean = true;
+  private hostVisible: boolean = false;
   private dVModel: DVModel | undefined = undefined;
   /** The wrapped builder for creating the view, or undefined if not set. */
   private wrapBuilder: WrappedBuilder<[Params]> | undefined = undefined;
@@ -761,6 +764,42 @@ export class FlutterView {
     return this.isActive;
   }
 
+  private getEffectiveHostVisibility(): boolean {
+    return this.pageVisible && this.areaVisible;
+  }
+
+  private updateHostVisibility(): void {
+    const shouldBeVisible = this.getEffectiveHostVisibility();
+    if (this.hostVisible === shouldBeVisible) {
+      return;
+    }
+    this.hostVisible = shouldBeVisible;
+    if (!this.isAttachedToFlutterEngine()) {
+      return;
+    }
+    if (shouldBeVisible) {
+      this.flutterEngine?.hostDidBecomeVisible();
+    } else {
+      this.flutterEngine?.hostDidBecomeHidden();
+    }
+  }
+
+  public onPageVisibilityChanged(isVisible: boolean): void {
+    if (this.pageVisible === isVisible) {
+      return;
+    }
+    this.pageVisible = isVisible;
+    this.updateHostVisibility();
+  }
+
+  public onVisibleAreaChanged(isVisible: boolean): void {
+    if (this.areaVisible === isVisible) {
+      return;
+    }
+    this.areaVisible = isVisible;
+    this.updateHostVisibility();
+  }
+
   /**
    * Gets the embedding node controller.
    * @deprecated since 3.7
@@ -900,6 +939,7 @@ export class FlutterView {
       this.ltpoSwitchState = FlutterNapi.checkLTPOSwitchState() as LTPOSwitchState;
     }
 
+    this.updateHostVisibility();
     hiTraceMeter.finishTrace("attachToFlutterEngine", 0);
   }
 
@@ -931,6 +971,10 @@ export class FlutterView {
     if (this.isXComponentAttachedToEngine) {
       this.flutterEngine!!.getFlutterNapi().xComponentDetachFlutterEngine(this.id)
       this.isXComponentAttachedToEngine = false;
+    }
+    if (this.hostVisible) {
+      this.flutterEngine?.hostDidBecomeHidden();
+      this.hostVisible = false;
     }
     // Keep the controller -> TextInputPlugin link alive until the platform-view
     // hierarchy has been detached. This lets late blur/teardown callbacks clear
