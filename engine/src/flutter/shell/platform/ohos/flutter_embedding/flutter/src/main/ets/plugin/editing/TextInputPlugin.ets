@@ -398,7 +398,8 @@ class TextInputMethodHandlerImpl implements TextInputMethodHandler {
   private evaluateAutofillRequest(): 'reject' | 'wait-rect' | 'wait-ime' | 'proceed' {
     if (deviceInfo.sdkApiVersion < AUTOFILL_SUPPORT_API ||
       !this.needsAutofill() ||
-      this.configuration?.autofill === undefined) {
+      this.configuration?.autofill === undefined ||
+      this.inputTarget.type !== Type.FRAMEWORK_CLIENT) {
       return 'reject';
     }
     if (this.inputTarget.id === this.autofillSuppressedClientId) {
@@ -432,7 +433,12 @@ class TextInputMethodHandlerImpl implements TextInputMethodHandler {
       return;
     }
     if (!shouldSave) {
+      this.autofillFieldTexts.clear();
+      this.clearAutofillContext();
       this.notifyViewExited();
+      return;
+    }
+    if (this.autoSaveInFlight) {
       return;
     }
     if (this.flutterViewContext === undefined) {
@@ -467,6 +473,7 @@ class TextInputMethodHandlerImpl implements TextInputMethodHandler {
           this.autofillFieldTexts.delete(key);
         });
         this.resetAutofillRequestTracking();
+        this.clearAutofillContext();
         this.notifyViewExited();
       },
       onFailure: (): void => {
@@ -475,6 +482,7 @@ class TextInputMethodHandlerImpl implements TextInputMethodHandler {
           this.autofillFieldTexts.delete(key);
         });
         this.resetAutofillRequestTracking();
+        this.clearAutofillContext();
         this.notifyViewExited();
       },
     };
@@ -483,6 +491,8 @@ class TextInputMethodHandlerImpl implements TextInputMethodHandler {
         this.autoSaveInFlight = false;
         this.pendingSaveUserCallback = undefined;
         this.resetAutofillRequestTracking();
+        this.autofillFieldTexts.clear();
+        this.clearAutofillContext();
         return;
       }
       const mergedFieldConfigs = TextInputMethodHandlerImpl.mergeAutofillFieldConfigs(
@@ -518,6 +528,8 @@ class TextInputMethodHandlerImpl implements TextInputMethodHandler {
       this.autoSaveInFlight = false;
       this.pendingSaveUserCallback = undefined;
       this.resetAutofillRequestTracking();
+      this.autofillFieldTexts.clear();
+      this.clearAutofillContext();
     });
   }
 
@@ -1590,23 +1602,45 @@ class TextInputMethodHandlerImpl implements TextInputMethodHandler {
       this.notifyViewExited();
     }
     this.mEditable.removeEditingStateListener(this.plugin);
-    this.configuration = null;
-    this.autofillConfiguration = null;
-    this.nodeIdMap = new Map();
-    this.lastClientRect = null;
-    this.lastPageRect = null;
+    // PC: clearClient arrives BEFORE finishAutofillContext(true). If we null configuration here,
+    // the later save can't find the autofill config and skips (no popup). Defer clearing the
+    // autofill context when an autofill session is pending so finishAutofillContext can still
+    // build the save ViewData. Cleared later by the save callback or the next setTextInputClient.
+    const deferAutofillClear = this.autoSaveInFlight || this.autofillConfiguration !== null;
+    if (!deferAutofillClear) {
+      this.configuration = null;
+      this.autofillConfiguration = null;
+      this.nodeIdMap = new Map();
+      this.lastClientRect = null;
+      this.lastPageRect = null;
+    }
     this.fieldRects.clear();
     this.pendingAutofillRequest = false;
     if (!this.autoSaveInFlight) {
       this.autoFillSessionActive = false;
       this.resetAutofillRequestTracking();
-      this.autofillFieldTexts.clear();
+      if (!deferAutofillClear) {
+        this.autofillFieldTexts.clear();
+      }
     }
     this.autofillSuppressedClientId = -1;
     this.inputTarget = new InputTarget(Type.NO_TARGET, 0);
     this.mLastOutgoingFrameworkState = null;
     this.suppressNextHideForPhysicalPlatformView = false;
     this.pendingTeardownPlatformViewClientId = -1;
+  }
+
+  // Centralized autofill context teardown. Called from the save callback end-points and the
+  // cancel branch of finishAutofillContext, so the configuration deferred by clearTextInputClient
+  // is released once the save flow is actually done (rather than being cleared too early on PC,
+  // where clearClient races ahead of finishAutofillContext(true)).
+  private clearAutofillContext(): void {
+    this.configuration = null;
+    this.autofillConfiguration = null;
+    this.nodeIdMap = new Map();
+    this.lastClientRect = null;
+    this.lastPageRect = null;
+    this.fieldRects.clear();
   }
 
   /**
