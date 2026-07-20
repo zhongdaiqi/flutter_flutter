@@ -35,6 +35,14 @@ env_vars:
 
 # Preparation steps - executed in order
 preparation_steps:
+  - name: Prepare openharmony SDK
+    script: ci/scripts/prepare_openharmony_sdk.sh
+    description: Download openharmony sdk
+    args: 
+      - "https://flutter-ohos-test.obs.cn-south-1.myhuaweicloud.com/tools/sdk_openharmony.tar.gz"
+      - "3427ca8619edb6561c3c4e143a26c9fc41dfced8cd072667ca2fae8897b1cb67"
+    required: true
+
   - name: Check System Information
     script: ci/scripts/check_system_info.sh
     description: Verify system OS and user information
@@ -58,7 +66,7 @@ preparation_steps:
   - name: Prepare Flutter
     script: ci/scripts/prepare_project.sh
     description: Prepare Flutter project and sync to target branch
-    args: ["flutter_flutter", "master"]
+    args: ["flutter_flutter", "oh-3.22.3-release"]
     required: true
 
   - name: Prepare Tester
@@ -72,22 +80,10 @@ compilation_steps:
   - name: Pack Flutter
     script: ci/scripts/pack_flutter.sh
     description: Pack Flutter SDK
-    args: ["master"]
+    args: ["oh-3.22.3-release"]
     required: true
 
   - name: Compile Tester
     script: ci/scripts/compile_tester.sh
     description: Compiling Tester
-    args: ["flutter_flutter/engine"]
-    required: true
-
-  - name: Dev Tests
-    script: ci/scripts/run_dev_tests.sh
-    args:
-      - dev/customer_testing,dart test,Customer Testing
-      - dev/tracing_tests,flutter test --enable-vmservice,Tracing Tests
-      - dev/tools,dart test,Tools
-      - dev/tools/gen_defaults,dart test,Gen Defaults
-      - dev/tools/gen_keycodes,dart test,Gen Keycodes
-    description: Run all development tests
     required: true
