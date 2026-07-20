@@ -4325,7 +4325,7 @@ class NavigatorState extends State<Navigator> with TickerProviderStateMixin, Res
       final String? homePageNameForUpdatePages = _splitViewPolicy?.getHomePageNameIfReady();
       if (homePageNameForUpdatePages != null) {
         final bool homePageInNewPages = widget.pages.any(
-          (page) => page.name == homePageNameForUpdatePages,
+          (Page<dynamic> page) => page.name == homePageNameForUpdatePages,
         );
         if (homePageInNewPages) {
           _preservedHomePageName = null;
@@ -4384,7 +4384,7 @@ class NavigatorState extends State<Navigator> with TickerProviderStateMixin, Res
         }
         continue;
       }
-      final potentialPageToRemove =
+      final Page<dynamic> potentialPageToRemove =
           potentialEntryToRemove.route.settings as Page<dynamic>;
 
       if (_splitViewPolicy != null &&
@@ -4578,7 +4578,10 @@ class NavigatorState extends State<Navigator> with TickerProviderStateMixin, Res
           assert(entry.currentState == _RouteLifecycle.popping);
           canRemoveOrAdd = true;
           if (defaultTargetPlatform == TargetPlatform.ohos) {
-            final String? routeName = _getRouteBefore(index, _RouteEntry.willBePresentPredicate)?.route.settings.name;
+            final String? routeName = _getRouteBefore(
+              index,
+              _RouteEntry.willBePresentPredicate,
+            )?.route.settings.name;
             ServicesBinding.instance.reportNavigatorActivity('pop', 'start', routeName);
           }
         case _RouteLifecycle.popping:

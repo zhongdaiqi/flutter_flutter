@@ -17,7 +17,7 @@ Future<void> main() async {
   final String appJson5Path = '$projectPath/ohos/AppScope/app.json5';
   final Map<String, dynamic> appConfig =
       json.decode(File(appJson5Path).readAsStringSync()) as Map<String, dynamic>;
-  final String bundleName = appConfig['app']['bundleName'] as String;
+  final String bundleName = (appConfig['app'] as Map<String, dynamic>)['bundleName'] as String;
 
   await task(
     ReportedDurationTest(

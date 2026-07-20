@@ -34,7 +34,6 @@ import 'device.dart';
 import 'globals.dart' as globals;
 import 'ios/application_package.dart';
 import 'ios/devices.dart';
-import 'ohos/hdc_server.dart';
 import 'project.dart';
 import 'resident_devtools_handler.dart';
 import 'run_cold.dart';

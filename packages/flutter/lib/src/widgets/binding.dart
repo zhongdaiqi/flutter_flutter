@@ -34,7 +34,6 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
-import 'package:meta/meta.dart';
 
 import 'app.dart';
 import 'debug.dart';
@@ -48,21 +47,20 @@ import 'widget_inspector.dart';
 
 export 'dart:ui' show AppLifecycleState, Locale;
 
-enum _LTPOSwitchStatus {
-  ltpoOff,
-  ltpoOn,
-  ltpoNotInit,
-}
+enum _LTPOSwitchStatus { ltpoOff, ltpoOn, ltpoNotInit }
 
 /// Animation source type (internal use, only for LTPO related)
 @internal
 enum TranslateAnimationSource {
   /// Scroll animation (ListView/ScrollView/DraggableScrollableSheet)
   scroll,
+
   /// Widget property animation (AnimatedContainer/SlideTransition)
   widget,
+
   /// Gesture drag (Pan/Drag/InteractiveViewer)
   gesture,
+
   /// Page transition (Hero/BottomSheet)
   pageTransition,
 }
@@ -96,7 +94,7 @@ class LTPOVelocityReport {
 
   @override
   String toString() {
-    final buffer = StringBuffer()
+    final StringBuffer buffer = StringBuffer()
       ..write('LTPOVelocityReport(')
       ..write('${source.name}: ${velocity.toStringAsFixed(2)} px/s');
     if (componentInfo != null) {
@@ -108,15 +106,15 @@ class LTPOVelocityReport {
 }
 
 /// LTPO velocity report detector
-/// 
+///
 /// Used for development debugging to help developers locate abnormal velocity reporting scenarios.
 /// Can be accessed via [WidgetsBinding.instance.ltpoDetector].
-/// 
+///
 /// **Note:** This detector only works in debug mode. In profile and release modes,
 /// the recording logic is disabled (wrapped in assert statements) and all APIs
 /// (reports, statistics, etc.) will return empty results. This is intentional
 /// to avoid performance overhead in production builds.
-/// 
+///
 /// For profile/release builds, consider using [debugPrintLTPO] or custom logging
 /// mechanisms if you need to diagnose LTPO issues.
 class LTPODetector {
@@ -143,6 +141,7 @@ class LTPODetector {
   }
 
   /// Abnormal velocity threshold, values exceeding this will be marked as abnormal
+  // ignore: unnecessary_getters_setters
   double get velocityThreshold => _velocityThreshold;
   set velocityThreshold(double value) => _velocityThreshold = value;
 
@@ -163,12 +162,14 @@ class LTPODetector {
 
   /// Gets abnormal records (velocity exceeds threshold)
   List<LTPOVelocityReport> getAbnormalReports() {
-    return _reports.where((report) => report.velocity > _velocityThreshold).toList();
+    return _reports
+        .where((LTPOVelocityReport report) => report.velocity > _velocityThreshold)
+        .toList();
   }
 
   /// Gets records by specific source
   List<LTPOVelocityReport> getReportsBySource(TranslateAnimationSource source) {
-    return _reports.where((report) => report.source == source).toList();
+    return _reports.where((LTPOVelocityReport report) => report.source == source).toList();
   }
 
   /// Gets statistics info
@@ -177,11 +178,11 @@ class LTPODetector {
       return <String, dynamic>{'count': 0};
     }
 
-    final velocities = _reports.map((r) => r.velocity).toList();
+    final List<double> velocities = _reports.map((LTPOVelocityReport r) => r.velocity).toList();
     velocities.sort();
 
-    final sourceCounts = <String, int>{};
-    for (final report in _reports) {
+    final Map<String, int> sourceCounts = <String, int>{};
+    for (final LTPOVelocityReport report in _reports) {
       sourceCounts[report.source.name] = (sourceCounts[report.source.name] ?? 0) + 1;
     }
 
@@ -189,23 +190,27 @@ class LTPODetector {
       'count': _reports.length,
       'maxVelocity': velocities.last,
       'minVelocity': velocities.first,
-      'avgVelocity': velocities.reduce((a, b) => a + b) / velocities.length,
+      'avgVelocity': velocities.reduce((double a, double b) => a + b) / velocities.length,
       'sourceCounts': sourceCounts,
       'abnormalCount': getAbnormalReports().length,
     };
   }
 
   void _record(LTPOVelocityReport report) {
-    if (!_enabled) return;
+    if (!_enabled) {
+      return;
+    }
     _reports.add(report);
     _trimRecords();
 
     // Check for abnormalities in debug mode
     assert(() {
       if (report.velocity > _velocityThreshold) {
-        debugPrint('LTPO abnormal velocity detected: ${report.velocity.toStringAsFixed(2)} px/s '
-            'from ${report.source.name}\n'
-            '${report.callStack ?? ''}');
+        debugPrint(
+          'LTPO abnormal velocity detected: ${report.velocity.toStringAsFixed(2)} px/s '
+          'from ${report.source.name}\n'
+          '${report.callStack ?? ''}',
+        );
       }
       return true;
     }());
@@ -632,7 +637,7 @@ mixin WidgetsBinding
     platformMenuDelegate = DefaultPlatformMenuDelegate();
 
     // Upload the translate velocity only once per frame.
- 	  // Adjust the current framerate based on speed.
+    // Adjust the current framerate based on speed.
     addPersistentFrameCallback(_sendAllTranslateVelocity);
   }
 
@@ -1261,30 +1266,19 @@ mixin WidgetsBinding
   bool debugPrintLTPO = false;
 
   /// LTPO velocity report detector
-  /// 
+  ///
   /// Used for development debugging to help locate abnormal velocity reporting scenarios.
-  /// 
+  ///
   /// **Note:** This detector only records data in debug mode. In profile and release modes,
   /// all recording functionality is disabled to avoid performance overhead.
-  /// 
-  /// Usage example:
-  /// ```dart
-  /// // Enable detection (only works in debug mode)
-  /// WidgetsBinding.instance.ltpoDetector.enable();
-  /// 
-  /// // View recent report records
-  /// final reports = WidgetsBinding.instance.ltpoDetector.reports;
-  /// 
-  /// // View abnormal records
-  /// final abnormal = WidgetsBinding.instance.ltpoDetector.getAbnormalReports();
-  /// 
-  /// // Get statistics
-  /// final stats = WidgetsBinding.instance.ltpoDetector.getStatistics();
-  /// ```
+  ///
+  /// Usage: call `WidgetsBinding.instance.ltpoDetector.enable()` to turn on
+  /// detection, then read [reports], [LTPODetector.getAbnormalReports], or
+  /// [LTPODetector.getStatistics] to inspect recorded velocity data.
   final LTPODetector ltpoDetector = LTPODetector();
 
   /// LTPO switch status (for debugging only)
-  /// 
+  ///
   /// Returns the current LTPO status:
   /// - `ltpoOn`: LTPO is on
   /// - `ltpoOff`: LTPO is off
@@ -1302,23 +1296,27 @@ mixin WidgetsBinding
     }
     assert(() {
       if (WidgetsBinding.instance.debugPrintLTPO) {
-        debugPrint('[_sendAllTranslateVelocity] sending velocity: $_maxTranslateVelocity px/s, timestamp: $timeStamp');
+        debugPrint(
+          '[_sendAllTranslateVelocity] sending velocity: $_maxTranslateVelocity px/s, timestamp: $timeStamp',
+        );
       }
       return true;
     }());
-    SystemChannels.nativeVsync.invokeMethod(
-      'sendVelocity', {'type': 'translate', 'velocity': _maxTranslateVelocity}
-    );
+    SystemChannels.nativeVsync.invokeMethod('sendVelocity', <String, Object>{
+      'type': 'translate',
+      'velocity': _maxTranslateVelocity,
+    });
     _shouldSendTranslateVelocity = false;
     _maxTranslateVelocity = 0.0;
   }
 
   // Check the current status of LTPO being on.
   Future<int> _checkLTPOSwitchStatus() async {
-    return await SystemChannels.nativeVsync.invokeMethod<int>('checkLTPOSwitchStatus') as int;
+    return (await SystemChannels.nativeVsync.invokeMethod<int>('checkLTPOSwitchStatus'))!;
   }
 
   // Record the speed value that needs to be sent for Ohos.
+  /// Records translate velocity for the OHOS LTPO adaptive refresh feature.
   void recordTranslateVelocity({
     required double velocity,
     required TranslateAnimationSource source,
@@ -1330,33 +1328,33 @@ mixin WidgetsBinding
       // blocking the UI thread while waiting for the platform response.
       _isCheckingLTPOSwitchStatus = true;
       _checkLTPOSwitchStatus()
-        .timeout(
-          const Duration(milliseconds: 500),
-          onTimeout: () {
-            // Timeout: treat as LTPO not available to avoid blocking indefinitely.
+          .timeout(
+            const Duration(milliseconds: 500),
+            onTimeout: () {
+              // Timeout: treat as LTPO not available to avoid blocking indefinitely.
+              assert(() {
+                debugPrint('LTPO: Check switch status timed out, assuming ltpoOff');
+                return true;
+              }());
+              return _LTPOSwitchStatus.ltpoOff.index;
+            },
+          )
+          .then((int switchStatus) {
+            _ltpoSwitchStatus = _LTPOSwitchStatus.values[switchStatus];
+          })
+          .catchError((Object error) {
+            // Platform channel call failed (e.g., device doesn't support LTPO).
+            // Default to ltpoOff to avoid repeated failed calls.
+            _ltpoSwitchStatus = _LTPOSwitchStatus.ltpoOff;
             assert(() {
-              debugPrint('LTPO: Check switch status timed out, assuming ltpoOff');
+              debugPrint('LTPO: Failed to check switch status: $error');
               return true;
             }());
-            return _LTPOSwitchStatus.ltpoOff.index;
-          },
-        )
-        .then((int switchStatus) {
-          _ltpoSwitchStatus = _LTPOSwitchStatus.values[switchStatus];
-        })
-        .catchError((Object error) {
-          // Platform channel call failed (e.g., device doesn't support LTPO).
-          // Default to ltpoOff to avoid repeated failed calls.
-          _ltpoSwitchStatus = _LTPOSwitchStatus.ltpoOff;
-          assert(() {
-            debugPrint('LTPO: Failed to check switch status: $error');
-            return true;
-          }());
-        })
-        .whenComplete(() {
-          // Reset flag to allow retry if needed (though status is now determined)
-          _isCheckingLTPOSwitchStatus = false;
-        });
+          })
+          .whenComplete(() {
+            // Reset flag to allow retry if needed (though status is now determined)
+            _isCheckingLTPOSwitchStatus = false;
+          });
     }
 
     if (_ltpoSwitchStatus != _LTPOSwitchStatus.ltpoOn) {
@@ -1372,7 +1370,6 @@ mixin WidgetsBinding
         // Can accurately calculate pixel velocity: Scroll, Gesture, and PageTransition are pixels/second
         // PageTransition calculates pixel velocity in its respective component and then reports
         pixelVelocity = velocity.abs();
-        break;
 
       case TranslateAnimationSource.widget:
         // Cannot accurately calculate: Widget animation is a ratio value, cannot be reliably converted
@@ -1389,18 +1386,20 @@ mixin WidgetsBinding
     // Record detection info
     assert(() {
       if (WidgetsBinding.instance.debugPrintLTPO || ltpoDetector.enabled) {
-        final info = debugInfo != null ? ' [$debugInfo]' : '';
+        final String info = debugInfo != null ? ' [$debugInfo]' : '';
         debugPrint('LTPO[${source.name}]$info: $pixelVelocity px/s');
       }
 
       // Record to detector
-      ltpoDetector._record(LTPOVelocityReport(
-        source: source,
-        velocity: pixelVelocity!,
-        timestamp: DateTime.now(),
-        callStack: StackTrace.current.toString(),
-        componentInfo: debugInfo,
-      ));
+      ltpoDetector._record(
+        LTPOVelocityReport(
+          source: source,
+          velocity: pixelVelocity!,
+          timestamp: DateTime.now(),
+          callStack: StackTrace.current.toString(),
+          componentInfo: debugInfo,
+        ),
+      );
       return true;
     }());
   }

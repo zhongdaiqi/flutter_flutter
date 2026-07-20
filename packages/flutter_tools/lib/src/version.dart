@@ -1058,8 +1058,8 @@ class GitTagVersion {
       }
     }
 
-    final RegExp ohosTagPattern = RegExp(r'^\d+\.\d+\.\d+-ohos$');
-    for (final String tag in tags) {
+    final ohosTagPattern = RegExp(r'^\d+\.\d+\.\d+-ohos$');
+    for (final tag in tags) {
       if (ohosTagPattern.hasMatch(tag.trim())) {
         return parse(tag);
       }
@@ -1117,8 +1117,9 @@ class GitTagVersion {
 
   /// Parse a version string for ohos.
   static GitTagVersion parseOhosVersion(String version) {
-    final RegExp versionPattern = RegExp(
-      r'^(\d+)\.(\d+)\.(\d+)(-ohos(-\d+\.\d+\.\d+)?(-[a-zA-Z0-9.]+)?)?(?:-(\d+)-g([a-f0-9]+))?$');
+    final versionPattern = RegExp(
+      r'^(\d+)\.(\d+)\.(\d+)(-ohos(-\d+\.\d+\.\d+)?(-[a-zA-Z0-9.]+)?)?(?:-(\d+)-g([a-f0-9]+))?$',
+    );
     final Match? match = versionPattern.firstMatch(version.trim());
     if (match == null) {
       return const GitTagVersion.unknown();
@@ -1170,8 +1171,8 @@ class GitTagVersion {
     if (commits == 0) {
       return gitTag;
     }
-    if (gitTag != null && gitTag!.contains('ohos')) {
-      return gitTag!;
+    if (gitTag.contains('ohos')) {
+      return gitTag;
     }
     if (hotfix != null) {
       // This is an unexpected state where untagged commits exist past a hotfix

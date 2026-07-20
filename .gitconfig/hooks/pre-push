@@ -188,4 +188,3 @@ if [ $FAILED -eq 1 ]; then
     echo "Push rejected. Please fix the above errors."
     exit 1
 fi
-

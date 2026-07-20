@@ -82,7 +82,10 @@ class _DraggableScrollableSheetExampleState extends State<DraggableScrollableShe
       kIsWeb ||
       switch (defaultTargetPlatform) {
         TargetPlatform.macOS || TargetPlatform.linux || TargetPlatform.windows => true,
-        TargetPlatform.android || TargetPlatform.iOS || TargetPlatform.fuchsia => false,
+        TargetPlatform.android ||
+        TargetPlatform.iOS ||
+        TargetPlatform.fuchsia ||
+        TargetPlatform.ohos => false,
       };
 }
 

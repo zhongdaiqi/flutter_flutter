@@ -190,7 +190,6 @@ class _OpenUpwardsPageTransitionState extends State<_OpenUpwardsPageTransition> 
   }
 }
 
-
 // This transition is intended to match the default for Openharmony.
 class _OpenRightwardsPageTransition extends StatelessWidget {
   const _OpenRightwardsPageTransition({
@@ -223,16 +222,15 @@ class _OpenRightwardsPageTransition extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (BuildContext context, BoxConstraints constraints) {
-        final Size size = constraints.biggest;
-
         final CurvedAnimation primaryAnimation = CurvedAnimation(
           parent: animation,
           curve: _transitionCurve,
           reverseCurve: _transitionCurve.flipped,
         );
 
-
-        final Animation<Offset> primaryTranslationAnimation = _primaryTranslationTween.animate(primaryAnimation);
+        final Animation<Offset> primaryTranslationAnimation = _primaryTranslationTween.animate(
+          primaryAnimation,
+        );
 
         final Animation<Offset> secondaryTranslationAnimation = _secondaryTranslationTween.animate(
           CurvedAnimation(
@@ -796,6 +794,7 @@ class OpenUpwardsPageTransitionsBuilder extends PageTransitionsBuilder {
   }
 }
 
+/// Page transition that slides the new route in from the right.
 class OpenRightwardsPageTransitionsBuilder extends PageTransitionsBuilder {
   /// Constructs a page transition animation that matches the transition used on
   /// Openharmony.
