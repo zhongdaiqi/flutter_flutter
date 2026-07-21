@@ -177,7 +177,7 @@ std::pair<size_t, std::function<void(size_t)>> MakeWatchdog(
       if (flutterWatchdogVec.size() < curSize) {
         return;
       }
-      flutterWatchdogVec[curSize].reset();
+      flutterWatchdogVec[curSize - 1].reset();
     });
     FML_LOG(ERROR) << "FlutterWatchdog: OH_HiCollie_Init_StuckDetection() failed with code "
                     << static_cast<int>(structDetectionInitRes);
