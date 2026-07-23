@@ -2,7 +2,7 @@
 本版本为基于Flutter 3.7.12适配的OpenHarmony版本。本版本支持和完善OpenHarmony平台侧能力，提升稳定性。
 
 ## 发布范围
-OpenHarmony API16
+OpenHarmony API 16
 
 ## BugFix
 - 修复当先执行DetachFlutterEngine，后执行OnSurfaceDestroy时NativeWindow中的内存泄露
@@ -15,9 +15,10 @@ OpenHarmony API16
 2025年5月21日
 
 ## 版本配套
-- ROM: 5.0.1.120
-- IDE: DevEco Studio 5.0.13.100
-- Flutter SDK: 3.7.12-ohos-1.1.1
+- 引擎构建最低要求 API：**OpenHarmony API 16**
+- 应用构建目标 API：**OpenHarmony API 16**
+- 应用最低运行 API：**OpenHarmony API 12**
+- Flutter SDK：**3.7.12-ohos-1.1.1**
 
 ## Changelog
 - [5.1.0.403SP1](../CHANGELOG.md)

@@ -11,9 +11,10 @@ HarmonyOS NEXT, API13
 February 7, 2025
 
 ## Version Support
-- ROM: 205.0.1.115
-- IDE: DevEco Studio 5.0.5.330
-- Flutter SDK: 3.7.12-ohos-1.0.4
+- Minimum Engine Build API: **OpenHarmony API 13**
+- Target App Build API: **OpenHarmony API 13**
+- Minimum App Runtime API: **OpenHarmony API 12**
+- Flutter SDK: **3.7.12-ohos-1.0.4**
 
 ## Enablement Documents
 - [Document Link](https://gitee.com/openharmony-sig/flutter_samples/tree/master/ohos/docs)

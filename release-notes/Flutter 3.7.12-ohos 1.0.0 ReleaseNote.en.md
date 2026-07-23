@@ -16,10 +16,10 @@ HarmonyOS NEXT, API12
 August 28, 2024
 
 ## Version Mapping
-- ROM: 205.0.0.61(SP1C00E63R4P9) / NEXT.0.0.61(SP1C00E63R4P9)
-- IDE: DevEco Studio 5.0.3.706
-- SDK: HarmonyOS SDK 5.0.0.61(SP1), API12
-- Flutter SDK: 3.7.12-ohos-1.0.0
+- Minimum Engine Build API: **OpenHarmony API 12**
+- Target App Build API: **OpenHarmony API 12**
+- Minimum App Runtime API: **OpenHarmony API 12**
+- Flutter SDK: **3.7.12-ohos-1.0.0**
 
 ## Development Documentation
 
