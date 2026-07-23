@@ -203,6 +203,7 @@ def engineCompile(buildInfo):
   command = "ninja -C %s default " % os.path.join("src", "out", getOutput(buildInfo))
   if IS_WINDOWS and buildInfo.buildType != "debug":
     command += "flutter/build/archives:archive_win_gen_snapshot "
+  command += "flutter/shell/platform/ohos:flutter_ohos_unittests "
   runCommand(command)
 
 

@@ -193,7 +193,12 @@ executable("flutter_ohos_unittests") {
 
   sources = [
     #"testing/mock_texture_registrar.cc",
+    "//flutter/fml/platform/ohos/hisysevent_c_unittests.cc",
+    "//flutter/fml/platform/ohos/hiappevent/ohos_hiappevent_unittests.cpp",
+    "//flutter/fml/platform/ohos/watchdog/ohos_watchdog_unittests.cpp",
     "ohos_asset_provider_unittests.cpp",
+    "ohos_logger_unittests.cpp",
+    "ohos_trace_event_unittests.cpp",
   ]
 
   public_configs = [ "//flutter:config" ]
