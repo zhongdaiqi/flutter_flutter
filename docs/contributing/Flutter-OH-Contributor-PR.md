@@ -58,14 +58,84 @@ git remote add upstream git@gitcode.com:<org>/<repo>.git
 ---
 
 ## 五、提交到私仓
-### 提交到本地仓库（git commit）
+
+### 启用 Commit 模板（首次配置）
+
+项目已在 `.gitconfig/` 目录下提供 Commit 模板和 Git Hook 校验。克隆仓库后，执行以下命令启用：
+
 ```bash
-# 提交并且同时进行Signed-off-by签名操作
-#可参链接：https://gitcode.com/openharmony/docs/blob/master/zh-cn/contribute/FAQ.md
-git commit -s -m "feat: 新增 xxx 功能"
+# 启用 Commit 模板
+git config commit.template .gitconfig/gitmessage
+
+# 启用 Git Hook（pre-push 校验）
+git config core.hooksPath .gitconfig/hooks
 ```
-> 签署DCO是必须的，否则无法通过仓库流水线检查；
-若是修复问题，提交信息以`Fix:`开头，若是新增特性，以`Feat:` 开头。
+
+> 模板会在执行 `git commit`（不带 `-m`）时自动加载，提示你填写符合规范的 Commit 信息。
+
+### 提交到本地仓库（git commit）
+
+**方式一：使用模板交互式提交（推荐）**
+
+```bash
+git commit -s
+```
+
+执行后会打开编辑器，显示模板内容，按提示填写：
+
+```
+type(scope): describe user-facing impact
+# --- template reference ---
+# <type>(<scope>): <subject>
+#
+# Changelog types (will appear in CHANGELOG):
+#   feat        - Added: new features, APIs, modules
+#   change      - Changed: modifications to existing behavior
+#   deprecate   - Deprecated: mark features for future removal
+#   remove      - Removed: remove previously deprecated features
+#   fix         - Fixed: bug fixes, compatibility fixes
+#   security    - Security: vulnerability fixes
+#   docs        - Documentation: user-facing doc changes
+#   perf        - Performance: optimizations without functional changes
+#
+# Internal types (will NOT appear in CHANGELOG):
+#   chore       - Build/toolchain, CI/CD
+#   test        - Test additions or modifications
+#   style       - Code formatting only
+#   refactor    - Code restructuring (no behavior change)
+#   revert      - Revert a previous commit
+```
+
+**方式二：直接指定提交信息**
+
+```bash
+git commit -s -m "feat(Channel): add onMethodCall dispatch test"
+```
+
+> `-s` 参数会自动在 Commit 信息末尾添加 `Signed-off-by` 签名，这是 DCO 校验的必需项。
+
+### Commit 信息规范
+
+Commit 标题必须遵循 `<type>(<scope>): <subject>` 格式：
+
+| 字段 | 要求 | 示例 |
+|------|------|------|
+| **type** | 必选，使用预定义类型 | `feat`、`fix`、`chore`、`test`、`refactor` 等 |
+| **scope** | 可选，表示影响模块，用 PascalCase | `(Channel)`、`(Keyboard)`、`(Docs)` |
+| **subject** | 必选，动词原形，首字母小写，不加句号 | `add dispatch test for SensitiveContentChannel` |
+
+完整示例：
+
+```
+feat(Channel): add onMethodCall dispatch test for SensitiveContentChannel
+
+Add 12 test cases covering onMethodCall dispatch logic for
+setContentSensitivity, getContentSensitivity, and isSupported
+methods using the real DartExecutor construction approach.
+
+Closes #42
+Signed-off-by: Your Name <email@example.com>
+```
 
 ### 推送到远端（git push）
 
@@ -73,6 +143,8 @@ git commit -s -m "feat: 新增 xxx 功能"
 # 推送当前分支到自己的 Fork 仓库
 git push origin feature/<your-feature-name>
 ```
+
+> 推送时会自动执行 `.gitconfig/hooks/pre-push` 校验（见下文）。
 
 ---
 
@@ -106,8 +178,116 @@ Issue 用于反馈 Bug、提出需求或进行讨论，每个PR在运行流水�
 规范的PR提交方便更快速地合入仓库，请遵循以下规范：
 
 1. 代码中所有注释、Commit提交信息、PR标题、内容描述等均使用英文。
-2. Commit代码时，若是修复问题，提交信息以`Fix:`开头，若是新增特性，以`Feat:` 开头，清晰描述代码变化点。
+2. Commit 信息遵循 `type(scope): subject` 格式（见第五节），使用 `git commit -s` 确保 Signed-off-by 签名。
 3. 创建PR时选择默认的PR描述模板，PR描述内容填写完整，完整的信息方便评审人员检视代码快速完成合入流程。
+
+---
+
+## Git Hook 校验机制
+
+项目在 `.gitconfig/hooks/pre-push` 中配置了 pre-push hook，执行 `git push` 时自动校验以下内容：
+
+### 校验项目
+
+| 校验项 | 规则 | 失败提示 |
+|--------|------|----------|
+| **Commit type 前缀** | 标题必须匹配 `^(feat\|fix\|docs\|style\|refactor\|perf\|test\|chore\|revert\|change\|deprecate\|remove\|security\|ci\|build)(\(.+\))?: ` | `ERROR: Commit <sha> missing valid type prefix` |
+| **Signed-off-by 签名** | Commit 信息中必须包含 `Signed-off-by:` 行 | `ERROR: Commit <sha> missing Signed-off-by signature` |
+| **分支同步状态** | 本地分支不能与上游分支分叉（diverged）或落后（behind） | 提示同步后再推送 |
+
+### 跳过条件
+
+以下 Commit 会被自动跳过，不参与校验：
+
+- **Merge commit**：有多个父提交的合并提交
+- **非本人提交**：Commit 作者邮箱与 `git config user.email` 不一致的提交
+- **历史提交**：在 hook 安装时间之前创建的提交（首次运行 hook 时记录时间戳）
+
+### 常见错误及修复
+
+**1. Commit type 前缀缺失或不合法**
+
+```
+ERROR: Commit abc1234 missing valid type prefix
+  Message: update test file
+  Valid types: feat|fix|docs|style|refactor|perf|test|chore|revert|change|deprecate|remove|security|ci|build
+```
+
+修复方式：
+```bash
+git commit --amend -s -m "test(Channel): update test file"
+```
+
+**2. 缺少 Signed-off-by 签名**
+
+```
+ERROR: Commit abc1234 missing Signed-off-by signature
+  Use: git commit -s --amend
+```
+
+修复方式：
+```bash
+git commit --amend -s --no-edit
+```
+
+**3. 分支与上游分叉（Diverged）**
+
+```
+ BRANCH DIVERGED
+ Your branch has diverged from upstream.
+ Local: +1 commit(s) ahead | Upstream: +8 commit(s) ahead
+ Please sync your branch with upstream before pushing.
+```
+
+修复方式：
+```bash
+git fetch upstream
+git rebase upstream/<branch-name>
+```
+
+> 也可以使用自己习惯的方式同步上游代码，例如 `git pull --rebase upstream <branch-name>` 或 `git merge upstream/<branch-name>`，只要最终本地分支与上游不再分叉即可。
+
+**4. 分支落后于上游（Behind）**
+
+```
+ BRANCH OUT OF SYNC
+ Your branch is 5 commit(s) behind upstream.
+ Please sync your branch with upstream before pushing.
+```
+
+修复方式：
+```bash
+git fetch upstream
+git merge upstream/<branch-name>
+```
+
+**5. 上游分支未找到**
+
+```
+ UPSTREAM BRANCH NOT FOUND
+ Could not detect upstream base branch for 'my-feature-branch'.
+```
+
+修复方式：
+```bash
+git config branch.<your-branch>.upstream-check <upstream-branch>
+```
+
+> `<upstream-branch>` 为目标上游分支名，如 `oh-3.41.9-dev`、`oh-3.35.7-dev` 等，需根据实际目标分支填写。
+
+### 临时禁用 Hook
+
+如果需要临时跳过 pre-push 校验（不推荐）：
+
+```bash
+# 方式一：指定空的 hooks 路径
+git config core.hooksPath /dev/null
+
+# 方式二：push 时跳过
+git push --no-verify origin <branch>
+```
+
+> 用完后恢复：`git config core.hooksPath .gitconfig/hooks`
 
 ---
 
