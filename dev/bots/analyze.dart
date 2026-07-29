@@ -2725,11 +2725,11 @@ const Set<String> kExecutableAllowlist = <String>{
   'ci/scripts/init_flutter_test_env.sh',
   'ci/scripts/pack_flutter.sh',
   'ci/scripts/prepare_cipd.sh',
-  'ci/scripts/prepare_integration_test.sh',
   'ci/scripts/prepare_openharmony_sdk.sh',
   'ci/scripts/prepare_project.sh',
   'ci/scripts/prepare_repos.sh',
   'ci/scripts/prepare_tester.sh',
+  'ci/scripts/prepare_tests.sh',
   'ci/scripts/prepare_tool.sh',
   'ci/scripts/publish.py',
   'ci/scripts/publish.sh',
@@ -2742,6 +2742,7 @@ const Set<String> kExecutableAllowlist = <String>{
   'ci/scripts/run_unit_tests.sh',
   'ci/scripts/runner.py',
   'ci/scripts/upload_to_cloud.sh',
+  'ci/ohos_ci_runner.sh',
   'ci/test.sh',
 };
 

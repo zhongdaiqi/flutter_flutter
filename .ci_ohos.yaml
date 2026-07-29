@@ -135,18 +135,6 @@ preparation_steps:
     args: ["main"]
     required: true
 
-  - name: Prepare Tests
-    script: ci/scripts/clone_project.sh
-    description: Prepare testcases
-    args: ["https://gitcode.com/CPF-Flutter/tests.git", "flutter"]
-    required: true
-
-  - name: Prepare Integration Test
-    script: ci/scripts/prepare_integration_test.sh
-    description: Generate PR info and move tests to archive directory for integration test
-    args: ["oh-3.35.7-dev"]
-    required: true
-
 # Compilation steps - executed in order
 compilation_steps:
   - name: Pack Flutter
@@ -209,6 +197,12 @@ compilation_steps:
     args: ["flutter_flutter/engine"]
     required: true
 
+  - name: Prepare Tests
+    script: ci/scripts/prepare_tests.sh
+    description: Clone testcases, generate PR info and move tests to archive directory for unit test
+    args: ["https://gitcode.com/CPF-Flutter/tests.git", "unit", "oh-3.35.7-dev"]
+    required: true
+
   - name: Compile Web SDK
     script: ci/scripts/compile_web.sh
     description: Compile Web SDK
@@ -243,4 +237,12 @@ test_steps:
   - name: Unit Tests (Parallel Shards)
     script: ci/scripts/run_parallel_shards.sh
     description: Run all unit tests in parallel shard groups (single machine)
+    required: true
+
+# prepare for Integration Test
+integration_steps:
+  - name: Prepare Tests
+    script: ci/scripts/prepare_tests.sh
+    description: Clone testcases, generate PR info and move tests to archive directory for integration test
+    args: ["https://gitcode.com/CPF-Flutter/tests.git", "integration", "oh-3.35.7-dev"]
     required: true
