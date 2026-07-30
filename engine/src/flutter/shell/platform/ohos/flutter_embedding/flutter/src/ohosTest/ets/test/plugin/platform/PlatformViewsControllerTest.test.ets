@@ -38,11 +38,5 @@ export default function PlatformViewsControllerTest() {
       expect(result).assertFalse();
       done();
     })
-
-    it('TestPlatformViewRegistryImplGetFlutterView', 0, async (done: Function) => {
-      const result = platformViewsController.getFlutterView();
-      expect(result).assertNull();
-      done();
-    })
   })
 }

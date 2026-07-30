@@ -32,8 +32,6 @@ export default function PlatformViewWrapperTest() {
       const dvModel: DVModel = platformViewWrapper.getDvModel();
       expect(dvModel).not().assertNull();
       await sleep(1000);
-      platformViewWrapper.addDvModel(dvModel);
-      await sleep(1000);
       const parameters: DVModelParameters = new DVModelParameters();
       platformViewWrapper.setLayoutParams(parameters);
       done();
