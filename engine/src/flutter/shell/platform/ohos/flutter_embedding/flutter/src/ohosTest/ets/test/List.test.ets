@@ -80,6 +80,10 @@ import TextInputPluginTest from './plugin/editing/TextInputPlugin.test';
 import LocalizationPluginTest from './plugin/localization/LocalizationPlugin.test';
 import SendableStandardMessageCodecTest from './plugin/common/SendableStandardMessageCodec.test';
 import SendableStandardMethodCodecTest from './plugin/common/SendableStandardMethodCodec.test';
+import TextUtilsTest from './plugin/editing/TextUtils.test';
+import FlutterEnginePreloadTest from './embedding/engine/FlutterEnginePreload.test';
+import FlutterPluginRegistryTest from './app/FlutterPluginRegistry.test';
+import FlutterCallbackInformationTest from './view/FlutterCallbackInformation.test';
 
 export default function testsuite() {
   FlutterAbilityAndEntryDelegateTest();
@@ -147,4 +151,8 @@ export default function testsuite() {
   TextEditingDeltaTest();
   TextInputPluginTest();
   LocalizationPluginTest();
+  TextUtilsTest();
+  FlutterEnginePreloadTest();
+  FlutterPluginRegistryTest();
+  FlutterCallbackInformationTest();
 }
