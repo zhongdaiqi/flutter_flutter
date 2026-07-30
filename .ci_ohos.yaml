@@ -8,6 +8,9 @@
 # Default is 2 (go up 2 levels from root_dir)
 work_dir_levels: 2
 
+# Target branch for runIf incremental diff
+target_branch: oh-3.35.7-dev
+
 # Environment variables
 env_vars:
   TOOL_HOME: /home/tools/command-line-tools
@@ -120,7 +123,7 @@ preparation_steps:
   - name: Prepare Flutter
     script: ci/scripts/prepare_project.sh
     description: Prepare Flutter project and sync to target branch
-    args: ["flutter_flutter", "oh-3.35.7-dev"]
+    args: ["flutter_flutter", "$TARGET_BRANCH"]
     required: true
 
   - name: Record Flutter Commit ID
@@ -140,7 +143,7 @@ compilation_steps:
   - name: Pack Flutter
     script: ci/scripts/pack_flutter.sh
     description: Pack Flutter SDK
-    args: ["oh-3.35.7-dev"]
+    args: ["$TARGET_BRANCH"]
     required: true
 
   - name: Install dependencies
@@ -182,7 +185,7 @@ compilation_steps:
   - name: Check Build Mode
     script: ci/scripts/check_build_mode.sh
     description: Check Build Mode
-    args: ["flutter_flutter", "flutter_flutter/engine/src", "oh-3.35.7-dev", "flutter_flutter"]
+    args: ["flutter_flutter", "flutter_flutter/engine/src", "$TARGET_BRANCH", "flutter_flutter"]
     required: true
 
   - name: Restoring Engine mTimes
@@ -197,10 +200,38 @@ compilation_steps:
     args: ["flutter_flutter/engine"]
     required: true
 
+  - name: Engine Dart Analyze
+    script: ci/scripts/engine_analyze.sh
+    description: >
+      Run dart analyze on the Flutter engine source tree (excluding Web SDK).
+    required: true
+
+  - name: Engine Format Check
+    script: engine/src/flutter/ci/format.sh
+    description: >
+      Run 7 format checks (dart, gn, java, python, whitespace, header,
+      clang) on changed engine files via bin/format.dart.
+    required: true
+
+  - name: Engine Pylint
+    script: engine/src/flutter/ci/pylint.sh
+    description: >
+      Run pylint on Python files in the engine source
+      (ci/, impeller/, sky/, tools/, testing/).
+    required: true
+
+  - name: Engine clang-tidy
+    script: engine/src/flutter/ci/clang_tidy.sh
+    description: >
+      Run clang-tidy on changed C/C++ files.
+      Incremental: only runs when .h/.c/.cc/.cpp files change.
+    required: true
+    runIf: "**/*.{h,c,cc,cpp}"
+
   - name: Prepare Tests
     script: ci/scripts/prepare_tests.sh
     description: Clone testcases, generate PR info and move tests to archive directory for unit test
-    args: ["https://gitcode.com/CPF-Flutter/tests.git", "unit", "oh-3.35.7-dev"]
+    args: ["https://gitcode.com/CPF-Flutter/tests.git", "unit", "$TARGET_BRANCH"]
     required: true
 
   - name: Compile Web SDK
@@ -218,7 +249,7 @@ compilation_steps:
   - name: Upload to cloud
     script: ci/scripts/upload_to_cloud.sh
     description: Upload build artifacts to cloud storage
-    args: ["oh-3.35.7-dev"]
+    args: ["$TARGET_BRANCH"]
     required: true
 
   - name: Publish
@@ -244,5 +275,5 @@ integration_steps:
   - name: Prepare Tests
     script: ci/scripts/prepare_tests.sh
     description: Clone testcases, generate PR info and move tests to archive directory for integration test
-    args: ["https://gitcode.com/CPF-Flutter/tests.git", "integration", "oh-3.35.7-dev"]
+    args: ["https://gitcode.com/CPF-Flutter/tests.git", "integration", "$TARGET_BRANCH"]
     required: true
