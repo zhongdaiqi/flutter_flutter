@@ -134,7 +134,6 @@ export default function testsuite() {
   SendableBinaryCodecTest();
   dynamicViewJsonTest();
   PlatformViewTest();
-  PlatformViewTest();
   FlutterRunArgumentsTest();
   LifecycleChannelTest();
   FlutterExceptionTest();
