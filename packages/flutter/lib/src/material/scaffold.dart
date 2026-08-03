@@ -2792,6 +2792,15 @@ class ScaffoldState extends State<Scaffold> with TickerProviderStateMixin, Resto
     );
 
     _bottomSheetScrimAnimationController = AnimationController(vsync: this);
+    if (defaultTargetPlatform == TargetPlatform.ohos) {
+      ChannelMessageHandler.init();
+      _subscription = ChannelMessageHandler.messageStream.listen((dynamic message) {
+        if (!mounted) {
+          return;
+        }
+        _handleStatusBarTap();
+      });
+    }
   }
 
   @protected
@@ -3180,10 +3189,6 @@ class ScaffoldState extends State<Scaffold> with TickerProviderStateMixin, Resto
           removeBottomPadding: true,
         );
       case TargetPlatform.ohos:
-        ChannelMessageHandler.init();
-        _subscription = ChannelMessageHandler.messageStream.listen((dynamic message) {
-          _handleStatusBarTap();
-        });
       case TargetPlatform.android:
       case TargetPlatform.fuchsia:
       case TargetPlatform.linux:
