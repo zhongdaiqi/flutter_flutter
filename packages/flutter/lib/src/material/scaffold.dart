@@ -2691,6 +2691,15 @@ class ScaffoldState extends State<Scaffold> with TickerProviderStateMixin, Resto
       duration: kFloatingActionButtonSegue,
       vsync: this,
     );
+    if (defaultTargetPlatform == TargetPlatform.ohos) {
+      ChannelMessageHandler.init();
+      _subscription = ChannelMessageHandler.messageStream.listen((dynamic message) {
+        if (!mounted) {
+          return;
+        }
+        _handleStatusBarTap();
+      });
+    }
   }
 
   @override
@@ -3067,13 +3076,8 @@ class ScaffoldState extends State<Scaffold> with TickerProviderStateMixin, Resto
           removeBottomPadding: true,
         );
         break;
- 	    case TargetPlatform.ohos:
- 	      ChannelMessageHandler.init();
- 	      _subscription = ChannelMessageHandler.messageStream.listen((message) {
- 	        _handleStatusBarTap();
- 	      });
- 	      break;
- 	    case TargetPlatform.android:
+      case TargetPlatform.ohos:
+      case TargetPlatform.android:
       case TargetPlatform.fuchsia:
       case TargetPlatform.linux:
       case TargetPlatform.windows:
