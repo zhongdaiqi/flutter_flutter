@@ -8,10 +8,9 @@
 /// @docImport 'text.dart';
 library;
 
-import 'dart:async';
 import 'dart:math' as math;
 
-import 'package:flutter/foundation.dart' show clampDouble, debugPrint, precisionErrorTolerance;
+import 'package:flutter/foundation.dart' show clampDouble, precisionErrorTolerance;
 import 'package:flutter/gestures.dart' show DragStartBehavior;
 import 'package:flutter/rendering.dart';
 
@@ -32,7 +31,6 @@ import 'scroll_position_with_single_context.dart';
 import 'scroll_view.dart';
 import 'scrollable.dart';
 import 'sliver_fill.dart';
-import 'status_bar.dart';
 import 'viewport.dart';
 
 /// A controller for [PageView].
@@ -892,27 +890,11 @@ class _PageViewState extends State<PageView> {
 
   late PageController _controller;
 
-  StreamSubscription<dynamic>? _subscription;
-
   @override
   void initState() {
     super.initState();
     _initController();
     _lastReportedPage = _controller.initialPage;
-    if (widget.scrollDirection == Axis.vertical) {
-      ChannelMessageHandler.init();
-      _subscription = ChannelMessageHandler.messageStream.listen((dynamic message) {
-        try {
-          _controller.animateToPage(
-            0,
-            duration: const Duration(milliseconds: 1000),
-            curve: Curves.easeOutCirc,
-          );
-        } catch (err) {
-          debugPrint(err.toString());
-        }
-      });
-    }
   }
 
   @override
@@ -920,8 +902,6 @@ class _PageViewState extends State<PageView> {
     if (widget.controller == null) {
       _controller.dispose();
     }
-    _subscription?.cancel();
-    _subscription = null;
     super.dispose();
   }
 
