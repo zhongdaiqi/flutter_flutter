@@ -7,7 +7,7 @@ import 'dart:collection';
 import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
-import 'package:flutter/gestures.dart' show DragStartBehavior;
+import 'package:flutter/gestures.dart' show DragStartBehavior, HitTestEntry, HitTestResult;
 import 'package:flutter/widgets.dart';
 
 import 'app_bar.dart';
@@ -2091,7 +2091,8 @@ class Scaffold extends StatefulWidget {
 ///
 /// Can display [BottomSheet]s. Retrieve a [ScaffoldState] from the current
 /// [BuildContext] using [Scaffold.of].
-class ScaffoldState extends State<Scaffold> with TickerProviderStateMixin, RestorationMixin {
+class ScaffoldState extends State<Scaffold>
+    with TickerProviderStateMixin, RestorationMixin, WidgetsBindingObserver {
   @override
   String? get restorationId => widget.restorationId;
 
@@ -2647,6 +2648,22 @@ class ScaffoldState extends State<Scaffold> with TickerProviderStateMixin, Resto
     }
   }
 
+  @override
+  void handleStatusBarTap() {
+    super.handleStatusBarTap();
+    assert(widget.primary);
+    final ScrollController? primaryScrollController = PrimaryScrollController.maybeOf(context);
+    if (primaryScrollController != null &&
+        primaryScrollController.hasClients &&
+        _HitTestableAtOrigin.hitTestableAtOrigin(_statusBarKey)) {
+      primaryScrollController.animateTo(
+        0.0,
+        duration: const Duration(milliseconds: 1000),
+        curve: Curves.easeOutCirc,
+      );
+    }
+  }
+
   // INTERNALS
 
   late _ScaffoldGeometryNotifier _geometryNotifier;
@@ -2673,14 +2690,8 @@ class ScaffoldState extends State<Scaffold> with TickerProviderStateMixin, Resto
       vsync: this,
     );
 
-    if (defaultTargetPlatform == TargetPlatform.ohos) {
-      ChannelMessageHandler.init();
-      _subscription = ChannelMessageHandler.messageStream.listen((_) {
-        if (!mounted) {
-          return;
-        }
-        _handleStatusBarTap();
-      });
+    if (widget.primary) {
+      WidgetsBinding.instance.addObserver(this);
     }
   }
 
@@ -2693,6 +2704,13 @@ class ScaffoldState extends State<Scaffold> with TickerProviderStateMixin, Resto
     }
     if (widget.floatingActionButtonLocation != oldWidget.floatingActionButtonLocation) {
       _moveFloatingActionButton(widget.floatingActionButtonLocation ?? _kDefaultFloatingActionButtonLocation);
+    }
+    if (widget.primary != oldWidget.primary) {
+      if (widget.primary) {
+        WidgetsBinding.instance.addObserver(this);
+      } else {
+        WidgetsBinding.instance.removeObserver(this);
+      }
     }
     if (widget.bottomSheet != oldWidget.bottomSheet) {
       assert(() {
@@ -2740,6 +2758,20 @@ class ScaffoldState extends State<Scaffold> with TickerProviderStateMixin, Resto
   }
 
   @override
+  void deactivate() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.deactivate();
+  }
+
+  @override
+  void activate() {
+    super.activate();
+    if (widget.primary) {
+      WidgetsBinding.instance.addObserver(this);
+    }
+  }
+
+  @override
   void dispose() {
     _geometryNotifier.dispose();
     _floatingActionButtonMoveController.dispose();
@@ -2747,8 +2779,6 @@ class ScaffoldState extends State<Scaffold> with TickerProviderStateMixin, Resto
     _scaffoldMessenger?._unregister(this);
     _drawerOpened.dispose();
     _endDrawerOpened.dispose();
-    _subscription?.cancel();
- 	  _subscription = null;
     super.dispose();
   }
 
@@ -2844,7 +2874,7 @@ class ScaffoldState extends State<Scaffold> with TickerProviderStateMixin, Resto
   bool _showBodyScrim = false;
   Color _bodyScrimColor = Colors.black;
 
-  StreamSubscription? _subscription;
+  final GlobalKey _statusBarKey = GlobalKey();
 
   /// Whether to show a [ModalBarrier] over the body of the scaffold.
   void showBodyScrim(bool value, double opacity) {
@@ -3057,6 +3087,16 @@ class ScaffoldState extends State<Scaffold> with TickerProviderStateMixin, Resto
         );
         break;
       case TargetPlatform.ohos:
+        _addIfNonNull(
+          children,
+          widget.primary ? _HitTestableAtOrigin(_statusBarKey) : null,
+          _ScaffoldSlot.statusBar,
+          removeLeftPadding: false,
+          removeTopPadding: true,
+          removeRightPadding: false,
+          removeBottomPadding: true,
+        );
+        break;
       case TargetPlatform.android:
       case TargetPlatform.fuchsia:
       case TargetPlatform.linux:
@@ -3335,5 +3375,43 @@ class _ScaffoldScope extends InheritedWidget {
   @override
   bool updateShouldNotify(_ScaffoldScope oldWidget) {
     return hasDrawer != oldWidget.hasDrawer;
+  }
+}
+
+final class _HitTestableAtOrigin extends StatelessWidget {
+  const _HitTestableAtOrigin(this.globalKey);
+
+  final GlobalKey globalKey;
+
+  /// Whether the render box of the [_HitTestableAtOrigin] widget associated
+  /// with the given global `key` is hit-testable at [Offset.zero].
+  ///
+  /// This is used by the `handleStatusBarTap` implementation to avoid sending
+  /// status bar tap events to scroll views in offscreen subtrees.
+  static bool hitTestableAtOrigin(GlobalKey key) {
+    final Element? context = key.currentContext as Element?;
+    if (context == null) {
+      assert(
+        false,
+        'BuildContext associated with $key is not mounted. '
+        'If you see this in a test, this is likely because the test was trying '
+        'to simulate status bar tap on a non-OHOS platform',
+      );
+      return false;
+    }
+    final RenderObject renderObject = context.renderObject!;
+    final int viewId = View.of(context).viewId;
+    final HitTestResult result = HitTestResult();
+    WidgetsBinding.instance.hitTestInView(result, Offset.zero, viewId);
+    return result.path.any((HitTestEntry entry) => entry.target == renderObject);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return MetaData(
+      key: globalKey,
+      behavior: HitTestBehavior.translucent,
+      child: const SizedBox.expand(),
+    );
   }
 }
