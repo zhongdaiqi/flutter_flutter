@@ -9,7 +9,6 @@
 /// @docImport 'scrollable.dart';
 library;
 
-import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
@@ -29,7 +28,6 @@ import 'scroll_physics.dart';
 import 'scroll_position.dart';
 import 'scroll_view.dart';
 import 'sliver_fill.dart';
-import 'status_bar.dart';
 import 'viewport.dart';
 
 /// Signature used by [NestedScrollView] for building its header.
@@ -428,8 +426,6 @@ class NestedScrollViewState extends State<NestedScrollView> {
 
   _NestedScrollCoordinator? _coordinator;
 
-  StreamSubscription<dynamic>? _subscription;
-
   @protected
   @override
   void initState() {
@@ -440,21 +436,6 @@ class NestedScrollViewState extends State<NestedScrollView> {
       _handleHasScrolledBodyChanged,
       widget.floatHeaderSlivers,
     );
-
-    if (widget.scrollDirection == Axis.vertical) {
-      ChannelMessageHandler.init();
-      _subscription = ChannelMessageHandler.messageStream.listen((dynamic message) {
-        try {
-          _coordinator?.animateTo(
-            0.0,
-            duration: const Duration(milliseconds: 1000),
-            curve: Curves.easeOutCirc,
-          );
-        } catch (err) {
-          debugPrint(err.toString());
-        }
-      });
-    }
   }
 
   @protected
@@ -479,7 +460,6 @@ class NestedScrollViewState extends State<NestedScrollView> {
     _coordinator!.dispose();
     _coordinator = null;
     _absorberHandle.dispose();
-    _subscription?.cancel();
     super.dispose();
   }
 

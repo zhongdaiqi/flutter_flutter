@@ -189,6 +189,30 @@ abstract final class SystemChannels {
   /// Currently supported on Android only.
   static const MethodChannel processText = OptionalMethodChannel('flutter/processtext');
 
+  /// An unidirectional JSON [MethodChannel] for receiving status bar related
+  /// events from iOS and OHOS.
+  ///
+  /// The only method this channel receives is `handleScrollToTop` which
+  /// is called on iOS when the user taps the status bar to scroll a scroll view
+  /// to the top.
+  ///
+  /// On OHOS, the embedder sends the same method when the system reports a
+  /// status bar tap (for example via `usual.event.CLICK_STATUSBAR`), so that
+  /// [WidgetsBindingObserver.handleStatusBarTap] behaves consistently with iOS.
+  ///
+  /// Typically you should not subscribe to this channel directly. The events are
+  /// dispatched to registered [WidgetsBindingObserver]s via the
+  /// [WidgetsBindingObserver.handleStatusBarTap] callback.
+  ///
+  /// See also:
+  ///
+  ///  * [WidgetsBindingObserver.handleStatusBarTap], the widgets library callback
+  ///    for dispatching the status bar tap event to the widget tree.
+  static const OptionalMethodChannel statusBar = OptionalMethodChannel(
+    'flutter/status_bar',
+    JSONMethodCodec(),
+  );
+
   /// A JSON [MethodChannel] for handling text input.
   ///
   /// This channel exposes a system text input control for interacting with IMEs
