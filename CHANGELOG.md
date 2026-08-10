@@ -1,6 +1,30 @@
 # Changelog
 
-## 7.0.0.32
+<a id="version20260807"></a>
+## [3.22.3-ohos-1.1.5.candidate] - 2026-08-08
+
+### Added
+
+- 支持密码保险箱功能 [!1441](https://gitcode.com/CPF-Flutter/flutter_engine/merge_requests/1441) [!1476](https://gitcode.com/CPF-Flutter/flutter_engine/merge_requests/1476)
+- flutter项目Web页面，支持鼠标拖拽调整尺寸 [!1390](https://gitcode.com/CPF-Flutter/flutter_engine/merge_requests/1390)
+
+### Fixed
+
+- 调整isActive的判断时机,修复前后台切换ets中的状态更新不及时的问题 [!1486](https://gitcode.com/CPF-Flutter/flutter_engine/merge_requests/1486)
+- 同步三方库代码，解决鸿蒙化flutter框架编译执行其他平台产物crash的问题 [!1480](https://gitcode.com/CPF-Flutter/flutter_engine/merge_requests/1480)
+- Fixed the issue with input status when switching input methods [!1467](https://gitcode.com/CPF-Flutter/flutter_engine/merge_requests/1467)
+- 修改EmbeddingNodeController.ets中可能出现的空指针问题 [!1471](https://gitcode.com/CPF-Flutter/flutter_engine/merge_requests/1471)
+- 修改FlutterView.ets中鸿蒙原生事件调用逻辑,增加isActive状态判断 [!1464](https://gitcode.com/CPF-Flutter/flutter_engine/merge_requests/1464)
+- 预加载操作执行后,将标记重置为false,避免RecreateSwapchain复用context时仍然走到预加载的判断逻辑中 [!1462](https://gitcode.com/CPF-Flutter/flutter_engine/merge_requests/1462)
+- Fix the issue where entering Chinese first and then English causes the English to be duplicated [!1458](https://gitcode.com/CPF-Flutter/flutter_engine/merge_requests/1458)
+- Fixed the issue where typing English first and then Chinese would get overwritten [!1456](https://gitcode.com/CPF-Flutter/flutter_engine/merge_requests/1456)
+- Fixed the issue of incorrect calculation of the avoidance area under the folding machine [!1453](https://gitcode.com/CPF-Flutter/flutter_engine/merge_requests/1453)
+- Fixed the issue where deleting numbers to the left would remove two at a time [!1451](https://gitcode.com/CPF-Flutter/flutter_engine/merge_requests/1451)
+- fix adding the webview to the rotating component makes it unclickable and unscrollable [!1435](https://gitcode.com/CPF-Flutter/flutter_engine/merge_requests/1435) [!1413](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/1413)
+- fix(Scaffold): move OHOS status bar tap subscription to initState [!1703](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/1703)
+- fix: update comment to match pre-edit CJK merge logic [!1489](https://gitcode.com/CPF-Flutter/flutter_engine/merge_requests/1489)
+
+## 3.22.3-ohos-1.1.5-beta
 
 - 手机端支持密码保险箱功能,([163e5e8eb5](https://gitcode.com/CPF-Flutter/flutter_engine/commit/163e5e8eb511255fb27956624c3036641ddc09ca))
 - flutter项目Web页面，支持鼠标拖拽调整尺寸,([5f9bc18b45](https://gitcode.com/CPF-Flutter/flutter_engine/commit/5f9bc18b452fdc4c25c82f7219f383c192d777d4))
@@ -281,4 +305,3 @@
 - 同步oh-3.22.0和oh-3.22.0-merge-history分支 ([5c1c284c](https://gitcode.com/openharmony-tpc/flutter_engine/commit/5c1c284c22c907bbbe559bbce86843eee305f059?ref=oh-3.22.0))
 - !633 3.22.0分支合入 ([e7191dda](https://gitcode.com/openharmony-tpc/flutter_engine/commit/e7191dda6212b416be935c4b8c88cb479341dd05?ref=oh-3.22.0))
 - Merge branch 'oh-3.22.0' into oh-3.22.0-merge-history for accessibility-refactor ([5df9ec0a](https://gitcode.com/openharmony-tpc/flutter_engine/commit/5df9ec0a851b61498bee2f2ffc8d5b1d01b95a20?ref=oh-3.22.0))
-
