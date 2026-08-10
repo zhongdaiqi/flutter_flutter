@@ -1,4 +1,31 @@
 # Changelog
+<a id="version20260808"></a>
+## [3.27.4-ohos-1.0.8.candidate] - `2026-08-08`
+
+### Added
+
+- flutter项目Web页面，支持鼠标拖拽调整尺寸 [!1391](https://gitcode.com/CPF-Flutter/flutter_engine/merge_requests/1391)
+- 支持密码保险箱功能 [!1430](https://gitcode.com/CPF-Flutter/flutter_engine/merge_requests/1430) [!1477](https://gitcode.com/CPF-Flutter/flutter_engine/merge_requests/1477)
+- LTPO feature is enabled by default [!1469](https://gitcode.com/CPF-Flutter/flutter_engine/merge_requests/1469)
+
+### Fixed
+
+- fix adding the webview to the rotating component makes it unclickable and unscrollable [!1434](https://gitcode.com/CPF-Flutter/flutter_engine/merge_requests/1434)
+- Fixed the issue where deleting numbers to the left would remove two at a time [!1452](https://gitcode.com/CPF-Flutter/flutter_engine/merge_requests/1452)
+- Fixed the issue of incorrect calculation of the avoidance area under the folding machine [!1454](https://gitcode.com/CPF-Flutter/flutter_engine/merge_requests/1454)
+- Fixed the issue where typing English first and then Chinese would get overwritten [!1457](https://gitcode.com/CPF-Flutter/flutter_engine/merge_requests/1457)
+- Fix the issue where entering Chinese first and then English causes the English to be duplicated [!1459](https://gitcode.com/CPF-Flutter/flutter_engine/merge_requests/1459)
+- 预加载操作执行后,将标记重置为false,避免RecreateSwapchain复用context时仍然走到预加载的判断逻辑中 [!1463](https://gitcode.com/CPF-Flutter/flutter_engine/merge_requests/1463)
+- 修改FlutterView.ets中鸿蒙原生事件调用逻辑,增加isActive状态判断 [!1465](https://gitcode.com/CPF-Flutter/flutter_engine/merge_requests/1465)
+- Fixed the issue with input status when switching input methods [!1468](https://gitcode.com/CPF-Flutter/flutter_engine/merge_requests/1468)
+- 修改EmbeddingNodeController.ets中可能出现的空指针问题 [!1472](https://gitcode.com/CPF-Flutter/flutter_engine/merge_requests/1472)
+- 同步三方库代码，解决鸿蒙化flutter框架编译执行其他平台产物crash的问题 [!1479](https://gitcode.com/CPF-Flutter/flutter_engine/merge_requests/1479)
+- Fixed: flutter drive execution failure [!1482](https://gitcode.com/CPF-Flutter/flutter_engine/merge_requests/1482)
+- 调整isActive的判断时机,修复前后台切换ets中的状态更新不及时的问题 [!1487](https://gitcode.com/CPF-Flutter/flutter_engine/merge_requests/1487)
+- fix: update comment to match pre-edit CJK merge logic [!1488](https://gitcode.com/CPF-Flutter/flutter_engine/merge_requests/1488)
+- 手势未完成清除遗留 [!1492](https://gitcode.com/CPF-Flutter/flutter_engine/merge_requests/1492)
+- 同步三方库代码，解决字体内存泄漏问题 [!1494](https://gitcode.com/CPF-Flutter/flutter_engine/merge_requests/1494)
+
 ## 3.27.4-ohos-1.0.8-beta
 
 - Fix OHOS platform view active touch cancellation,([7dda026b45](https://gitcode.com/CPF-Flutter/flutter_engine/commit/7dda026b452ca8e813d3c7351e157ed40542b98b))
