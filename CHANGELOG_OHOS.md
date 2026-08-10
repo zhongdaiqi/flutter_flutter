@@ -1,5 +1,55 @@
 # Changelog
 
+<a id="version20260808"></a>
+
+## [3.35.7-ohos-1.0.4.candidate] - `2026-08-08`
+
+### Added
+
+- 支持密码保险箱功能 [!1408](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/1408) [!1615](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/1615)
+- feature: flutter page pause when invisible [!1563](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/1563)
+- [OHOS] Add DMA zero-copy image decode path with P3 support [!1320](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/1320)
+- flutter项目Web页面，支持鼠标拖拽调整尺寸 [!1281](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/1281)
+- [OHOS] Add async APIs for FlutterEngine spawn/destroy to prevent ANR [!1133](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/1133)
+
+### Changed
+
+- LTPO feature is enabled by default [!1597](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/1597)
+
+### Fixed
+
+- fix: Fix window decoration state not correctly restored after exiting immersive fullscreen on PC [!1738](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/1738)
+- Flutter 鼠标跨区域拖动 pointerup 丢失修复 [!1725](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/1725)
+- 【3.35】候选词位置为光标的右下角 [!1734](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/1734)
+- 同步三方库代码，解决字体内存泄漏问题 [!1718](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/1718)
+- 手势取消清除遗留finger [!1716](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/1716)
+- fix(Scaffold): move status bar tap subscription init to initState to prevent leak on ohos [!1701](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/1701)
+- 调整isActive的判断时机,修复前后台切换ets中的状态更新不及时的问题 [!1683](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/1683)
+- fix: DT CPP [!1681](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/1681)
+- 修改分栏功能获取应用图标的方式，从硬编码图片名改为通过资源id获取，避免在自定义图标文件名时失败的问题 [!1680](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/1680)
+- Fixed: flutter drive execution failure [!1660](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/1660)
+- fix: prevent incorrect backspace during pre-edit multi-select [!1659](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/1659)
+- 同步三方库代码，解决鸿蒙化flutter框架编译执行其他平台产物crash的问题 [!1652](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/1652)
+- fix(Impeller): add missing kB10G10R10A2UNorm Metal pixel format mapping [!1639](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/1639)
+- 提高分栏功能中，弹窗消失时，主动恢复焦点的逻辑健壮性，解决当弹窗前焦点未聚焦到页面某个组件时，恢复行为异常导致卡死的问题 [!1638](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/1638)
+- 修改EmbeddingNodeController.ets中可能出现的空指针问题 [!1593](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/1593)
+- Fixes crash when adding and removing multiple page-based route (#177338) [!1584](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/1584)
+- Fixed the issue with input status when switching input methods [!1579](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/1579)
+- Fix the issue where entering Chinese first and then English causes the English to be duplicate [!1554](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/1554)
+- Fixed the issue where typing English first and then Chinese would get overwritten [!1541](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/1541)
+- 修复折叠机下避让区域计算错误问题 [!1532](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/1532)
+- Fixed the issue where deleting numbers to the left would remove two at a time [!1530](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/1530)
+- 预加载操作执行后,将标记重置为false,避免RecreateSwapchain复用context时仍然走到预加载的判断逻辑中 [!1525](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/1525)
+- fix adding the webview to the rotating component makes it unclickable and unscrollable [!1465](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/1465)
+- [OHOS] Fix PixelMap ReadPixels temp buffer cleanup [!1395](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/1395)
+- Fix the template syntax error problem [!1372](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/1372)
+
+### Performance
+
+- Enable static snapshot linking for OHOS debug mode [!1365](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/1365)
+- ohos开启指针压缩 [!1341](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/1341)
+- 发送低内存警告，触发图像缓存清理 [!1310](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/1310)
+
 ##  3.35.7-ohos-1.0.4-beta
 
 - 分栏功能中，当栈顶是弹窗时，不要拦截pop函数,([4cbb3580a1f](https://gitcode.com/CPF-Flutter/flutter_flutter/commit/4cbb3580a1f98b0b2af6ab88b0a25b8e8c249b6e))
@@ -104,3 +154,7 @@
 - 解决在剪切操作后无法进行粘贴的问题[d3ddc4e0](https://gitcode.com/openharmony-tpc/flutter_flutter/commit/d3ddc4e0e361c9294ab4d2fd3a43768ea58dae8a?ref=fix_pasting&prId=803)
 - 修复ohos平台运行build命令，无法生成指定的文件夹[31d92a8c](https://gitcode.com/openharmony-tpc/flutter_flutter/commit/31d92a8c25389ad554c9f01b6f3176032b68b8d9?ref=oh-3.35.7-dev&prId=797)
 - 解决了在AndroidStudio 上某些断点无法断住的问题[c4ae8eff](https://gitcode.com/openharmony-tpc/flutter_flutter/commit/c4ae8eff5d0b41b9ccd6a81ccf026bd02c9c107d?ref=start_paused&prId=820)
+
+<!-- ===== 版本对比链接区 ===== -->
+[Unreleased]: https://gitcode.com/CPF-Flutter/flutter_flutter/compare/3.35.8-ohos-1.0.4...HEAD
+[3.35.7-ohos-1.0.4]: https://gitcode.com/CPF-Flutter/flutter_flutter/compare/3.35.8-ohos-1.0.3...3.35.8-ohos-1.0.4
