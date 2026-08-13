@@ -6,9 +6,76 @@
 
 #include "flutter/shell/platform/ohos/accessibility/ohos_semantics_node.h"
 
+#include <dlfcn.h>
+
 #include <gtest/gtest.h>
 
 #include "flutter/lib/ui/semantics/semantics_node.h"
+
+// The ArkUI NDK has no getters on ArkUI_AccessibilityElementInfo, so
+// same-signature definitions below capture the setter calls (they take
+// precedence over libace_ndk.z.so). SetComponentIdentifier is resolved via
+// dlsym in production and cannot be captured; its branches are covered
+// through the componentIdentifierWriteFailed flag.
+namespace {
+
+struct CapturedA11yContent {
+  std::string text;
+  std::string hintText;
+  std::string contents;
+  int rangeCalls = 0;
+  ArkUI_AccessibleRangeInfo range = {};
+
+  void Reset() { *this = CapturedA11yContent(); }
+};
+
+CapturedA11yContent g_capturedA11yContent;
+
+void ExpectZeroRange(const ArkUI_AccessibleRangeInfo& range) {
+  EXPECT_DOUBLE_EQ(range.min, 0.0);
+  EXPECT_DOUBLE_EQ(range.max, 0.0);
+  EXPECT_DOUBLE_EQ(range.current, 0.0);
+}
+
+}  // namespace
+
+extern "C" {
+int32_t OH_ArkUI_AccessibilityElementInfoSetAccessibilityText(
+    ArkUI_AccessibilityElementInfo* elementInfo,
+    const char* text) {
+  (void)elementInfo;
+  g_capturedA11yContent.text = text != nullptr ? text : "";
+  return ARKUI_ACCESSIBILITY_NATIVE_RESULT_SUCCESSFUL;
+}
+
+int32_t OH_ArkUI_AccessibilityElementInfoSetHintText(
+    ArkUI_AccessibilityElementInfo* elementInfo,
+    const char* hintText) {
+  (void)elementInfo;
+  g_capturedA11yContent.hintText = hintText != nullptr ? hintText : "";
+  return ARKUI_ACCESSIBILITY_NATIVE_RESULT_SUCCESSFUL;
+}
+
+int32_t OH_ArkUI_AccessibilityElementInfoSetContents(
+    ArkUI_AccessibilityElementInfo* elementInfo,
+    const char* contents) {
+  (void)elementInfo;
+  g_capturedA11yContent.contents = contents != nullptr ? contents : "";
+  return ARKUI_ACCESSIBILITY_NATIVE_RESULT_SUCCESSFUL;
+}
+
+int32_t OH_ArkUI_AccessibilityElementInfoSetRangeInfo(
+    ArkUI_AccessibilityElementInfo* elementInfo,
+    ArkUI_AccessibleRangeInfo* rangeInfo) {
+  (void)elementInfo;
+  g_capturedA11yContent.rangeCalls++;
+  if (rangeInfo != nullptr) {
+    g_capturedA11yContent.range = *rangeInfo;
+  }
+  return ARKUI_ACCESSIBILITY_NATIVE_RESULT_SUCCESSFUL;
+}
+
+}  // extern "C"
 
 namespace flutter {
 namespace testing {
@@ -97,6 +164,7 @@ TEST_F(SemanticsNodeTest, HasScrolledTrueAfterScrollPositionChange) {
   // then scrollPosition = node.scrollPosition (new). When they differ,
   // HasScrolled() returns true (correct in this case).
   flutter::SemanticsNode source;
+  source.role = SemanticsRole::kNone;
   source.id = 1;
   source.scrollChildren = 10;
   source.scrollIndex = 2;
@@ -108,6 +176,7 @@ TEST_F(SemanticsNodeTest, HasScrolledTrueAfterScrollPositionChange) {
 TEST_F(SemanticsNodeTest, HasScrolledFalseWhenScrollPositionUnchanged) {
   // First update sets scrollPosition to 0.5.
   flutter::SemanticsNode source;
+  source.role = SemanticsRole::kNone;
   source.id = 1;
   source.scrollChildren = 10;
   source.scrollIndex = 2;
@@ -117,6 +186,7 @@ TEST_F(SemanticsNodeTest, HasScrolledFalseWhenScrollPositionUnchanged) {
 
   // Second update with same scrollPosition: previousScrollPosition == scrollPosition
   flutter::SemanticsNode source2;
+  source2.role = SemanticsRole::kNone;
   source2.id = 1;
   source2.scrollChildren = 10;
   source2.scrollIndex = 2;
@@ -757,6 +827,7 @@ TEST_F(SemanticsNodeTest, OHOSActionsUpdateClearFocusWhenDidLoseAccessibilityFoc
 
 TEST_F(SemanticsNodeTest, UpdateWithNodeSetsId) {
   flutter::SemanticsNode source;
+  source.role = SemanticsRole::kNone;
   source.id = 42;
   node_.UpdateWithNode(source);
   EXPECT_EQ(node_.id, 42);
@@ -765,6 +836,7 @@ TEST_F(SemanticsNodeTest, UpdateWithNodeSetsId) {
 
 TEST_F(SemanticsNodeTest, UpdateWithNodeSetsLabel) {
   flutter::SemanticsNode source;
+  source.role = SemanticsRole::kNone;
   source.id = 1;
   source.label = "MyLabel";
   node_.UpdateWithNode(source);
@@ -774,6 +846,7 @@ TEST_F(SemanticsNodeTest, UpdateWithNodeSetsLabel) {
 
 TEST_F(SemanticsNodeTest, UpdateWithNodeSetsFlags) {
   flutter::SemanticsNode source;
+  source.role = SemanticsRole::kNone;
   source.id = 1;
   source.flags.isButton = true;
   node_.UpdateWithNode(source);
@@ -783,6 +856,7 @@ TEST_F(SemanticsNodeTest, UpdateWithNodeSetsFlags) {
 
 TEST_F(SemanticsNodeTest, UpdateWithNodeSetsActions) {
   flutter::SemanticsNode source;
+  source.role = SemanticsRole::kNone;
   source.id = 1;
   source.actions = static_cast<int32_t>(ACTIONS_::kTap);
   node_.UpdateWithNode(source);
@@ -792,6 +866,7 @@ TEST_F(SemanticsNodeTest, UpdateWithNodeSetsActions) {
 
 TEST_F(SemanticsNodeTest, UpdateWithNodeSetsRect) {
   flutter::SemanticsNode source;
+  source.role = SemanticsRole::kNone;
   source.id = 1;
   source.rect = SkRect::MakeXYWH(10.0f, 20.0f, 30.0f, 40.0f);
   node_.UpdateWithNode(source);
@@ -804,6 +879,7 @@ TEST_F(SemanticsNodeTest, UpdateWithNodeSetsRect) {
 
 TEST_F(SemanticsNodeTest, UpdateWithNodeSetsChildrenInTraversalOrder) {
   flutter::SemanticsNode source;
+  source.role = SemanticsRole::kNone;
   source.id = 1;
   source.childrenInTraversalOrder = {2, 3, 4};
   node_.UpdateWithNode(source);
@@ -815,6 +891,7 @@ TEST_F(SemanticsNodeTest, UpdateWithNodeSetsChildrenInTraversalOrder) {
 
 TEST_F(SemanticsNodeTest, UpdateWithNodeSetsTextSelection) {
   flutter::SemanticsNode source;
+  source.role = SemanticsRole::kNone;
   source.id = 1;
   source.textSelectionBase = 5;
   source.textSelectionExtent = 10;
@@ -826,6 +903,7 @@ TEST_F(SemanticsNodeTest, UpdateWithNodeSetsTextSelection) {
 
 TEST_F(SemanticsNodeTest, UpdateWithNodeSetsScrollInfo) {
   flutter::SemanticsNode source;
+  source.role = SemanticsRole::kNone;
   source.id = 1;
   source.scrollChildren = 10;
   source.scrollIndex = 2;
@@ -840,6 +918,7 @@ TEST_F(SemanticsNodeTest, UpdateWithNodeSetsScrollInfo) {
 
 TEST_F(SemanticsNodeTest, UpdateWithNodeTriggersComponentTypeUpdateForRoot) {
   flutter::SemanticsNode source;
+  source.role = SemanticsRole::kNone;
   source.id = 0;  // root node
   node_.UpdateWithNode(source);
   EXPECT_STREQ(node_.componentType, OHWidgetName::kRootWidgetName);
@@ -848,6 +927,7 @@ TEST_F(SemanticsNodeTest, UpdateWithNodeTriggersComponentTypeUpdateForRoot) {
 
 TEST_F(SemanticsNodeTest, UpdateWithNodeTriggersComponentTypeUpdateForButton) {
   flutter::SemanticsNode source;
+  source.role = SemanticsRole::kNone;
   source.id = 1;
   source.flags.isButton = true;
   node_.UpdateWithNode(source);
@@ -858,6 +938,7 @@ TEST_F(SemanticsNodeTest, UpdateWithNodeTriggersComponentTypeUpdateForButton) {
 TEST_F(SemanticsNodeTest, UpdateWithNodeSetsTextWidgetWhenLabelAdded) {
   // Start with kOtherWidgetName (default)
   flutter::SemanticsNode source;
+  source.role = SemanticsRole::kNone;
   source.id = 1;
   source.label = "Hello";
   node_.UpdateWithNode(source);
@@ -869,6 +950,7 @@ TEST_F(SemanticsNodeTest, UpdateWithNodeSetsTextWidgetWhenLabelAdded) {
 // Pass a node with only value different, covering the value != node.value branch
 TEST_F(SemanticsNodeTest, UpdateWithNodeDetectsValueChange) {
   flutter::SemanticsNode source;
+  source.role = SemanticsRole::kNone;
   source.id = 1;
   source.value = "old_value";
   node_.UpdateWithNode(source);
@@ -879,6 +961,7 @@ TEST_F(SemanticsNodeTest, UpdateWithNodeDetectsValueChange) {
   node_.contentChanged = false;
 
   flutter::SemanticsNode source2;
+  source2.role = SemanticsRole::kNone;
   source2.id = 1;
   source2.value = "new_value";
   node_.UpdateWithNode(source2);
@@ -889,6 +972,7 @@ TEST_F(SemanticsNodeTest, UpdateWithNodeDetectsValueChange) {
 // Pass a node with only hint different, covering the hint != node.hint branch
 TEST_F(SemanticsNodeTest, UpdateWithNodeDetectsHintChange) {
   flutter::SemanticsNode source;
+  source.role = SemanticsRole::kNone;
   source.id = 1;
   source.hint = "old_hint";
   node_.UpdateWithNode(source);
@@ -899,6 +983,7 @@ TEST_F(SemanticsNodeTest, UpdateWithNodeDetectsHintChange) {
   node_.contentChanged = false;
 
   flutter::SemanticsNode source2;
+  source2.role = SemanticsRole::kNone;
   source2.id = 1;
   source2.hint = "new_hint";
   node_.UpdateWithNode(source2);
@@ -909,6 +994,7 @@ TEST_F(SemanticsNodeTest, UpdateWithNodeDetectsHintChange) {
 // Pass a node with only tooltip different, covering the tooltip != node.tooltip branch
 TEST_F(SemanticsNodeTest, UpdateWithNodeDetectsTooltipChange) {
   flutter::SemanticsNode source;
+  source.role = SemanticsRole::kNone;
   source.id = 1;
   source.tooltip = "old_tooltip";
   node_.UpdateWithNode(source);
@@ -919,6 +1005,7 @@ TEST_F(SemanticsNodeTest, UpdateWithNodeDetectsTooltipChange) {
   node_.contentChanged = false;
 
   flutter::SemanticsNode source2;
+  source2.role = SemanticsRole::kNone;
   source2.id = 1;
   source2.tooltip = "new_tooltip";
   node_.UpdateWithNode(source2);
@@ -930,6 +1017,7 @@ TEST_F(SemanticsNodeTest, UpdateWithNodeDetectsTooltipChange) {
 TEST_F(SemanticsNodeTest, UpdateWithNodeSetsTextWidgetWhenTooltipAdded) {
   // node_ default componentType is kOtherWidgetName
   flutter::SemanticsNode source;
+  source.role = SemanticsRole::kNone;
   source.id = 1;
   source.tooltip = "A tooltip";
   node_.UpdateWithNode(source);
@@ -940,6 +1028,7 @@ TEST_F(SemanticsNodeTest, UpdateWithNodeSetsTextWidgetWhenTooltipAdded) {
 TEST_F(SemanticsNodeTest, UpdateWithNodeSetsTextWidgetWhenHintAdded) {
   // node_ default componentType is kOtherWidgetName
   flutter::SemanticsNode source;
+  source.role = SemanticsRole::kNone;
   source.id = 1;
   source.hint = "A hint";
   node_.UpdateWithNode(source);
@@ -949,6 +1038,7 @@ TEST_F(SemanticsNodeTest, UpdateWithNodeSetsTextWidgetWhenHintAdded) {
 // Pass a node with only scrollChildren different (scrollIndex same), covering the scrollChildren != node.scrollChildren branch
 TEST_F(SemanticsNodeTest, UpdateWithNodeDetectsScrollChildrenChange) {
   flutter::SemanticsNode source;
+  source.role = SemanticsRole::kNone;
   source.id = 1;
   source.scrollChildren = 10;
   source.scrollIndex = 2;
@@ -960,6 +1050,7 @@ TEST_F(SemanticsNodeTest, UpdateWithNodeDetectsScrollChildrenChange) {
   node_.scrollChanged = false;
 
   flutter::SemanticsNode source2;
+  source2.role = SemanticsRole::kNone;
   source2.id = 1;
   source2.scrollChildren = 20;  // only scrollChildren changes
   source2.scrollIndex = 2;       // scrollIndex unchanged
@@ -971,6 +1062,7 @@ TEST_F(SemanticsNodeTest, UpdateWithNodeDetectsScrollChildrenChange) {
 // Pass a node with only textSelectionExtent different, covering the textSelectionExtent != node.textSelectionExtent branch
 TEST_F(SemanticsNodeTest, UpdateWithNodeDetectsTextSelectionExtentChange) {
   flutter::SemanticsNode source;
+  source.role = SemanticsRole::kNone;
   source.id = 1;
   source.textSelectionBase = 5;
   source.textSelectionExtent = 10;
@@ -982,6 +1074,7 @@ TEST_F(SemanticsNodeTest, UpdateWithNodeDetectsTextSelectionExtentChange) {
   node_.selectChanged = false;
 
   flutter::SemanticsNode source2;
+  source2.role = SemanticsRole::kNone;
   source2.id = 1;
   source2.textSelectionBase = 5;    // unchanged
   source2.textSelectionExtent = 20;  // only extent changes
@@ -993,6 +1086,7 @@ TEST_F(SemanticsNodeTest, UpdateWithNodeDetectsTextSelectionExtentChange) {
 // Pass a node with only transform different (rect same), covering the transform != node.transform branch
 TEST_F(SemanticsNodeTest, UpdateWithNodeDetectsTransformChange) {
   flutter::SemanticsNode source;
+  source.role = SemanticsRole::kNone;
   source.id = 1;
   source.rect = SkRect::MakeXYWH(0.0f, 0.0f, 100.0f, 100.0f);
   source.transform = SkM44();  // identity
@@ -1003,6 +1097,7 @@ TEST_F(SemanticsNodeTest, UpdateWithNodeDetectsTransformChange) {
   node_.rectChanged = false;
 
   flutter::SemanticsNode source2;
+  source2.role = SemanticsRole::kNone;
   source2.id = 1;
   source2.rect = SkRect::MakeXYWH(0.0f, 0.0f, 100.0f, 100.0f);  // rect unchanged
   source2.transform = SkM44::Scale(2.0f, 2.0f);                  // transform changes
@@ -1543,6 +1638,465 @@ TEST_F(SemanticsNodeTest, UpdateSelfRecursivelyTransformComposition) {
   EXPECT_FLOAT_EQ(child.absoluteRect.fTop, 100.0f);
   EXPECT_FLOAT_EQ(child.absoluteRect.fRight, 200.0f);
   EXPECT_FLOAT_EQ(child.absoluteRect.fBottom, 200.0f);
+}
+
+// ===== UiTest semantics bridge: text field hints, identifiers, ranges =====
+
+// ===== FillElementInfoWithContent: text field hint exposure =====
+
+TEST_F(SemanticsNodeTest, FillContentTextFieldWritesHintWhenValueEmpty) {
+  node_.flags.isTextField = true;
+  node_.hint = "请输入账号";
+  g_capturedA11yContent.Reset();
+  node_.FillElementInfoWithContent(node_.elementInfoOHOS);
+  EXPECT_EQ(g_capturedA11yContent.hintText, "请输入账号");
+  EXPECT_EQ(g_capturedA11yContent.text, "请输入账号");
+  EXPECT_EQ(g_capturedA11yContent.contents, "");
+}
+
+TEST_F(SemanticsNodeTest, FillContentTextFieldCombinesLabelAndHint) {
+  node_.flags.isTextField = true;
+  node_.label = "账号";
+  node_.hint = "请输入账号";
+  g_capturedA11yContent.Reset();
+  node_.FillElementInfoWithContent(node_.elementInfoOHOS);
+  EXPECT_EQ(g_capturedA11yContent.hintText, "账号 ,请输入账号");
+  EXPECT_EQ(g_capturedA11yContent.text, "账号 ,请输入账号");
+}
+
+TEST_F(SemanticsNodeTest, FillContentTextFieldWithValueKeepsHintOnly) {
+  node_.flags.isTextField = true;
+  node_.hint = "请输入账号";
+  node_.value = "hello";
+  g_capturedA11yContent.Reset();
+  node_.FillElementInfoWithContent(node_.elementInfoOHOS);
+  EXPECT_EQ(g_capturedA11yContent.hintText, "请输入账号");
+  EXPECT_EQ(g_capturedA11yContent.text, "");
+  EXPECT_EQ(g_capturedA11yContent.contents, "hello");
+}
+
+TEST_F(SemanticsNodeTest, FillContentTextFieldWithoutHintWritesEmptyStrings) {
+  node_.flags.isTextField = true;
+  g_capturedA11yContent.Reset();
+  node_.FillElementInfoWithContent(node_.elementInfoOHOS);
+  EXPECT_EQ(g_capturedA11yContent.hintText, "");
+  EXPECT_EQ(g_capturedA11yContent.text, "");
+}
+
+TEST_F(SemanticsNodeTest, FillContentNonTextFieldClearsHintText) {
+  node_.label = "提交";
+  node_.value = "done";
+  g_capturedA11yContent.Reset();
+  node_.FillElementInfoWithContent(node_.elementInfoOHOS);
+  EXPECT_EQ(g_capturedA11yContent.hintText, "");
+  EXPECT_EQ(g_capturedA11yContent.text, "done ,提交");
+  EXPECT_EQ(g_capturedA11yContent.contents, node_.contentString);
+}
+
+TEST_F(SemanticsNodeTest, HintClearedWhenNodeStopsBeingTextField) {
+  flutter::SemanticsNode first;
+  first.id = 1;
+  first.role = SemanticsRole::kNone;
+  first.flags.isTextField = true;
+  first.hint = "请输入密码";
+  node_.UpdateWithNode(first);
+  g_capturedA11yContent.Reset();
+  node_.UpdateSelfElementInfo();
+  EXPECT_EQ(g_capturedA11yContent.hintText, "请输入密码");
+
+  // Only the isTextField flag flips; content strings stay identical.
+  flutter::SemanticsNode second;
+  second.id = 1;
+  second.role = SemanticsRole::kNone;
+  second.flags.isTextField = false;
+  second.hint = "请输入密码";
+  node_.UpdateWithNode(second);
+  EXPECT_TRUE(node_.contentChanged);
+  g_capturedA11yContent.Reset();
+  node_.UpdateSelfElementInfo();
+  EXPECT_EQ(g_capturedA11yContent.hintText, "");
+}
+
+// ===== FillElementInfoWithContent: component identifier mapping =====
+
+TEST_F(SemanticsNodeTest, FillContentComponentIdentifierSuccessKeepsFlagFalse) {
+  node_.identifier = "login_account_input";
+  node_.FillElementInfoWithContent(node_.elementInfoOHOS);
+  EXPECT_FALSE(node_.componentIdentifierWriteFailed);
+}
+
+TEST_F(SemanticsNodeTest, FillContentIdentifierAtLimitStillSucceeds) {
+  constexpr size_t kIdentifierLimitBytes = 1024;
+  node_.identifier.assign(kIdentifierLimitBytes, 'x');
+  node_.FillElementInfoWithContent(node_.elementInfoOHOS);
+  EXPECT_FALSE(node_.componentIdentifierWriteFailed);
+}
+
+TEST_F(SemanticsNodeTest, FillContentOversizedIdentifierClearedWithoutError) {
+  constexpr size_t kIdentifierOverLimitBytes = 1025;
+  node_.identifier.assign(kIdentifierOverLimitBytes, 'x');
+  node_.FillElementInfoWithContent(node_.elementInfoOHOS);
+  EXPECT_FALSE(node_.componentIdentifierWriteFailed);
+}
+
+TEST_F(SemanticsNodeTest, FillContentIdentifierFailureFlagDedupAndRecovery) {
+  // The setter only exists from API 24; skip when it is unavailable.
+  void* const handle = dlopen("libace_ndk.z.so", RTLD_NOW | RTLD_LOCAL);
+  if (handle == nullptr ||
+      dlsym(handle,
+            "OH_ArkUI_AccessibilityElementInfoSetComponentIdentifier") ==
+          nullptr) {
+    GTEST_SKIP() << "component identifier API unavailable (API < 24)";
+  }
+  // A null elementInfo is documented to return BAD_PARAMETER, not crash.
+  node_.identifier = "settings_button";
+  node_.FillElementInfoWithContent(nullptr);
+  EXPECT_TRUE(node_.componentIdentifierWriteFailed);  // first failure logs
+  node_.FillElementInfoWithContent(nullptr);
+  EXPECT_TRUE(node_.componentIdentifierWriteFailed);  // repeats stay quiet
+  node_.FillElementInfoWithContent(node_.elementInfoOHOS);
+  EXPECT_FALSE(node_.componentIdentifierWriteFailed);  // success resets
+}
+
+// ===== FillElementInfoWithContent: range semantics =====
+
+TEST_F(SemanticsNodeTest, FillContentWritesRangeForValidValues) {
+  constexpr double kExpectedMax = 100.0;
+  constexpr double kExpectedCurrent = 50.0;
+  node_.minValue = "0";
+  node_.maxValue = "100";
+  node_.value = "50";
+  g_capturedA11yContent.Reset();
+  node_.FillElementInfoWithContent(node_.elementInfoOHOS);
+  ASSERT_GT(g_capturedA11yContent.rangeCalls, 0);
+  EXPECT_DOUBLE_EQ(g_capturedA11yContent.range.min, 0.0);
+  EXPECT_DOUBLE_EQ(g_capturedA11yContent.range.max, kExpectedMax);
+  EXPECT_DOUBLE_EQ(g_capturedA11yContent.range.current, kExpectedCurrent);
+}
+
+TEST_F(SemanticsNodeTest, FillContentWritesNegativeAndFractionalRange) {
+  constexpr double kExpectedMin = -10.0;
+  constexpr double kExpectedMax = 10.0;
+  constexpr double kExpectedCurrent = -2.5;
+  node_.minValue = "-10";
+  node_.maxValue = "10";
+  node_.value = "-2.5";
+  g_capturedA11yContent.Reset();
+  node_.FillElementInfoWithContent(node_.elementInfoOHOS);
+  EXPECT_DOUBLE_EQ(g_capturedA11yContent.range.min, kExpectedMin);
+  EXPECT_DOUBLE_EQ(g_capturedA11yContent.range.max, kExpectedMax);
+  EXPECT_DOUBLE_EQ(g_capturedA11yContent.range.current, kExpectedCurrent);
+}
+
+TEST_F(SemanticsNodeTest, FillContentWritesDegenerateRange) {
+  constexpr double kDegenerateValue = 0.5;
+  node_.minValue = "0.5";
+  node_.maxValue = "0.5";
+  node_.value = "0.5";
+  g_capturedA11yContent.Reset();
+  node_.FillElementInfoWithContent(node_.elementInfoOHOS);
+  EXPECT_DOUBLE_EQ(g_capturedA11yContent.range.min, kDegenerateValue);
+  EXPECT_DOUBLE_EQ(g_capturedA11yContent.range.max, kDegenerateValue);
+  EXPECT_DOUBLE_EQ(g_capturedA11yContent.range.current, kDegenerateValue);
+}
+
+TEST_F(SemanticsNodeTest, FillContentRangeZeroedWhenValueEmpty) {
+  node_.minValue = "0";
+  node_.maxValue = "100";
+  node_.value = "";
+  g_capturedA11yContent.Reset();
+  node_.FillElementInfoWithContent(node_.elementInfoOHOS);
+  ASSERT_GT(g_capturedA11yContent.rangeCalls, 0);
+  ExpectZeroRange(g_capturedA11yContent.range);
+}
+
+TEST_F(SemanticsNodeTest, FillContentRangeZeroedWhenMinValueEmpty) {
+  node_.minValue = "";
+  node_.maxValue = "100";
+  node_.value = "50";
+  g_capturedA11yContent.Reset();
+  node_.FillElementInfoWithContent(node_.elementInfoOHOS);
+  ExpectZeroRange(g_capturedA11yContent.range);
+}
+
+TEST_F(SemanticsNodeTest, FillContentRangeZeroedWhenMaxValueEmpty) {
+  node_.minValue = "0";
+  node_.maxValue = "";
+  node_.value = "50";
+  g_capturedA11yContent.Reset();
+  node_.FillElementInfoWithContent(node_.elementInfoOHOS);
+  ExpectZeroRange(g_capturedA11yContent.range);
+}
+
+TEST_F(SemanticsNodeTest, FillContentRangeZeroedWhenValueNotNumeric) {
+  node_.minValue = "0";
+  node_.maxValue = "100";
+  node_.value = "abc";
+  g_capturedA11yContent.Reset();
+  node_.FillElementInfoWithContent(node_.elementInfoOHOS);
+  ExpectZeroRange(g_capturedA11yContent.range);
+}
+
+TEST_F(SemanticsNodeTest, FillContentRangeZeroedWhenValueHasTrailingGarbage) {
+  node_.minValue = "0";
+  node_.maxValue = "100";
+  node_.value = "50px";
+  g_capturedA11yContent.Reset();
+  node_.FillElementInfoWithContent(node_.elementInfoOHOS);
+  ExpectZeroRange(g_capturedA11yContent.range);
+}
+
+TEST_F(SemanticsNodeTest, FillContentRangeZeroedWhenValueNotFinite) {
+  node_.minValue = "0";
+  node_.maxValue = "100";
+  node_.value = "inf";
+  g_capturedA11yContent.Reset();
+  node_.FillElementInfoWithContent(node_.elementInfoOHOS);
+  ExpectZeroRange(g_capturedA11yContent.range);
+}
+
+TEST_F(SemanticsNodeTest, FillContentRangeZeroedWhenValueOverflows) {
+  node_.minValue = "0";
+  node_.maxValue = "100";
+  node_.value = "1e999";
+  g_capturedA11yContent.Reset();
+  node_.FillElementInfoWithContent(node_.elementInfoOHOS);
+  ExpectZeroRange(g_capturedA11yContent.range);
+}
+
+TEST_F(SemanticsNodeTest, FillContentRangeZeroedWhenValueBelowMin) {
+  node_.minValue = "10";
+  node_.maxValue = "100";
+  node_.value = "5";
+  g_capturedA11yContent.Reset();
+  node_.FillElementInfoWithContent(node_.elementInfoOHOS);
+  ExpectZeroRange(g_capturedA11yContent.range);
+}
+
+TEST_F(SemanticsNodeTest, FillContentRangeZeroedWhenValueAboveMax) {
+  node_.minValue = "0";
+  node_.maxValue = "100";
+  node_.value = "150";
+  g_capturedA11yContent.Reset();
+  node_.FillElementInfoWithContent(node_.elementInfoOHOS);
+  ExpectZeroRange(g_capturedA11yContent.range);
+}
+
+TEST_F(SemanticsNodeTest, StaleRangeClearedWhenValueRemoved) {
+  constexpr double kFirstCurrent = 30.0;
+  flutter::SemanticsNode withValue;
+  withValue.id = 1;
+  withValue.role = SemanticsRole::kNone;
+  withValue.minValue = "0";
+  withValue.maxValue = "100";
+  withValue.value = "30";
+  node_.UpdateWithNode(withValue);
+  g_capturedA11yContent.Reset();
+  node_.UpdateSelfElementInfo();
+  EXPECT_DOUBLE_EQ(g_capturedA11yContent.range.current, kFirstCurrent);
+
+  flutter::SemanticsNode withoutValue;
+  withoutValue.id = 1;
+  withoutValue.role = SemanticsRole::kNone;
+  withoutValue.minValue = "0";
+  withoutValue.maxValue = "100";
+  withoutValue.value = "";
+  node_.UpdateWithNode(withoutValue);
+  g_capturedA11yContent.Reset();
+  node_.UpdateSelfElementInfo();
+  ASSERT_GT(g_capturedA11yContent.rangeCalls, 0);
+  ExpectZeroRange(g_capturedA11yContent.range);
+}
+
+// ===== OHOSComponentTypeUpdate: progress-bar role =====
+
+TEST_F(SemanticsNodeTest, OHOSComponentTypeUpdateProgressBarRole) {
+  node_.id = 1;
+  node_.role = SemanticsRole::kProgressBar;
+  node_.OHOSComponentTypeUpdate();
+  EXPECT_STREQ(node_.componentType, OHWidgetName::kProgressWidgetName);
+}
+
+TEST_F(SemanticsNodeTest,
+       OHOSComponentTypeUpdateProgressBarBeatsScrollAndText) {
+  node_.id = 1;
+  node_.role = SemanticsRole::kProgressBar;
+  node_.flags.hasImplicitScrolling = true;
+  node_.label = "loading";
+  node_.OHOSComponentTypeUpdate();
+  EXPECT_STREQ(node_.componentType, OHWidgetName::kProgressWidgetName);
+}
+
+TEST_F(SemanticsNodeTest, OHOSComponentTypeUpdateButtonBeatsProgressBarRole) {
+  node_.id = 1;
+  node_.role = SemanticsRole::kProgressBar;
+  node_.flags.isButton = true;
+  node_.OHOSComponentTypeUpdate();
+  EXPECT_STREQ(node_.componentType, OHWidgetName::kButtonWidgetName);
+}
+
+TEST_F(SemanticsNodeTest,
+       OHOSComponentTypeUpdateSliderActionBeatsProgressBarRole) {
+  node_.id = 1;
+  node_.role = SemanticsRole::kProgressBar;
+  node_.actions |= static_cast<int32_t>(ACTIONS_::kIncrease);
+  node_.OHOSComponentTypeUpdate();
+  EXPECT_STREQ(node_.componentType, OHWidgetName::kSliderWidgetName);
+}
+
+TEST_F(SemanticsNodeTest, UpdateWithNodeProgressBarEndToEnd) {
+  constexpr double kProgressCurrent = 70.0;
+  flutter::SemanticsNode progress;
+  progress.id = 1;
+  progress.role = SemanticsRole::kProgressBar;
+  progress.minValue = "0";
+  progress.maxValue = "100";
+  progress.value = "70";
+  node_.UpdateWithNode(progress);
+  EXPECT_EQ(node_.role, SemanticsRole::kProgressBar);
+  EXPECT_STREQ(node_.componentType, OHWidgetName::kProgressWidgetName);
+  g_capturedA11yContent.Reset();
+  node_.UpdateSelfElementInfo();
+  EXPECT_DOUBLE_EQ(g_capturedA11yContent.range.current, kProgressCurrent);
+}
+
+// ===== UpdateWithNode: change detection for the new content fields =====
+
+TEST_F(SemanticsNodeTest, UpdateWithNodeIdentifierChangeSetsContentChanged) {
+  flutter::SemanticsNode node;
+  node.id = 1;
+  node.role = SemanticsRole::kNone;
+  node.identifier = "settings_button";
+  node_.UpdateWithNode(node);
+  EXPECT_TRUE(node_.contentChanged);
+  EXPECT_EQ(node_.identifier, "settings_button");
+}
+
+TEST_F(SemanticsNodeTest, UpdateWithNodeMinValueChangeSetsContentChanged) {
+  flutter::SemanticsNode first;
+  first.id = 1;
+  first.role = SemanticsRole::kNone;
+  first.minValue = "0";
+  node_.UpdateWithNode(first);
+
+  flutter::SemanticsNode second;
+  second.id = 1;
+  second.role = SemanticsRole::kNone;
+  second.minValue = "10";
+  node_.contentChanged = false;
+  node_.UpdateWithNode(second);
+  EXPECT_TRUE(node_.contentChanged);
+  EXPECT_EQ(node_.minValue, "10");
+}
+
+TEST_F(SemanticsNodeTest, UpdateWithNodeMaxValueChangeSetsContentChanged) {
+  flutter::SemanticsNode first;
+  first.id = 1;
+  first.role = SemanticsRole::kNone;
+  first.maxValue = "100";
+  node_.UpdateWithNode(first);
+
+  flutter::SemanticsNode second;
+  second.id = 1;
+  second.role = SemanticsRole::kNone;
+  second.maxValue = "200";
+  node_.contentChanged = false;
+  node_.UpdateWithNode(second);
+  EXPECT_TRUE(node_.contentChanged);
+  EXPECT_EQ(node_.maxValue, "200");
+}
+
+TEST_F(SemanticsNodeTest, UpdateWithNodeRoleChangeSetsContentChanged) {
+  flutter::SemanticsNode first;
+  first.id = 1;
+  first.role = SemanticsRole::kNone;
+  node_.UpdateWithNode(first);
+
+  flutter::SemanticsNode second;
+  second.id = 1;
+  second.role = SemanticsRole::kProgressBar;
+  node_.contentChanged = false;
+  node_.UpdateWithNode(second);
+  EXPECT_TRUE(node_.contentChanged);
+  EXPECT_EQ(node_.role, SemanticsRole::kProgressBar);
+}
+
+TEST_F(SemanticsNodeTest, UpdateWithNodeTextFieldFlagChangeSetsContentChanged) {
+  flutter::SemanticsNode first;
+  first.id = 1;
+  first.role = SemanticsRole::kNone;
+  first.flags.isTextField = false;
+  node_.UpdateWithNode(first);
+
+  flutter::SemanticsNode second;
+  second.id = 1;
+  second.role = SemanticsRole::kNone;
+  second.flags.isTextField = true;
+  node_.contentChanged = false;
+  node_.UpdateWithNode(second);
+  EXPECT_TRUE(node_.contentChanged);
+}
+
+TEST_F(SemanticsNodeTest, UpdateWithNodeOversizedIdentifierStoredForClearing) {
+  constexpr size_t kIdentifierBytes = 1100;
+  flutter::SemanticsNode node;
+  node.id = 1;
+  node.role = SemanticsRole::kNone;
+  node.identifier.assign(kIdentifierBytes, 'x');
+  node_.UpdateWithNode(node);
+  // The warning fires here; the actual clearing happens at fill time.
+  EXPECT_TRUE(node_.contentChanged);
+  EXPECT_EQ(node_.identifier.size(), kIdentifierBytes);
+}
+
+TEST_F(SemanticsNodeTest, UpdateWithNodeIdentifierAtLimitNotCleared) {
+  constexpr size_t kIdentifierLimitBytes = 1024;
+  flutter::SemanticsNode node;
+  node.id = 1;
+  node.role = SemanticsRole::kNone;
+  node.identifier.assign(kIdentifierLimitBytes, 'x');
+  node_.UpdateWithNode(node);
+  EXPECT_TRUE(node_.contentChanged);
+  EXPECT_EQ(node_.identifier.size(), kIdentifierLimitBytes);
+}
+
+TEST_F(SemanticsNodeTest,
+       UpdateWithNodeUnchangedContentKeepsContentChangedFalse) {
+  flutter::SemanticsNode first;
+  first.id = 1;
+  first.role = SemanticsRole::kNone;
+  first.identifier = "settings_button";
+  first.value = "a";
+  node_.UpdateWithNode(first);
+  node_.contentChanged = false;
+
+  flutter::SemanticsNode second;
+  second.id = 1;
+  second.role = SemanticsRole::kNone;
+  second.identifier = "settings_button";
+  second.value = "a";
+  node_.UpdateWithNode(second);
+  EXPECT_FALSE(node_.contentChanged);
+  EXPECT_EQ(node_.identifier, "settings_button");
+}
+
+TEST_F(SemanticsNodeTest, UpdateWithNodeKeepsIdentifierWhenOnlyValueChanged) {
+  flutter::SemanticsNode first;
+  first.id = 1;
+  first.role = SemanticsRole::kNone;
+  first.identifier = "id";
+  first.value = "a";
+  node_.UpdateWithNode(first);
+
+  flutter::SemanticsNode second;
+  second.id = 1;
+  second.role = SemanticsRole::kNone;
+  second.identifier = "id";
+  second.value = "b";
+  node_.UpdateWithNode(second);
+  EXPECT_TRUE(node_.contentChanged);
+  EXPECT_EQ(node_.identifier, "id");
+  EXPECT_EQ(node_.value, "b");
 }
 
 }  // namespace testing
