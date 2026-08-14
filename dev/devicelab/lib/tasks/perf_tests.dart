@@ -1384,6 +1384,8 @@ class PerfTest {
         );
       }
 
+      final bool isOhos = deviceOperatingSystem == DeviceOperatingSystem.ohos;
+
       bool changedPlist = false;
       bool changedManifest = false;
 
@@ -1410,7 +1412,7 @@ class PerfTest {
       }
 
       try {
-        if (enableImpeller ?? false) {
+        if ((enableImpeller ?? false) && !isOhos) {
           changedManifest = true;
           _addVulkanGPUTracingToManifest(testDirectory);
           if (forceOpenGLES ?? false) {
@@ -1426,7 +1428,7 @@ class PerfTest {
             _addLazyShaderMode(testDirectory);
           }
         }
-        if (disablePartialRepaint || enableMergedPlatformThread) {
+        if ((disablePartialRepaint || enableMergedPlatformThread) && !isOhos) {
           changedPlist = true;
           _updateManifestSettings(
             testDirectory,
@@ -1501,7 +1503,6 @@ class PerfTest {
       }
 
       final bool isAndroid = deviceOperatingSystem == DeviceOperatingSystem.android;
-      final bool isOhos = deviceOperatingSystem == DeviceOperatingSystem.ohos;
       return TaskResult.success(
         data,
         detailFiles: <String>[
