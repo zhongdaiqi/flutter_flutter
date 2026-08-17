@@ -1,7 +1,7 @@
-# Flutter 3.22.3-ohos-1.1.5.candidate Release Notes
+# Flutter 3.22.3-ohos-1.1.5 Release Notes
 
 > **版本状态**：release<br/>
-> **发布日期**：2026-08-07<br/>
+> **发布日期**：2026-08-17<br/>
 > **Flutter 上游社区基线版本**：[![Flutter Version](https://img-transfer.gitcode.com?p=https%3A%2F%2Fimg.shields.io%2Fbadge%2FFlutter-3.22.3-blue.svg%3Flogo%3Dflutter&projectId=CPF-Flutter&pageUrl=https%3A%2F%2Fgitcode.com%2FCPF-Flutter)](https://github.com/flutter/flutter/commit/5dcb86f68f239346676ceb1ed1ea385bd215fba1)
 
 ---
@@ -14,12 +14,12 @@
 
 | 配套 | 版本 / 要求 |
 | --- | --- |
-| **Flutter SDK**          | [**3.22.3-ohos-1.1.5.candidate**](https://gitcode.com/CPF-Flutter/flutter_flutter/releases/tag/3.22.4-ohos-1.1.5-candidate)<br/>*（由于 Flutter 版本解析规则，为避免版本比较解析失败，实际显示为 `3.22.4-ohos-1.1.5`）* |
+| **Flutter SDK**          | [**3.22.3-ohos-1.1.5**](https://gitcode.com/CPF-Flutter/flutter_flutter/tree/3.22.4-ohos-1.1.5)<br/>*（由于 Flutter 版本解析规则，为避免版本比较解析失败，实际显示为 `3.22.4-ohos-1.1.5`）* |
 | **DevEco Studio**        | **DevEco Studio 26.0.0 Beta2**<br/>`Build Version：26.0.0.621` |
 | **Command Line Tools**   | **Command Line Tools 26.0.0 Beta2**<br/>`Build Version：26.0.0.621` |
 | **引擎构建最低要求 API** | **OpenHarmony API 26.0.0**                                   |
 | **应用目标 API**         | **OpenHarmony API 26.0.0**                                   |
-| **应用最低运行 API**     | **OpenHarmony API 26.0.0**                                   |
+| **应用最低运行 API**     | **OpenHarmony API 17**                                 |
 
 ## 主要变更
 

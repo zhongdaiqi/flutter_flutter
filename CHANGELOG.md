@@ -1,7 +1,7 @@
 # Changelog
 
 <a id="version20260807"></a>
-## [3.22.3-ohos-1.1.5.candidate] - 2026-08-08
+## 3.22.3-ohos-1.1.5 - `2026-08-17`
 
 ### Added
 
