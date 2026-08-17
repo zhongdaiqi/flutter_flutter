@@ -1,6 +1,6 @@
 # Changelog
 <a id="version20260808"></a>
-## [3.27.4-ohos-1.0.8.candidate] - `2026-08-08`
+## 3.27.4-ohos-1.0.8 - `2026-08-17`
 
 ### Added
 
