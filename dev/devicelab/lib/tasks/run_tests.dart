@@ -213,7 +213,9 @@ class OhosRunOutputTest extends RunOutputTask {
 
     _findNextMatcherInList(
       stdout,
-      (String line) => line.contains('Built build/ohos/hap/'),
+      (String line) =>
+          line.contains('Built') &&
+          (line.contains('build/ohos/hap/') || line.contains(r'build\ohos\hap\')),
       'Built build/ohos/hap/',
     );
 
