@@ -2460,6 +2460,10 @@ class TextSelectionGestureDetectorBuilder {
   ///    this callback.
   @protected
   void onSingleLongTapStart(LongPressStartDetails details) {
+    final TextEditingValue value = editableText.textEditingValue;
+    if (defaultTargetPlatform == TargetPlatform.ohos && value.composing.isValid && value.composing.isNormalized) {
+      return;
+    }
     if (delegate.selectionEnabled) {
       switch (defaultTargetPlatform) {
         case TargetPlatform.iOS:
@@ -2512,6 +2516,10 @@ class TextSelectionGestureDetectorBuilder {
   ///    triggers this callback.
   @protected
   void onSingleLongTapMoveUpdate(LongPressMoveUpdateDetails details) {
+    final TextEditingValue value = editableText.textEditingValue;
+    if (defaultTargetPlatform == TargetPlatform.ohos && value.composing.isValid && value.composing.isNormalized) {
+      return;
+    }
     if (delegate.selectionEnabled) {
       // Adjust the drag start offset for possible viewport offset changes.
       final Offset editableOffset = renderEditable.maxLines == 1
@@ -2570,6 +2578,10 @@ class TextSelectionGestureDetectorBuilder {
   ///    callback.
   @protected
   void onSingleLongTapEnd(LongPressEndDetails details) {
+    final TextEditingValue value = editableText.textEditingValue;
+    if (defaultTargetPlatform == TargetPlatform.ohos && value.composing.isValid && value.composing.isNormalized) {
+      return;
+    }
     _hideMagnifierIfSupportedByPlatform();
     if (shouldShowSelectionToolbar) {
       editableText.showToolbar();
@@ -2646,6 +2658,10 @@ class TextSelectionGestureDetectorBuilder {
   ///    callback.
   @protected
   void onDoubleTapDown(TapDragDownDetails details) {
+    final TextEditingValue value = editableText.textEditingValue;
+    if (defaultTargetPlatform == TargetPlatform.ohos && value.composing.isValid && value.composing.isNormalized) {
+      return;
+    }
     if (delegate.selectionEnabled) {
       renderEditable.selectWord(cause: SelectionChangedCause.doubleTap);
       if (shouldShowSelectionToolbar) {
@@ -2720,6 +2736,10 @@ class TextSelectionGestureDetectorBuilder {
   ///    callback.
   @protected
   void onTripleTapDown(TapDragDownDetails details) {
+    final TextEditingValue value = editableText.textEditingValue;
+    if (defaultTargetPlatform == TargetPlatform.ohos && value.composing.isValid && value.composing.isNormalized) {
+      return;
+    }
     if (!delegate.selectionEnabled) {
       return;
     }
