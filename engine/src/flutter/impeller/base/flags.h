@@ -12,6 +12,8 @@ struct Flags {
   bool lazy_shader_mode = false;
   /// When turned on DrawLine will use the experimental antialiased path.
   bool antialiased_lines = false;
+  /// Whether to enable parallel glyph rasterization on multiple worker threads.
+  bool glyph_raster_parallelization = false;
 };
 }  // namespace impeller
 
