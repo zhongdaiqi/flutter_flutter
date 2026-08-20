@@ -294,6 +294,10 @@ DEF_SWITCH(ImpellerLazyShaderMode,
 DEF_SWITCH(ImpellerAntialiasLines,
            "impeller-antialias-lines",
            "Experimental flag to test drawing lines with antialiasing.")
+DEF_SWITCH(EnableGlyphRasterParallelization,
+           "enable-glyph-raster-parallelization",
+           "Enable parallel glyph rasterization on multiple worker threads. "
+           "Defaults to false.")
 DEF_SWITCHES_END
 
 void PrintUsage(const std::string& executable_name);
