@@ -6,9 +6,54 @@
 
 #include "flutter/shell/platform/ohos/accessibility/ohos_semantics_node.h"
 
+#include <dlfcn.h>
+
 #include <gtest/gtest.h>
 
 #include "flutter/lib/ui/semantics/semantics_node.h"
+
+// The ArkUI NDK has no getters on ArkUI_AccessibilityElementInfo, so
+// same-signature definitions below capture the setter calls (they take
+// precedence over libace_ndk.z.so). SetComponentIdentifier is resolved via
+// dlsym in production and cannot be captured; its branches are covered
+// through the componentIdentifierWriteFailed flag.
+namespace {
+
+struct CapturedA11yContent {
+  std::string text;
+  std::string hintText;
+  std::string contents;
+
+  void Reset() { *this = CapturedA11yContent(); }
+};
+
+CapturedA11yContent g_capturedA11yContent;
+
+}  // namespace
+
+extern "C" {
+int32_t OH_ArkUI_AccessibilityElementInfoSetAccessibilityText(
+    ArkUI_AccessibilityElementInfo* elementInfo, const char* text) {
+  (void)elementInfo;
+  g_capturedA11yContent.text = text != nullptr ? text : "";
+  return ARKUI_ACCESSIBILITY_NATIVE_RESULT_SUCCESSFUL;
+}
+
+int32_t OH_ArkUI_AccessibilityElementInfoSetHintText(
+    ArkUI_AccessibilityElementInfo* elementInfo, const char* hintText) {
+  (void)elementInfo;
+  g_capturedA11yContent.hintText = hintText != nullptr ? hintText : "";
+  return ARKUI_ACCESSIBILITY_NATIVE_RESULT_SUCCESSFUL;
+}
+
+int32_t OH_ArkUI_AccessibilityElementInfoSetContents(
+    ArkUI_AccessibilityElementInfo* elementInfo, const char* contents) {
+  (void)elementInfo;
+  g_capturedA11yContent.contents = contents != nullptr ? contents : "";
+  return ARKUI_ACCESSIBILITY_NATIVE_RESULT_SUCCESSFUL;
+}
+
+}  // extern "C"
 
 namespace flutter {
 namespace testing {
@@ -1516,6 +1561,202 @@ TEST_F(SemanticsNodeTest, UpdateSelfRecursivelyTransformComposition) {
   EXPECT_FLOAT_EQ(child.absoluteRect.fTop, 100.0f);
   EXPECT_FLOAT_EQ(child.absoluteRect.fRight, 200.0f);
   EXPECT_FLOAT_EQ(child.absoluteRect.fBottom, 200.0f);
+}
+
+// ===== UiTest semantics bridge: text field hints and identifiers =====
+
+// ===== FillElementInfoWithContent: text field hint exposure =====
+
+TEST_F(SemanticsNodeTest, FillContentTextFieldWritesHintWhenValueEmpty) {
+  node_.flags.isTextField = true;
+  node_.hint = "请输入账号";
+  g_capturedA11yContent.Reset();
+  node_.FillElementInfoWithContent(node_.elementInfoOHOS);
+  EXPECT_EQ(g_capturedA11yContent.hintText, "请输入账号");
+  EXPECT_EQ(g_capturedA11yContent.text, "请输入账号");
+  EXPECT_EQ(g_capturedA11yContent.contents, "");
+}
+
+TEST_F(SemanticsNodeTest, FillContentTextFieldCombinesLabelAndHint) {
+  node_.flags.isTextField = true;
+  node_.label = "账号";
+  node_.hint = "请输入账号";
+  g_capturedA11yContent.Reset();
+  node_.FillElementInfoWithContent(node_.elementInfoOHOS);
+  EXPECT_EQ(g_capturedA11yContent.hintText, "账号 ,请输入账号");
+  EXPECT_EQ(g_capturedA11yContent.text, "账号 ,请输入账号");
+}
+
+TEST_F(SemanticsNodeTest, FillContentTextFieldWithValueKeepsHintOnly) {
+  node_.flags.isTextField = true;
+  node_.hint = "请输入账号";
+  node_.value = "hello";
+  g_capturedA11yContent.Reset();
+  node_.FillElementInfoWithContent(node_.elementInfoOHOS);
+  EXPECT_EQ(g_capturedA11yContent.hintText, "请输入账号");
+  EXPECT_EQ(g_capturedA11yContent.text, "");
+  EXPECT_EQ(g_capturedA11yContent.contents, "hello");
+}
+
+TEST_F(SemanticsNodeTest, FillContentTextFieldWithoutHintWritesEmptyStrings) {
+  node_.flags.isTextField = true;
+  g_capturedA11yContent.Reset();
+  node_.FillElementInfoWithContent(node_.elementInfoOHOS);
+  EXPECT_EQ(g_capturedA11yContent.hintText, "");
+  EXPECT_EQ(g_capturedA11yContent.text, "");
+}
+
+TEST_F(SemanticsNodeTest, FillContentNonTextFieldClearsHintText) {
+  node_.label = "提交";
+  node_.value = "done";
+  g_capturedA11yContent.Reset();
+  node_.FillElementInfoWithContent(node_.elementInfoOHOS);
+  EXPECT_EQ(g_capturedA11yContent.hintText, "");
+  EXPECT_EQ(g_capturedA11yContent.text, "done ,提交");
+  EXPECT_EQ(g_capturedA11yContent.contents, node_.contentString);
+}
+
+TEST_F(SemanticsNodeTest, HintClearedWhenNodeStopsBeingTextField) {
+  flutter::SemanticsNode first;
+  first.id = 1;
+  first.flags.isTextField = true;
+  first.hint = "请输入密码";
+  node_.UpdateWithNode(first);
+  g_capturedA11yContent.Reset();
+  node_.UpdateSelfElementInfo();
+  EXPECT_EQ(g_capturedA11yContent.hintText, "请输入密码");
+
+  // Only the isTextField flag flips; content strings stay identical.
+  flutter::SemanticsNode second;
+  second.id = 1;
+  second.flags.isTextField = false;
+  second.hint = "请输入密码";
+  node_.UpdateWithNode(second);
+  EXPECT_TRUE(node_.contentChanged);
+  g_capturedA11yContent.Reset();
+  node_.UpdateSelfElementInfo();
+  EXPECT_EQ(g_capturedA11yContent.hintText, "");
+}
+
+// ===== FillElementInfoWithContent: component identifier mapping =====
+
+TEST_F(SemanticsNodeTest, FillContentComponentIdentifierSuccessKeepsFlagFalse) {
+  node_.identifier = "login_account_input";
+  node_.FillElementInfoWithContent(node_.elementInfoOHOS);
+  EXPECT_FALSE(node_.componentIdentifierWriteFailed);
+}
+
+TEST_F(SemanticsNodeTest, FillContentIdentifierAtLimitStillSucceeds) {
+  constexpr size_t kIdentifierLimitBytes = 1024;
+  node_.identifier.assign(kIdentifierLimitBytes, 'x');
+  node_.FillElementInfoWithContent(node_.elementInfoOHOS);
+  EXPECT_FALSE(node_.componentIdentifierWriteFailed);
+}
+
+TEST_F(SemanticsNodeTest, FillContentOversizedIdentifierClearedWithoutError) {
+  constexpr size_t kIdentifierOverLimitBytes = 1025;
+  node_.identifier.assign(kIdentifierOverLimitBytes, 'x');
+  node_.FillElementInfoWithContent(node_.elementInfoOHOS);
+  EXPECT_FALSE(node_.componentIdentifierWriteFailed);
+}
+
+TEST_F(SemanticsNodeTest, FillContentIdentifierFailureFlagDedupAndRecovery) {
+  // The setter only exists from API 24; skip when it is unavailable.
+  void* const handle = dlopen("libace_ndk.z.so", RTLD_NOW | RTLD_LOCAL);
+  if (handle == nullptr ||
+      dlsym(handle,
+            "OH_ArkUI_AccessibilityElementInfoSetComponentIdentifier") ==
+          nullptr) {
+    GTEST_SKIP() << "component identifier API unavailable (API < 24)";
+  }
+  // A null elementInfo is documented to return BAD_PARAMETER, not crash.
+  node_.identifier = "settings_button";
+  node_.FillElementInfoWithContent(nullptr);
+  EXPECT_TRUE(node_.componentIdentifierWriteFailed);  // first failure logs
+  node_.FillElementInfoWithContent(nullptr);
+  EXPECT_TRUE(node_.componentIdentifierWriteFailed);  // repeats stay quiet
+  node_.FillElementInfoWithContent(node_.elementInfoOHOS);
+  EXPECT_FALSE(node_.componentIdentifierWriteFailed);  // success resets
+}
+
+// ===== UpdateWithNode: change detection for the new content fields =====
+
+TEST_F(SemanticsNodeTest, UpdateWithNodeIdentifierChangeSetsContentChanged) {
+  flutter::SemanticsNode node;
+  node.id = 1;
+  node.identifier = "settings_button";
+  node_.UpdateWithNode(node);
+  EXPECT_TRUE(node_.contentChanged);
+  EXPECT_EQ(node_.identifier, "settings_button");
+}
+
+TEST_F(SemanticsNodeTest, UpdateWithNodeTextFieldFlagChangeSetsContentChanged) {
+  flutter::SemanticsNode first;
+  first.id = 1;
+  first.flags.isTextField = false;
+  node_.UpdateWithNode(first);
+
+  flutter::SemanticsNode second;
+  second.id = 1;
+  second.flags.isTextField = true;
+  node_.contentChanged = false;
+  node_.UpdateWithNode(second);
+  EXPECT_TRUE(node_.contentChanged);
+}
+
+TEST_F(SemanticsNodeTest, UpdateWithNodeOversizedIdentifierStoredForClearing) {
+  constexpr size_t kIdentifierBytes = 1100;
+  flutter::SemanticsNode node;
+  node.id = 1;
+  node.identifier.assign(kIdentifierBytes, 'x');
+  node_.UpdateWithNode(node);
+  // The warning fires here; the actual clearing happens at fill time.
+  EXPECT_TRUE(node_.contentChanged);
+  EXPECT_EQ(node_.identifier.size(), kIdentifierBytes);
+}
+
+TEST_F(SemanticsNodeTest, UpdateWithNodeIdentifierAtLimitNotCleared) {
+  constexpr size_t kIdentifierLimitBytes = 1024;
+  flutter::SemanticsNode node;
+  node.id = 1;
+  node.identifier.assign(kIdentifierLimitBytes, 'x');
+  node_.UpdateWithNode(node);
+  EXPECT_TRUE(node_.contentChanged);
+  EXPECT_EQ(node_.identifier.size(), kIdentifierLimitBytes);
+}
+
+TEST_F(SemanticsNodeTest, UpdateWithNodeUnchangedContentKeepsContentChangedFalse) {
+  flutter::SemanticsNode first;
+  first.id = 1;
+  first.identifier = "settings_button";
+  first.value = "a";
+  node_.UpdateWithNode(first);
+  node_.contentChanged = false;
+
+  flutter::SemanticsNode second;
+  second.id = 1;
+  second.identifier = "settings_button";
+  second.value = "a";
+  node_.UpdateWithNode(second);
+  EXPECT_FALSE(node_.contentChanged);
+  EXPECT_EQ(node_.identifier, "settings_button");
+}
+
+TEST_F(SemanticsNodeTest, UpdateWithNodeKeepsIdentifierWhenOnlyValueChanged) {
+  flutter::SemanticsNode first;
+  first.id = 1;
+  first.identifier = "id";
+  first.value = "a";
+  node_.UpdateWithNode(first);
+
+  flutter::SemanticsNode second;
+  second.id = 1;
+  second.identifier = "id";
+  second.value = "b";
+  node_.UpdateWithNode(second);
+  EXPECT_TRUE(node_.contentChanged);
+  EXPECT_EQ(node_.identifier, "id");
+  EXPECT_EQ(node_.value, "b");
 }
 
 }  // namespace testing

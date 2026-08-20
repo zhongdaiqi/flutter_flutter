@@ -61,6 +61,7 @@ struct SemanticsNodeExtend : flutter::SemanticsNode {
   bool parentChanged = false;
   bool idChanged = false;
   bool isExist = false;
+  bool componentIdentifierWriteFailed = false;
 
   bool performSelectAction = false;
   bool isAccessibilityFocued = false;
@@ -116,6 +117,8 @@ struct SemanticsNodeExtend : flutter::SemanticsNode {
   void OHOSActionsUpdate();
   void OHOSComponentTypeUpdate();
 
+  void UpdateContentWithNode(flutter::SemanticsNode& node);
+  void UpdateScrollWithNode(flutter::SemanticsNode& node);
   void UpdateWithNode(flutter::SemanticsNode& node);
   void UpdateSelfRecursively(std::unordered_set<int32_t>& visitorId,
                              std::vector<int32_t>& visitorOrder,
