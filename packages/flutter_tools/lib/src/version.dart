@@ -1058,7 +1058,9 @@ class GitTagVersion {
       }
     }
 
-    final ohosTagPattern = RegExp(r'^\d+\.\d+\.\d+-ohos$');
+    final ohosTagPattern = RegExp(
+      r'^\d+\.\d+\.\d+(?:-ohos|\+ohos)(-\d+\.\d+\.\d+)?(-[a-zA-Z0-9.]+)?$',
+    );
     for (final tag in tags) {
       if (ohosTagPattern.hasMatch(tag.trim())) {
         return parse(tag);
@@ -1117,8 +1119,11 @@ class GitTagVersion {
 
   /// Parse a version string for ohos.
   static GitTagVersion parseOhosVersion(String version) {
+    // Supports -ohos (pre-release) and +ohos (build metadata) tag formats.
+    // +ohos is preferred: semver treats it as equal precedence to the upstream
+    // stable version, so pub constraints like ">=3.35.7" are satisfied.
     final versionPattern = RegExp(
-      r'^(\d+)\.(\d+)\.(\d+)(-ohos(-\d+\.\d+\.\d+)?(-[a-zA-Z0-9.]+)?)?(?:-(\d+)-g([a-f0-9]+))?$',
+      r'^(\d+)\.(\d+)\.(\d+)((?:-ohos|\+ohos)(-\d+\.\d+\.\d+)?(-[a-zA-Z0-9.]+)?)?(?:-(\d+)-g([a-f0-9]+))?$',
     );
     final Match? match = versionPattern.firstMatch(version.trim());
     if (match == null) {

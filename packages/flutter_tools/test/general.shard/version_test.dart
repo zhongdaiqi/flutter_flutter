@@ -1336,6 +1336,75 @@ void main() {
     );
   });
 
+  testUsingContext('GitTagVersion ohos -ohos pre-release format', () {
+    // Legacy -ohos format (pre-release, lower precedence than upstream stable)
+    final GitTagVersion gitTagVersion = GitTagVersion.parse('3.35.7-ohos-1.0.4-beta');
+    expect(gitTagVersion.x, 3);
+    expect(gitTagVersion.y, 35);
+    expect(gitTagVersion.z, 7);
+    expect(gitTagVersion.gitTag, '3.35.7-ohos-1.0.4-beta');
+    expect(gitTagVersion.commits, 0);
+  });
+
+  testUsingContext('GitTagVersion ohos +ohos build metadata format', () {
+    // Preferred +ohos format (build metadata, equal precedence to upstream stable)
+    final GitTagVersion gitTagVersion = GitTagVersion.parse('3.35.7+ohos-1.0.4-beta');
+    expect(gitTagVersion.x, 3);
+    expect(gitTagVersion.y, 35);
+    expect(gitTagVersion.z, 7);
+    expect(gitTagVersion.gitTag, '3.35.7+ohos-1.0.4-beta');
+    expect(gitTagVersion.commits, 0);
+  });
+
+  testUsingContext('GitTagVersion ohos with commits past tag', () {
+    const hash = 'abcdef';
+    // +ohos format with commits past the tag (git describe output)
+    final GitTagVersion gitTagVersion = GitTagVersion.parse('3.35.7+ohos-1.0.4-beta-5-g$hash');
+    expect(gitTagVersion.x, 3);
+    expect(gitTagVersion.y, 35);
+    expect(gitTagVersion.z, 7);
+    expect(gitTagVersion.gitTag, '3.35.7+ohos-1.0.4-beta');
+    expect(gitTagVersion.commits, 5);
+    expect(gitTagVersion.hash, hash);
+    // ohos tags return gitTag directly even when commits > 0
+    expect(gitTagVersion.frameworkVersionFor(hash), '3.35.7+ohos-1.0.4-beta');
+  });
+
+  testUsingContext('GitTagVersion ohos +ohos with commits past tag no suffix', () {
+    const hash = 'abcdef';
+    // +ohos format without prerelease suffix, with commits past the tag
+    final GitTagVersion gitTagVersion = GitTagVersion.parse('3.35.7+ohos-1.0.0-5-g$hash');
+    expect(gitTagVersion.x, 3);
+    expect(gitTagVersion.y, 35);
+    expect(gitTagVersion.z, 7);
+    expect(gitTagVersion.gitTag, '3.35.7+ohos-1.0.0');
+    expect(gitTagVersion.commits, 5);
+    expect(gitTagVersion.hash, hash);
+    expect(gitTagVersion.frameworkVersionFor(hash), '3.35.7+ohos-1.0.0');
+  });
+
+  testUsingContext('GitTagVersion ohos -ohos with commits past tag', () {
+    const hash = 'abcdef';
+    // -ohos format with commits past the tag
+    final GitTagVersion gitTagVersion = GitTagVersion.parse('3.35.8-ohos-0.0.3-140-g$hash');
+    expect(gitTagVersion.x, 3);
+    expect(gitTagVersion.y, 35);
+    expect(gitTagVersion.z, 8);
+    expect(gitTagVersion.gitTag, '3.35.8-ohos-0.0.3');
+    expect(gitTagVersion.commits, 140);
+    expect(gitTagVersion.frameworkVersionFor(hash), '3.35.8-ohos-0.0.3');
+  });
+
+  testUsingContext('GitTagVersion ohos historical formats', () {
+    // Historical tag formats should still parse correctly
+    expect(GitTagVersion.parse('3.22.1-ohos-1.0.0').gitTag, '3.22.1-ohos-1.0.0');
+    expect(
+      GitTagVersion.parse('3.22.1-ohos-1.0.0-candidate.1').gitTag,
+      '3.22.1-ohos-1.0.0-candidate.1',
+    );
+    expect(GitTagVersion.parse('3.22.1-ohos-1.0.0-SP1').gitTag, '3.22.1-ohos-1.0.0-SP1');
+  });
+
   testUsingContext('determine reports correct stable version if HEAD is at a tag', () {
     const stableTag = '1.2.3';
     final fakeProcessManager = FakeProcessManager.list(<FakeCommand>[
