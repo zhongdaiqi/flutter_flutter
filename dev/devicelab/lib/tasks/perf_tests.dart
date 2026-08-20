@@ -108,6 +108,53 @@ TaskFunction createAndroidTextureScrollPerfTest({bool? enableImpeller}) {
   ).run;
 }
 
+TaskFunction createOhosPlatformViewScrollPerfTest({bool? enableImpeller}) {
+  return PerfTest(
+    '${flutterDirectory.path}/dev/benchmarks/platform_views_layout',
+    'test_driver/android_view_scroll_perf.dart',
+    'platform_views_scroll_perf',
+    testDriver: 'test_driver/scroll_perf_test.dart',
+    needsFullTimeline: false,
+    enableImpeller: enableImpeller,
+    enableMergedPlatformThread: true,
+  ).run;
+}
+
+TaskFunction createOhosAdBannersScrollPerfTest({bool? enableImpeller}) {
+  return PerfTest(
+    '${flutterDirectory.path}/dev/benchmarks/platform_views_layout',
+    'test_driver/uikit_view_scroll_perf_ad_banners.dart',
+    'platform_views_scroll_perf_ad_banners',
+    testDriver: 'test_driver/scroll_perf_ad_banners_test.dart',
+    needsFullTimeline: false,
+    enableImpeller: enableImpeller,
+  ).run;
+}
+
+TaskFunction createOhosBottomAdBannerScrollPerfTest({bool? enableImpeller}) {
+  return PerfTest(
+    '${flutterDirectory.path}/dev/benchmarks/platform_views_layout',
+    'test_driver/uikit_view_scroll_perf_bottom_ad_banner.dart',
+    'platform_views_scroll_perf_bottom_ad_banner',
+    testDriver: 'test_driver/scroll_perf_bottom_ad_banner_test.dart',
+    needsFullTimeline: false,
+    enableImpeller: enableImpeller,
+  ).run;
+}
+
+TaskFunction createOhosHcppScrollPerfTest() {
+  return PerfTest(
+    '${flutterDirectory.path}/dev/benchmarks/platform_views_layout',
+    'test_driver/scroll_perf_hcpp.dart',
+    'platform_views_hcpp_scroll_perf',
+    testDriver: 'test_driver/scroll_perf_hcpp_test.dart',
+    needsFullTimeline: false,
+    enableImpeller: true,
+    enableSurfaceControl: true,
+    enableMergedPlatformThread: true,
+  ).run;
+}
+
 TaskFunction createAndroidHCPPScrollPerfTest() {
   return PerfTest(
     '${flutterDirectory.path}/dev/benchmarks/platform_views_layout',
@@ -2250,6 +2297,12 @@ class MemoryTest {
     await receivedNextMessage;
   }
 
+  /// The location to tap when waking the application.
+  ///
+  /// Override this to change the tap location, e.g. to avoid the status bar
+  /// on certain platforms.
+  math.Point<int> get tapLocation => const math.Point<int>(100, 100);
+
   /// Taps the application and looks for acknowledgement.
   ///
   /// This is used by several tests to ensure scrolling gestures are installed.
@@ -2267,7 +2320,7 @@ class MemoryTest {
           }
           tapCount += 1;
           print('tapping device... [$tapCount]');
-          await device!.tap(100, 100);
+          await device!.tap(tapLocation.x, tapLocation.y);
           await Future<void>.delayed(const Duration(milliseconds: 100));
         }
       }(),
