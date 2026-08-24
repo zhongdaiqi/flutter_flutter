@@ -277,3 +277,10 @@ integration_steps:
     description: Clone testcases, generate PR info and move tests to archive directory for integration test
     args: ["https://gitcode.com/CPF-Flutter/tests.git", "integration", "$TARGET_BRANCH"]
     required: true
+
+# Customer Testing
+customer_steps:
+  - name: Customer Testing (Upstream)
+    script: ci/scripts/run_customer_testing.sh
+    description: Run upstream customer_testing suite (~10min) with OHOS patches applied to detect fork-introduced regressions.
+    required: true

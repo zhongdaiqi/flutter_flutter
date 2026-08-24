@@ -13,6 +13,7 @@
 #          compile    -> compilation
 #          test       -> test
 #          integration-> integration
+#          customer   -> customer
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 RUNNER="$SCRIPT_DIR/scripts/runner.py"
@@ -21,7 +22,7 @@ STAGE="$1"
 
 if [[ -z "$STAGE" ]]; then
     echo "[ERROR] Stage not provided"
-    echo "Usage: $0 <prepare|compile|test|integration>"
+    echo "Usage: $0 <prepare|compile|test|integration|customer>"
     exit 1
 fi
 
@@ -38,9 +39,12 @@ case "$STAGE" in
     integration)
         STAGE="integration"
         ;;
+    customer)
+        STAGE="customer"
+        ;;
     *)
         echo "[ERROR] Unknown stage: $STAGE"
-        echo "Usage: $0 <prepare|compile|test|integration>"
+        echo "Usage: $0 <prepare|compile|test|integration|customer>"
         exit 1
         ;;
 esac
