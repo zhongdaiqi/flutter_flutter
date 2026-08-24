@@ -52,8 +52,7 @@ void SemanticsNodeExtend::FillElementInfo(
   }
 
   FillElementInfoWithId(info);
-  FillElementInfoWithProperty(info,
-                              accessibility_focus_maps_to_native_focused);
+  FillElementInfoWithProperty(info, accessibility_focus_maps_to_native_focused);
   FillElementInfoWithContent(info);
   FillElementInfoWithChildren(info);
   FillElementInfoWithParent(info);
@@ -122,9 +121,9 @@ void SemanticsNodeExtend::FillElementInfoWithProperty(
   OH_ArkUI_AccessibilityElementInfoSetClickable(info, IsClickable());
 
   OH_ArkUI_AccessibilityElementInfoSetEnabled(info, IsEnabled());
-  const bool native_focused =
-      accessibility_focus_maps_to_native_focused ? isAccessibilityFocued
-                                                 : IsFocused();
+  const bool native_focused = accessibility_focus_maps_to_native_focused
+                                  ? isAccessibilityFocued
+                                  : IsFocused();
   OH_ArkUI_AccessibilityElementInfoSetFocused(info, native_focused);
   OH_ArkUI_AccessibilityElementInfoSetIsPassword(info, IsPassword());
   OH_ArkUI_AccessibilityElementInfoSetCheckable(info, IsCheckable());
@@ -534,41 +533,42 @@ void SemanticsNodeExtend::UpdateWithNode(flutter::SemanticsNode& node) {
   UpdateContentWithNode(node);
 
   // Check if any flag has changed by comparing each field
-  bool flagsChanged = (previousFlags.hasCheckedState != flags.hasCheckedState ||
-                       previousFlags.isChecked != flags.isChecked ||
-                       previousFlags.isSelected != flags.isSelected ||
-                       previousFlags.isButton != flags.isButton ||
-                       previousFlags.isTextField != flags.isTextField ||
-                       previousFlags.isFocused != flags.isFocused ||
-                       previousFlags.hasEnabledState != flags.hasEnabledState ||
-                       previousFlags.isEnabled != flags.isEnabled ||
-                       previousFlags.isInMutuallyExclusiveGroup != flags.isInMutuallyExclusiveGroup ||
-                       previousFlags.isHeader != flags.isHeader ||
-                       previousFlags.isObscured != flags.isObscured ||
-                       previousFlags.scopesRoute != flags.scopesRoute ||
-                       previousFlags.namesRoute != flags.namesRoute ||
-                       previousFlags.isHidden != flags.isHidden ||
-                       previousFlags.isImage != flags.isImage ||
-                       previousFlags.isLiveRegion != flags.isLiveRegion ||
-                       previousFlags.hasToggledState != flags.hasToggledState ||
-                       previousFlags.isToggled != flags.isToggled ||
-                       previousFlags.hasImplicitScrolling != flags.hasImplicitScrolling ||
-                       previousFlags.isMultiline != flags.isMultiline ||
-                       previousFlags.isReadOnly != flags.isReadOnly ||
-                       previousFlags.isFocusable != flags.isFocusable ||
-                       previousFlags.isLink != flags.isLink ||
-                       previousFlags.isSlider != flags.isSlider ||
-                       previousFlags.isKeyboardKey != flags.isKeyboardKey ||
-                       previousFlags.isCheckStateMixed != flags.isCheckStateMixed ||
-                       previousFlags.hasExpandedState != flags.hasExpandedState ||
-                       previousFlags.isExpanded != flags.isExpanded ||
-                       previousFlags.hasSelectedState != flags.hasSelectedState ||
-                       previousFlags.hasRequiredState != flags.hasRequiredState ||
-                       previousFlags.isRequired != flags.isRequired);
-  
+  bool flagsChanged =
+      (previousFlags.hasCheckedState != flags.hasCheckedState ||
+       previousFlags.isChecked != flags.isChecked ||
+       previousFlags.isSelected != flags.isSelected ||
+       previousFlags.isButton != flags.isButton ||
+       previousFlags.isTextField != flags.isTextField ||
+       previousFlags.isFocused != flags.isFocused ||
+       previousFlags.hasEnabledState != flags.hasEnabledState ||
+       previousFlags.isEnabled != flags.isEnabled ||
+       previousFlags.isInMutuallyExclusiveGroup !=
+           flags.isInMutuallyExclusiveGroup ||
+       previousFlags.isHeader != flags.isHeader ||
+       previousFlags.isObscured != flags.isObscured ||
+       previousFlags.scopesRoute != flags.scopesRoute ||
+       previousFlags.namesRoute != flags.namesRoute ||
+       previousFlags.isHidden != flags.isHidden ||
+       previousFlags.isImage != flags.isImage ||
+       previousFlags.isLiveRegion != flags.isLiveRegion ||
+       previousFlags.hasToggledState != flags.hasToggledState ||
+       previousFlags.isToggled != flags.isToggled ||
+       previousFlags.hasImplicitScrolling != flags.hasImplicitScrolling ||
+       previousFlags.isMultiline != flags.isMultiline ||
+       previousFlags.isReadOnly != flags.isReadOnly ||
+       previousFlags.isFocusable != flags.isFocusable ||
+       previousFlags.isLink != flags.isLink ||
+       previousFlags.isSlider != flags.isSlider ||
+       previousFlags.isKeyboardKey != flags.isKeyboardKey ||
+       previousFlags.isCheckStateMixed != flags.isCheckStateMixed ||
+       previousFlags.hasExpandedState != flags.hasExpandedState ||
+       previousFlags.isExpanded != flags.isExpanded ||
+       previousFlags.hasSelectedState != flags.hasSelectedState ||
+       previousFlags.hasRequiredState != flags.hasRequiredState ||
+       previousFlags.isRequired != flags.isRequired);
+
   previousFlags = flags;
-  if (flagsChanged || 
-      flags.hasCheckedState != node.flags.hasCheckedState ||
+  if (flagsChanged || flags.hasCheckedState != node.flags.hasCheckedState ||
       flags.isChecked != node.flags.isChecked ||
       flags.isSelected != node.flags.isSelected ||
       flags.isButton != node.flags.isButton ||
@@ -576,7 +576,8 @@ void SemanticsNodeExtend::UpdateWithNode(flutter::SemanticsNode& node) {
       flags.isFocused != node.flags.isFocused ||
       flags.hasEnabledState != node.flags.hasEnabledState ||
       flags.isEnabled != node.flags.isEnabled ||
-      flags.isInMutuallyExclusiveGroup != node.flags.isInMutuallyExclusiveGroup ||
+      flags.isInMutuallyExclusiveGroup !=
+          node.flags.isInMutuallyExclusiveGroup ||
       flags.isHeader != node.flags.isHeader ||
       flags.isObscured != node.flags.isObscured ||
       flags.scopesRoute != node.flags.scopesRoute ||

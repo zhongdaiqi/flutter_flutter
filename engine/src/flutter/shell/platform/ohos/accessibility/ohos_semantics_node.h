@@ -140,19 +140,11 @@ struct SemanticsNodeExtend : flutter::SemanticsNode {
   bool IsEditable() { return IsTextField() && !flags.isReadOnly; }
   bool IsSlider() { return flags.isSlider; }
   bool IsVisible() { return !flags.isHidden; }
-  bool IsCheckable() {
-    return flags.hasCheckedState || flags.hasToggledState;
-  }
-  bool IsChecked() {
-    return flags.isChecked || flags.isToggled;
-  }
+  bool IsCheckable() { return flags.hasCheckedState || flags.hasToggledState; }
+  bool IsChecked() { return flags.isChecked || flags.isToggled; }
   bool IsSelected() { return flags.isSelected; }
-  bool IsPassword() {
-    return flags.isTextField && flags.isObscured;
-  }
-  bool IsEnabled() {
-    return !flags.hasEnabledState || flags.isEnabled;
-  }
+  bool IsPassword() { return flags.isTextField && flags.isObscured; }
+  bool IsEnabled() { return !flags.hasEnabledState || flags.isEnabled; }
   bool IsClickable() { return HasAction(ACTIONS_::kTap); }
   bool IsHasLongPress() { return HasAction(ACTIONS_::kLongPress); }
   bool HasScrolled() {
