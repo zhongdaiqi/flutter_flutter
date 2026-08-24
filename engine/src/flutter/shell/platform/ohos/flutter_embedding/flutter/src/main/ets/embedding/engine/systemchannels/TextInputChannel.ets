@@ -62,6 +62,9 @@ export default class TextInputChannel {
    * @param textInputMethodHandler - The TextInputMethodHandler instance, or null to remove
    */
   setTextInputMethodHandler(textInputMethodHandler: TextInputMethodHandler | null): void {
+    if (this.textInputCallback !== null) {
+      this.textInputCallback.clearEditingStateDebounce();
+    }
     this.textInputMethodHandler = textInputMethodHandler;
     this.textInputCallback = this.textInputMethodHandler == null
       ? null : new TextInputCallback(this.textInputMethodHandler);
@@ -703,6 +706,8 @@ class TextInputCallback implements MethodCallHandler {
  	};
  	// XComponent组件的ID
  	viewId: string = '';
+  private pendingEditingState: TextEditState | null = null;
+  private setEditingStateDebounceTimer: number = -1;
 
   /**
    * Constructs a new TextInputCallback instance.
@@ -710,6 +715,18 @@ class TextInputCallback implements MethodCallHandler {
    */
   constructor(handler: TextInputMethodHandler) {
     this.textInputMethodHandler = handler;
+  }
+
+  /**
+   * Clears the setEditingState debounce timer and pending state.
+   * Called when the handler is being removed to prevent stale timer callbacks.
+   */
+  clearEditingStateDebounce(): void {
+    if (this.setEditingStateDebounceTimer !== -1) {
+      clearTimeout(this.setEditingStateDebounceTimer);
+      this.setEditingStateDebounceTimer = -1;
+      this.pendingEditingState = null;
+    }
   }
 
  	setViewId(viewId: string) {
@@ -794,7 +811,7 @@ class TextInputCallback implements MethodCallHandler {
         const textInputClientId: number = args[0] as number;
         const jsonConfiguration: string = args[1];
         const config: Configuration | null = Configuration.fromJson(jsonConfiguration);
-
+        this.clearEditingStateDebounce();
         this.textInputMethodHandler.setClient(textInputClientId, config);
         result.success(null);
         break;
@@ -820,7 +837,29 @@ class TextInputCallback implements MethodCallHandler {
         }
         break;
       case "TextInput.setEditingState":
-        this.textInputMethodHandler.setEditingState(TextEditState.fromJson(args));
+        // Debounce: when dragging the caret quickly, Flutter sends setEditingState continuously,
+        // the IME hasn't finished processing the previous one before the new caret position is sent,
+        // and the IME replies with a stale preview state, causing preview candidates to flicker/disappear.
+        // First call executes immediately: tapping outside the pinyin needs to commit quickly and can't wait 200ms.
+        // Subsequent 200ms debounce: let the IME catch up and reduce the back-and-forth.
+        const editingState = TextEditState.fromJson(args);
+        if (this.setEditingStateDebounceTimer !== -1) {
+          clearTimeout(this.setEditingStateDebounceTimer);
+          this.pendingEditingState = editingState;
+          this.setEditingStateDebounceTimer = setTimeout(() => {
+            this.setEditingStateDebounceTimer = -1;
+            if (this.pendingEditingState !== null && this.textInputMethodHandler != null) {
+              this.textInputMethodHandler.setEditingState(this.pendingEditingState);
+              this.pendingEditingState = null;
+            }
+          }, 200);
+        } else {
+          // Not debouncing: execute immediately + start the cooldown
+          this.textInputMethodHandler.setEditingState(editingState);
+          this.setEditingStateDebounceTimer = setTimeout(() => {
+            this.setEditingStateDebounceTimer = -1;
+          }, 200);
+        }
         result.success(null);
         break;
       case "TextInput.setCaretRect":
@@ -837,6 +876,7 @@ class TextInputCallback implements MethodCallHandler {
         result.success(null);
         break;
       case "TextInput.clearClient":
+        this.clearEditingStateDebounce();
         this.textInputMethodHandler.clearClient();
         result.success(null);
         break;
