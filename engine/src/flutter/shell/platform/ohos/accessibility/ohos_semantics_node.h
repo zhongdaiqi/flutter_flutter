@@ -61,6 +61,7 @@ struct SemanticsNodeExtend : flutter::SemanticsNode {
   bool parentChanged = false;
   bool idChanged = false;
   bool isExist = false;
+  bool componentIdentifierWriteFailed = false;
 
   bool performSelectAction = false;
   bool isAccessibilityFocued = false;
@@ -116,6 +117,8 @@ struct SemanticsNodeExtend : flutter::SemanticsNode {
   void OHOSActionsUpdate();
   void OHOSComponentTypeUpdate();
 
+  void UpdateContentWithNode(flutter::SemanticsNode& node);
+  void UpdateScrollWithNode(flutter::SemanticsNode& node);
   void UpdateWithNode(flutter::SemanticsNode& node);
   void UpdateSelfRecursively(std::unordered_set<int32_t>& visitorId,
                              std::vector<int32_t>& visitorOrder,
@@ -137,19 +140,11 @@ struct SemanticsNodeExtend : flutter::SemanticsNode {
   bool IsEditable() { return IsTextField() && !flags.isReadOnly; }
   bool IsSlider() { return flags.isSlider; }
   bool IsVisible() { return !flags.isHidden; }
-  bool IsCheckable() {
-    return flags.hasCheckedState || flags.hasToggledState;
-  }
-  bool IsChecked() {
-    return flags.isChecked || flags.isToggled;
-  }
+  bool IsCheckable() { return flags.hasCheckedState || flags.hasToggledState; }
+  bool IsChecked() { return flags.isChecked || flags.isToggled; }
   bool IsSelected() { return flags.isSelected; }
-  bool IsPassword() {
-    return flags.isTextField && flags.isObscured;
-  }
-  bool IsEnabled() {
-    return !flags.hasEnabledState || flags.isEnabled;
-  }
+  bool IsPassword() { return flags.isTextField && flags.isObscured; }
+  bool IsEnabled() { return !flags.hasEnabledState || flags.isEnabled; }
   bool IsClickable() { return HasAction(ACTIONS_::kTap); }
   bool IsHasLongPress() { return HasAction(ACTIONS_::kLongPress); }
   bool HasScrolled() {
