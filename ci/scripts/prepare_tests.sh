@@ -5,8 +5,8 @@
 #
 # Prepare tests
 #
-# Clones the test repository, generates integration test config files, and
-# archives the tests to the output directory.
+# Clones the test repository, generates config files, and archives the
+# tests to the output directory.
 # Steps:
 #   1. Determines the target branch based on the test purpose.
 #   2. Clones the test project from the given URL and branch.
@@ -14,9 +14,12 @@
 #   4. Writes the given flutter version to flutter.version.
 #   5. If PR_URL is set, extracts the merge request number and writes it to
 #      flutter.pr_no.
-#   6. If purpose is "unit", collects flutter_ohos_unittests and libflutter.so
-#      from the engine build output into resource/gtest/<ohos_variant>/ and
-#      resource/ respectively.
+#   6. If purpose is "unit", collects:
+#        - flutter_ohos_unittests and libflutter.so from the engine build
+#          output into resource/gtest/<ohos_variant>/ and resource/
+#          respectively.
+#        - hello_world flutter_assets into resource/flutter_assets/, and
+#          hello_world native .so files (arm64-v8a) into resource/libs/.
 #   7. Moves the tests directory into Archive/out for packaging.
 #
 # Usage: prepare_tests.sh <project_url> <purpose> <flutter_version> [engine_dir]
@@ -106,6 +109,7 @@ prepare_tests() {
 
     if [[ "$purpose" == "unit" ]]; then
         collect_engine_artifacts "$engine_dir" "$resource_dir"
+        collect_hello_world_artifacts "$resource_dir"
     fi
 
     log_info "Moving tests to archive directory"
@@ -164,14 +168,35 @@ collect_engine_artifacts() {
         exit 1
     fi
 
-    log_info "Collecting libflutter.so from $ohos_variant"
+}
 
-    local libflutter="$engine_bin_dir/libflutter.so"
-    if [[ -f "$libflutter" ]]; then
-        run_cmd "cp $libflutter $resource_dir/"
-    else
-        log_error "libflutter.so not found: $libflutter"
+collect_hello_world_artifacts() {
+    local resource_dir="$1"
+
+    local hello_world_dir="$PROJECT_DIR/flutter_flutter/examples/hello_world"
+    if [[ ! -d "$hello_world_dir" ]]; then
+        log_error "hello_world directory not found: $hello_world_dir"
         exit 1
+    fi
+
+    local assets_src="$hello_world_dir/ohos/entry/src/main/resources/rawfile/flutter_assets"
+    if [[ -d "$assets_src" ]]; then
+        local assets_dst="$resource_dir/flutter_assets"
+        log_info "Collecting hello_world flutter_assets into $assets_dst"
+        run_cmd "mkdir -p $assets_dst"
+        run_cmd "cp -R $assets_src/. $assets_dst/"
+    else
+        log_warn "hello_world flutter_assets not found: $assets_src"
+    fi
+
+    local libs_src="$hello_world_dir/ohos/entry/build/default/intermediates/libs/default/arm64-v8a"
+    if [[ -d "$libs_src" ]]; then
+        local libs_dst="$resource_dir/libs"
+        log_info "Collecting hello_world native libs into $libs_dst"
+        run_cmd "mkdir -p $libs_dst"
+        run_cmd "cp $libs_src/*.so $libs_dst/"
+    else
+        log_warn "hello_world native libs not found: $libs_src"
     fi
 }
 

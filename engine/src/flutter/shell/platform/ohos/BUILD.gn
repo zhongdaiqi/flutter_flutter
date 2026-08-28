@@ -226,7 +226,10 @@ executable("flutter_ohos_unittests") {
     "vsync_waiter_ohos_unittests.cpp",
   ]
 
-  public_configs = [ "//flutter:config" ]
+  public_configs = [
+    "//flutter:config",
+    "//flutter:export_dynamic_symbols",
+  ]
 
   include_dirs = [ "//flutter/third_party/vulkan-deps/spirv-headers/src/tools/buildHeaders/jsoncpp/dist/" ]
 
@@ -241,6 +244,7 @@ executable("flutter_ohos_unittests") {
   deps = [
     ":flutter_ohos_fixtures",
     ":flutter_ohos_sources",
+    "//flutter/lib/snapshot",
     "//flutter/runtime:libdart",
     "//flutter/shell/platform/embedder:embedder_headers",
     "//flutter/shell/platform/embedder:embedder_test_utils",
