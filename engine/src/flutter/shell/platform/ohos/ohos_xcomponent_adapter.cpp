@@ -282,8 +282,9 @@ void DispatchMouseEventCB(OH_NativeXComponent* component, void* window) {
 }
 
 void DispatchHoverEventCB(OH_NativeXComponent* component, bool isHover) {
-  LOGD("XComponentManger::DispatchHoverEventCB");
   if (!isHover) {
+    std::lock_guard<std::recursive_mutex> lock(
+        XComponentAdapter::GetInstance()->xcomponentMap_mutex_);
     for (auto it : XComponentAdapter::GetInstance()->xcomponetMap_) {
       if (it.second->nativeXComponent_ == component) {
         it.second->OnDispatchMouseLeaveEvent(component);
@@ -299,9 +300,13 @@ void XComponentBase::OnDispatchMouseLeaveEvent(OH_NativeXComponent* component) {
   }
 
   OH_NativeXComponent_MouseEvent mouseEvent;
-  int32_t ret = OH_NativeXComponent_GetMouseEvent(component, window_, &mouseEvent);
+  int32_t ret =
+      OH_NativeXComponent_GetMouseEvent(component, window_, &mouseEvent);
   if (ret != OH_NATIVEXCOMPONENT_RESULT_SUCCESS) {
-    LOGE("OH_NativeXComponent_GetMouseEvent (leave event) failed, ret=%{public}d", ret);
+    LOGE(
+        "OH_NativeXComponent_GetMouseEvent (leave event) failed, "
+        "ret=%{public}d",
+        ret);
     return;
   }
 
@@ -312,10 +317,9 @@ void XComponentBase::OnDispatchMouseLeaveEvent(OH_NativeXComponent* component) {
 
   LOGD("XComponentManger::OnDispatchMouseLeaveEvent()");
   // the leave mouseEvent data，is the same of last point on the area.
-  ohosTouchProcessor_.HandleMouseEvent(std::stoll(shellholderId_),
-                                       component, mouseEvent, 0.0, true,
-                                       static_cast<double>(width_),
-                                       static_cast<double>(height_));
+  ohosTouchProcessor_.HandleMouseEvent(
+      std::stoll(shellholderId_), component, mouseEvent, 0.0, true,
+      static_cast<double>(width_), static_cast<double>(height_));
 }
 
 void XComponentBase::BindXComponentCallback() {
@@ -550,19 +554,26 @@ void XComponentBase::SetNativeXComponent(
   nativeXComponent_ = nativeXComponent;
   if (nativeXComponent_ != nullptr) {
     BindXComponentCallback();
-    int32_t ret = OH_NativeXComponent_RegisterCallback(nativeXComponent_, &callback_);
+    int32_t ret =
+        OH_NativeXComponent_RegisterCallback(nativeXComponent_, &callback_);
     if (ret != OH_NATIVEXCOMPONENT_RESULT_SUCCESS) {
       LOGE("OH_NativeXComponent_RegisterCallback failed, ret=%{public}d", ret);
     }
     ret = OH_NativeXComponent_RegisterMouseEventCallback(nativeXComponent_,
                                                          &mouseCallback_);
     if (ret != OH_NATIVEXCOMPONENT_RESULT_SUCCESS) {
-      LOGE("OH_NativeXComponent_RegisterMouseEventCallback failed, ret=%{public}d", ret);
+      LOGE(
+          "OH_NativeXComponent_RegisterMouseEventCallback failed, "
+          "ret=%{public}d",
+          ret);
     }
     ret = OH_NativeXComponent_RegisterUIInputEventCallback(
         nativeXComponent_, DispatchAxisEventCB, ARKUI_UIINPUTEVENT_TYPE_AXIS);
     if (ret != ARKUI_ERROR_CODE_NO_ERROR) {
-      LOGE("OH_NativeXComponent_RegisterUIInputEventCallback failed, ret=%{public}d", ret);
+      LOGE(
+          "OH_NativeXComponent_RegisterUIInputEventCallback failed, "
+          "ret=%{public}d",
+          ret);
     }
   }
 }
@@ -651,7 +662,8 @@ void XComponentBase::OnSurfaceCreated(OH_NativeXComponent* component,
   }
   ret = OH_NativeWindow_NativeObjectReference(window_);
   if (ret) {
-    LOGE("OH_NativeWindow_NativeObjectReference() failed, ret = %{public}d", ret);
+    LOGE("OH_NativeWindow_NativeObjectReference() failed, ret = %{public}d",
+         ret);
   }
 
   // This setting ensures that the soft keyboard does not automatically dismiss
@@ -712,7 +724,8 @@ void XComponentBase::OnSurfaceDestroyed(OH_NativeXComponent* component,
   if (window_) {
     int32_t ret = OH_NativeWindow_NativeObjectUnreference(window_);
     if (ret) {
-      LOGE("OH_NativeWindow_NativeObjectUnreference() failed, ret = %{public}d", ret);
+      LOGE("OH_NativeWindow_NativeObjectUnreference() failed, ret = %{public}d",
+           ret);
     }
   } else {
     LOGE("OnSurfaceDestroyed with null window!");
@@ -750,12 +763,15 @@ void XComponentBase::OnDispatchTouchEvent(OH_NativeXComponent* component,
 
   // if this touchEvent triggered by mouse, return
   OH_NativeXComponent_EventSourceType sourceType;
-  ret = OH_NativeXComponent_GetTouchEventSourceType(
-      component, touchEvent_.id, &sourceType);
+  ret = OH_NativeXComponent_GetTouchEventSourceType(component, touchEvent_.id,
+                                                    &sourceType);
   if (ret != OH_NATIVEXCOMPONENT_RESULT_SUCCESS) {
-    LOGE("OH_NativeXComponent_GetTouchEventSourceType failed, ret=%{public}d, treating as touch event", ret);
-    ohosTouchProcessor_.HandleTouchEvent(std::stoll(shellholderId_),
-                                         component, &touchEvent_);
+    LOGE(
+        "OH_NativeXComponent_GetTouchEventSourceType failed, ret=%{public}d, "
+        "treating as touch event",
+        ret);
+    ohosTouchProcessor_.HandleTouchEvent(std::stoll(shellholderId_), component,
+                                         &touchEvent_);
     return;
   }
 
@@ -763,8 +779,8 @@ void XComponentBase::OnDispatchTouchEvent(OH_NativeXComponent* component,
     ohosTouchProcessor_.HandleVirtualTouchEvent(std::stoll(shellholderId_),
                                                 component, &touchEvent_);
   } else {
-    ohosTouchProcessor_.HandleTouchEvent(std::stoll(shellholderId_),
-                                         component, &touchEvent_);
+    ohosTouchProcessor_.HandleTouchEvent(std::stoll(shellholderId_), component,
+                                         &touchEvent_);
   }
 }
 
@@ -806,10 +822,9 @@ void XComponentBase::OnDispatchMouseEvent(OH_NativeXComponent* component,
     }
   }
 
-  ohosTouchProcessor_.HandleMouseEvent(std::stoll(shellholderId_), component,
-                                       mouseEvent, 0.0, false,
-                                       static_cast<double>(width_),
-                                       static_cast<double>(height_));
+  ohosTouchProcessor_.HandleMouseEvent(
+      std::stoll(shellholderId_), component, mouseEvent, 0.0, false,
+      static_cast<double>(width_), static_cast<double>(height_));
 }
 
 void XComponentBase::OnDispatchMouseWheelEvent(mouseWheelEvent event) {
@@ -833,10 +848,9 @@ void XComponentBase::OnDispatchMouseWheelEvent(mouseWheelEvent event) {
       mouseEvent.button = OH_NATIVEXCOMPONENT_NONE_BUTTON;
       mouseEvent.action = OH_NATIVEXCOMPONENT_MOUSE_NONE;
       mouseEvent.timestamp = event.timestamp;
-      ohosTouchProcessor_.HandleMouseEvent(std::stoll(shellholderId_), nullptr,
-                                           mouseEvent, scrollY, false,
-                                           static_cast<double>(width_),
-                                           static_cast<double>(height_));
+      ohosTouchProcessor_.HandleMouseEvent(
+          std::stoll(shellholderId_), nullptr, mouseEvent, scrollY, false,
+          static_cast<double>(width_), static_cast<double>(height_));
     } else {
       g_scrollDistance = 0.0;
     }
