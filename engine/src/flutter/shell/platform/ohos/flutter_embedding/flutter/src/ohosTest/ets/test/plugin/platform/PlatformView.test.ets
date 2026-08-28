@@ -32,5 +32,50 @@ export default function PlatformViewTest() {
     it('getType', 0, () => {
       expect(platformView.getType()).assertEqual('default')
     })
+
+    it('getPlatformViewVisibleAreaEventOptions returns object', 0, () => {
+      const opts = platformView.getPlatformViewVisibleAreaEventOptions();
+      expect(opts).not().assertNull();
+    });
+
+    it('shouldParticipateInTextInputHandoff returns boolean', 0, () => {
+      const r = platformView.shouldParticipateInTextInputHandoff();
+      expect(typeof r).assertEqual('boolean');
+    });
+
+    it('shouldTriggerTextInputHandoffOnTouch returns boolean', 0, () => {
+      const r = platformView.shouldTriggerTextInputHandoffOnTouch();
+      expect(typeof r).assertEqual('boolean');
+    });
+
+    it('onInputConnectionLocked does not throw', 0, () => {
+      let threw = false;
+      try { platformView.onInputConnectionLocked(); } catch (e) { threw = true; }
+      expect(threw).assertEqual(false);
+    });
+
+    it('onInputConnectionUnlocked does not throw', 0, () => {
+      let threw = false;
+      try { platformView.onInputConnectionUnlocked(); } catch (e) { threw = true; }
+      expect(threw).assertEqual(false);
+    });
+
+    it('onInactive does not throw', 0, () => {
+      let threw = false;
+      try { platformView.onInactive(); } catch (e) { threw = true; }
+      expect(threw).assertEqual(false);
+    });
+
+    it('onActive does not throw', 0, () => {
+      let threw = false;
+      try { platformView.onActive(); } catch (e) { threw = true; }
+      expect(threw).assertEqual(false);
+    });
+
+    it('onFlutterViewDetached does not throw', 0, () => {
+      let threw = false;
+      try { platformView.onFlutterViewDetached(); } catch (e) { threw = true; }
+      expect(threw).assertEqual(false);
+    });
   })
 }

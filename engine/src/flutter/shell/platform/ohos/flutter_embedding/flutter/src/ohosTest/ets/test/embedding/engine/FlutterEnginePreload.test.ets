@@ -82,5 +82,8 @@ export default function FlutterEnginePreloadTest() {
       const result = FlutterEnginePreload.preLoadFlutterNapi(context, 'test_bundle', params);
       done();
     })
+    it('predrawEngine static method exists', 0, () => {
+      expect(typeof FlutterEnginePreload.predrawEngine).assertEqual('function');
+    });
   })
 }
