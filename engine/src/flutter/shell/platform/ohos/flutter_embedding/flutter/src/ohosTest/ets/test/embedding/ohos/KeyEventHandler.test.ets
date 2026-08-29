@@ -92,4 +92,119 @@ export default function keyEventHandlerTest() {
       expect(fn !== undefined).assertEqual(true);
     });
   });
+
+  describe('KeyEventHandler.handleKeyEvent.branches', () => {
+    const mkEvent = (type: KeyType, keyCode: number, capsLock?: boolean, numLock?: boolean,
+                     modifiers?: (keys: string[]) => boolean): KeyEvent => {
+      const ev: Any = {
+        type: type,
+        keyCode: keyCode,
+        isCapsLockOn: capsLock,
+        isNumLockOn: numLock
+      };
+      if (modifiers) {
+        ev.getModifierKeyState = modifiers;
+      }
+      return ev as Any as KeyEvent;
+    };
+
+    it('Down Enter inserts newline via empty editing state path', Level.LEVEL1, () => {
+      const handler = new KeyEventHandler();
+      let threw = false;
+      try {
+        handler.handleKeyEvent(mkEvent(KeyType.Down, KeyCode.KEYCODE_ENTER));
+      } catch (e) { threw = true; }
+      expect(threw).assertEqual(false);
+    });
+
+    it('Up events skip the Down switch', Level.LEVEL1, () => {
+      const handler = new KeyEventHandler();
+      let threw = false;
+      try {
+        handler.handleKeyEvent(mkEvent(KeyType.Up, KeyCode.KEYCODE_A));
+      } catch (e) { threw = true; }
+      expect(threw).assertEqual(false);
+    });
+
+    it('numpad digit blocked when NumLock off', Level.LEVEL1, () => {
+      const handler = new KeyEventHandler();
+      let threw = false;
+      try {
+        handler.handleKeyEvent(mkEvent(KeyType.Down, KeyCode.KEYCODE_NUMPAD_0, undefined, false));
+      } catch (e) { threw = true; }
+      expect(threw).assertEqual(false);
+    });
+
+    it('numpad dot blocked when NumLock off', Level.LEVEL1, () => {
+      const handler = new KeyEventHandler();
+      let threw = false;
+      try {
+        handler.handleKeyEvent(mkEvent(KeyType.Down, KeyCode.KEYCODE_NUMPAD_DOT, undefined, false));
+      } catch (e) { threw = true; }
+      expect(threw).assertEqual(false);
+    });
+
+    it('numpad digit passes through when NumLock on', Level.LEVEL1, () => {
+      const handler = new KeyEventHandler();
+      let threw = false;
+      try {
+        handler.handleKeyEvent(mkEvent(KeyType.Down, KeyCode.KEYCODE_NUMPAD_5, undefined, true));
+      } catch (e) { threw = true; }
+      expect(threw).assertEqual(false);
+    });
+
+    it('plain key down without lock flags reaches the text path', Level.LEVEL1, () => {
+      const handler = new KeyEventHandler();
+      let threw = false;
+      try {
+        handler.handleKeyEvent(mkEvent(KeyType.Down, KeyCode.KEYCODE_1));
+      } catch (e) { threw = true; }
+      expect(threw).assertEqual(false);
+    });
+  });
+
+  describe('KeyEventHandler.getKeyText.branches', () => {
+    const mkEvent = (keyCode: number, capsLock?: boolean,
+                     modifiers?: (keys: string[]) => boolean): KeyEvent => {
+      const ev: Any = {
+        type: KeyType.Down,
+        keyCode: keyCode,
+        isCapsLockOn: capsLock
+      };
+      if (modifiers) {
+        ev.getModifierKeyState = modifiers;
+      }
+      return ev as Any as KeyEvent;
+    };
+
+    it('unmapped keyCode yields empty result', Level.LEVEL1, () => {
+      const handler = new KeyEventHandler();
+      const result = handler.getKeyText(mkEvent(999999));
+      expect(typeof result).assertEqual('string');
+    });
+
+    it('letter without caps lock returns normal case', Level.LEVEL1, () => {
+      const handler = new KeyEventHandler();
+      const result = handler.getKeyText(mkEvent(KeyCode.KEYCODE_A, false));
+      expect(result).assertEqual('a');
+    });
+
+    it('letter with caps lock and shift returns lower case', Level.LEVEL1, () => {
+      const handler = new KeyEventHandler();
+      const result = handler.getKeyText(mkEvent(KeyCode.KEYCODE_A, true, (keys: string[]) => true));
+      expect(result).assertEqual('a');
+    });
+
+    it('letter with shift and no caps lock returns upper case', Level.LEVEL1, () => {
+      const handler = new KeyEventHandler();
+      const result = handler.getKeyText(mkEvent(KeyCode.KEYCODE_A, false, (keys: string[]) => true));
+      expect(result).assertEqual('A');
+    });
+
+    it('event without getModifierKeyState falls back to false', Level.LEVEL1, () => {
+      const handler = new KeyEventHandler();
+      const result = handler.getKeyText(mkEvent(KeyCode.KEYCODE_A, true));
+      expect(result).assertEqual('A');
+    });
+  });
 }

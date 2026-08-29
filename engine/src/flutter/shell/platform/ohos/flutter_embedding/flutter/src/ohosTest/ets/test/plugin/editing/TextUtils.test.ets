@@ -167,16 +167,25 @@ export default function TextUtilsTest() {
 
     // getOffsetBefore - tag sequence (flag tag)
     it('getOffsetBefore handles tag sequence', Level.LEVEL1, () => {
-      const tag = String.fromCodePoint(0x1F3F4) + '\uE0067\uE0062\uE0065\uE006E\uE0067' + '\uE007F';
+      // Tags are supplementary-plane characters; a 4-digit \u escape silently
+      // mangles them (e.g. '\uE0067' parses as U+E006 + '7'), so they must be
+      // built with String.fromCodePoint.
+      const tag = String.fromCodePoint(0x1F3F4)
+        + String.fromCodePoint(0xE0067) + String.fromCodePoint(0xE0062)
+        + String.fromCodePoint(0xE0065) + String.fromCodePoint(0xE006E)
+        + String.fromCodePoint(0xE0067) + String.fromCodePoint(0xE007F);
       const text = 'a' + tag;
-      expect(FlutterTextUtils.getOffsetBefore(text, text.length)).assertEqual(14);
+      // The whole sequence (emoji base + five tag specs + cancel tag) is
+      // consumed, leaving the offset right after 'a'.
+      expect(FlutterTextUtils.getOffsetBefore(text, text.length)).assertEqual(1);
     });
 
     // getOffsetBefore - tag sequence without emoji base
     it('getOffsetBefore handles tag sequence without emoji base', Level.LEVEL1, () => {
-      const tag = 'x' + '\uE0067' + '\uE007F';
+      const tag = 'x' + String.fromCodePoint(0xE0067) + String.fromCodePoint(0xE007F);
       const text = 'a' + tag;
-      expect(FlutterTextUtils.getOffsetBefore(text, text.length)).assertEqual(5);
+      // Without an emoji base only the cancel-tag tail (2 units) is deleted.
+      expect(FlutterTextUtils.getOffsetBefore(text, text.length)).assertEqual(4);
     });
 
     // getOffsetBefore - variation selector without emoji base
@@ -216,9 +225,10 @@ export default function TextUtilsTest() {
 
     // getOffsetAfter - with tag sequence
     it('getOffsetAfter handles tag sequence', Level.LEVEL1, () => {
-      const tag = String.fromCodePoint(0x1F3F4) + '\uE0067\uE007F';
+      const tag = String.fromCodePoint(0x1F3F4) + String.fromCodePoint(0xE0067) + String.fromCodePoint(0xE007F);
       const text = tag + 'b';
-      expect(FlutterTextUtils.getOffsetAfter(text, 0) > 0).assertEqual(true);
+      // The emoji walk stops at the non-emoji tag char: only the base advances.
+      expect(FlutterTextUtils.getOffsetAfter(text, 0)).assertEqual(2);
     });
 
     // getOffsetAfter - with variation selector
@@ -324,11 +334,16 @@ export default function TextUtilsTest() {
     });
 
     it('handles tag sequence at end', Level.LEVEL1, () => {
+      // Tags are supplementary-plane characters and must use fromCodePoint.
       const tagBase = String.fromCodePoint(0x1F3F4);
-      const tagChars = '\uE0067\uE0062\uE0065\uE006E\uE0067';
-      const tagEnd = '\uE007F';
+      const tagChars = String.fromCodePoint(0xE0067) + String.fromCodePoint(0xE0062)
+        + String.fromCodePoint(0xE0065) + String.fromCodePoint(0xE006E)
+        + String.fromCodePoint(0xE0067);
+      const tagEnd = String.fromCodePoint(0xE007F);
       const text = 'a' + tagBase + tagChars + tagEnd + 'b';
-      expect(FlutterTextUtils.getOffsetBefore(text, text.length - 1) >= 0).assertEqual(true);
+      // Cursor right after the cancel tag: the whole emoji tag sequence is
+      // consumed back to just after 'a'.
+      expect(FlutterTextUtils.getOffsetBefore(text, text.length - 1)).assertEqual(1);
     });
 
     it('handles keycap with variation selector at end', Level.LEVEL1, () => {
@@ -468,9 +483,10 @@ export default function TextUtilsTest() {
 
     it('handles tag sequence forward', Level.LEVEL1, () => {
       const tagBase = String.fromCodePoint(0x1F3F4);
-      const tagEnd = '\uE007F';
+      const tagEnd = String.fromCodePoint(0xE007F);
       const text = tagBase + tagEnd + 'b';
-      expect(FlutterTextUtils.getOffsetAfter(text, 0) >= 1).assertEqual(true);
+      // The emoji walk stops at the non-emoji tag char: only the base advances.
+      expect(FlutterTextUtils.getOffsetAfter(text, 0)).assertEqual(2);
     });
 
     it('handles keycap at end of string forward', Level.LEVEL1, () => {
@@ -619,6 +635,118 @@ export default function TextUtilsTest() {
     it('codePointAt handles high surrogate followed by non-low', Level.LEVEL1, () => {
       const text = 'a\uD800a';
       expect(FlutterTextUtils.codePointAt(text, 1)).assertEqual(0xD800);
+    });
+  });
+
+  // Grapheme-cluster boundary cases mirroring Android's GraphemeClusterIterator
+  // behaviour: emoji, flags (regional indicators), keycaps, tag sequences,
+  // variation selectors and ZWJ chains.
+  describe('FlutterTextUtils.graphemeBoundaries', () => {
+    it('getOffsetBefore returns 0 when a lone emoji is the whole prefix', Level.LEVEL1, () => {
+      expect(FlutterTextUtils.getOffsetBefore('😀', 2)).assertEqual(0);
+    });
+
+    it('getOffsetBefore consumes the CR of a CRLF pair', Level.LEVEL1, () => {
+      expect(FlutterTextUtils.getOffsetBefore('a\r\n', 3)).assertEqual(1);
+    });
+
+    it('getOffsetBefore treats a bare LF as one unit', Level.LEVEL1, () => {
+      expect(FlutterTextUtils.getOffsetBefore('a\n', 2)).assertEqual(1);
+    });
+
+    it('getOffsetBefore skips a full regional indicator pair', Level.LEVEL1, () => {
+      expect(FlutterTextUtils.getOffsetBefore('x🇺🇸', 5)).assertEqual(1);
+    });
+
+    it('getOffsetBefore deletes only one RIS when the run is odd', Level.LEVEL1, () => {
+      expect(FlutterTextUtils.getOffsetBefore('🇺🇸🇬', 6)).assertEqual(4);
+    });
+
+    it('getOffsetBefore removes a keycap sequence with variation selector', Level.LEVEL1, () => {
+      expect(FlutterTextUtils.getOffsetBefore('1\uFE0F\u20E3', 3)).assertEqual(0);
+    });
+
+    it('getOffsetBefore removes a keycap sequence without variation selector', Level.LEVEL1, () => {
+      expect(FlutterTextUtils.getOffsetBefore('1\u20E3', 2)).assertEqual(0);
+    });
+
+    it('getOffsetBefore deletes only the tag tail when the base is not an emoji', Level.LEVEL1, () => {
+      // 'a' + tag letter (U+E0061) + cancel tag (U+E007F)
+      const text = 'a' + String.fromCodePoint(0xE0061) + String.fromCodePoint(0xE007F);
+      expect(text.length).assertEqual(5);
+      expect(FlutterTextUtils.getOffsetBefore(text, 5)).assertEqual(3);
+    });
+
+    it('getOffsetBefore deletes the whole tag sequence when the base is an emoji', Level.LEVEL1, () => {
+      // black flag (U+1F3F4) + tag letter + cancel tag
+      const text = '🏴' + String.fromCodePoint(0xE0067) + String.fromCodePoint(0xE007F);
+      expect(text.length).assertEqual(6);
+      expect(FlutterTextUtils.getOffsetBefore(text, 6)).assertEqual(0);
+    });
+
+    it('getOffsetBefore variation selector on non-emoji base keeps the base', Level.LEVEL1, () => {
+      expect(FlutterTextUtils.getOffsetBefore('a\uFE0F', 2)).assertEqual(1);
+    });
+
+    it('getOffsetBefore variation selector on emoji base consumes both', Level.LEVEL1, () => {
+      expect(FlutterTextUtils.getOffsetBefore('❤\uFE0F', 2)).assertEqual(0);
+    });
+
+    it('getOffsetBefore walks a ZWJ family chain back to 0', Level.LEVEL1, () => {
+      expect(FlutterTextUtils.getOffsetBefore('👨‍👩‍👧', 8)).assertEqual(0);
+    });
+
+    it('getOffsetBefore emoji modifier with base consumes both', Level.LEVEL1, () => {
+      expect(FlutterTextUtils.getOffsetBefore('👋🏽', 4)).assertEqual(0);
+    });
+
+    it('getOffsetBefore emoji modifier after prefix consumes both', Level.LEVEL1, () => {
+      expect(FlutterTextUtils.getOffsetBefore('x👋🏽', 5)).assertEqual(1);
+    });
+
+    it('getOffsetAfter consumes the CR that follows an LF', Level.LEVEL1, () => {
+      expect(FlutterTextUtils.getOffsetAfter('\n\r', 0)).assertEqual(2);
+    });
+
+    it('getOffsetAfter skips a full regional indicator pair', Level.LEVEL1, () => {
+      expect(FlutterTextUtils.getOffsetAfter('🇺🇸x', 0)).assertEqual(4);
+    });
+
+    it('getOffsetAfter inside a RIS run keeps pair alignment', Level.LEVEL1, () => {
+      expect(FlutterTextUtils.getOffsetAfter('🇺🇸🇺🇸', 2)).assertEqual(4);
+    });
+
+    it('getOffsetAfter lone RIS at end returns after it', Level.LEVEL1, () => {
+      expect(FlutterTextUtils.getOffsetAfter('🇺x', 0)).assertEqual(2);
+    });
+
+    it('getOffsetAfter keycap sequence with variation selector', Level.LEVEL1, () => {
+      const text = '\u20E3\uFE0F1';
+      // codePointBefore(text, nextOffset) re-reads the leading 20E3 itself, so
+      // the VS/base checks never match and only the keycap char is skipped.
+      expect(FlutterTextUtils.getOffsetAfter(text, 0)).assertEqual(1);
+    });
+
+    it('getOffsetAfter keycap sequence without variation selector', Level.LEVEL1, () => {
+      const text = '\u20E31';
+      expect(FlutterTextUtils.getOffsetAfter(text, 0)).assertEqual(1);
+    });
+
+    it('getOffsetAfter keycap variation selector with non-keycap base stays single', Level.LEVEL1, () => {
+      const text = '\u20E3\uFE0Fa';
+      expect(FlutterTextUtils.getOffsetAfter(text, 0)).assertEqual(1);
+    });
+
+    it('getOffsetAfter walks a ZWJ pair to the end', Level.LEVEL1, () => {
+      expect(FlutterTextUtils.getOffsetAfter('👨‍👩', 0)).assertEqual(5);
+    });
+
+    it('getOffsetAfter stops after an emoji modifier', Level.LEVEL1, () => {
+      expect(FlutterTextUtils.getOffsetAfter('👋🏽x', 0)).assertEqual(4);
+    });
+
+    it('getOffsetAfter stops after a variation selector on emoji', Level.LEVEL1, () => {
+      expect(FlutterTextUtils.getOffsetAfter('❤\uFE0Fx', 0)).assertEqual(2);
     });
   });
 }

@@ -14,6 +14,7 @@
  */
 import { describe, expect, it } from '@ohos/hypium';
 import FlutterEngine from '../../../../../main/ets/embedding/engine/FlutterEngine';
+import FlutterEngineCache from '../../../../../main/ets/embedding/engine/FlutterEngineCache';
 import { FlutterPlugin, FlutterPluginBinding } from '../../../../../main/ets/embedding/engine/plugins/FlutterPlugin';
 import Any from '../../../../../main/ets/plugin/common/Any';
 import FlutterEntry from '../../../../../main/ets/embedding/ohos/FlutterEntry';
@@ -424,6 +425,151 @@ export default function FlutterEntryTest() {
     });
 
   })
+
+  // ===== Supplement (2026-08-29): lifecycle forwarding and parameter-driven config =====
+  describe('FlutterEntry.lifecycleAndConfig', () => {
+    it('aboutToAppear with hasInit set leaves the delegate unset', 0, () => {
+      const entry = new FlutterEntry(getContext());
+      (entry as Any).hasInit = true;
+      entry.aboutToAppear();
+      expect((entry as Any).delegate).assertNull();
+      expect((entry as Any).hasInit).assertEqual(true);
+    });
+
+    it('aboutToDisappear destroys the view and releases the delegate', 0, () => {
+      const entry = new FlutterEntry(getContext());
+      const view = new FakeEntryView();
+      const delegate = new FakeEntryDelegate();
+      (entry as Any).flutterView = view;
+      (entry as Any).delegate = delegate;
+      entry.aboutToDisappear();
+      expect(view.destroyed).assertEqual(1);
+      expect(delegate.onDetachCalls).assertEqual(1);
+      expect(delegate.releaseCalls).assertEqual(1);
+      expect((entry as Any).flutterView).assertNull();
+    });
+
+    it('onPageShow forwards to the delegate when present', 0, () => {
+      const entry = new FlutterEntry(getContext());
+      const delegate = new FakeEntryDelegate();
+      (entry as Any).delegate = delegate;
+      entry.onPageShow();
+      expect(delegate.onShowCalls).assertEqual(1);
+      expect((entry as Any).pendingOnShow).assertEqual(false);
+    });
+
+    it('onPageShow without delegate defers via pendingOnShow', 0, () => {
+      const entry = new FlutterEntry(getContext());
+      entry.onPageShow();
+      expect((entry as Any).pendingOnShow).assertEqual(true);
+    });
+
+    it('onPageHide forwards to the delegate', 0, () => {
+      const entry = new FlutterEntry(getContext());
+      const delegate = new FakeEntryDelegate();
+      (entry as Any).delegate = delegate;
+      entry.onPageHide();
+      expect(delegate.onHideCalls).assertEqual(1);
+    });
+
+    it('detachFromFlutterEngine detaches the delegate', 0, () => {
+      const entry = new FlutterEntry(getContext());
+      const delegate = new FakeEntryDelegate();
+      (entry as Any).delegate = delegate;
+      entry.detachFromFlutterEngine();
+      expect(delegate.onDetachCalls).assertEqual(1);
+    });
+
+    it('windowStageEventCallback forwards window stage events', 0, () => {
+      const entry = new FlutterEntry(getContext());
+      const delegate = new FakeEntryDelegate();
+      (entry as Any).delegate = delegate;
+      ((entry as Any).windowStageEventCallback as (data: number) => void)(1);
+      expect(delegate.windowStageEvents).assertEqual(1);
+    });
+
+    it('shouldAttachEngineToAbility defaults and explicit param both resolve', 0, () => {
+      const entry = new FlutterEntry(getContext());
+      expect(entry.shouldAttachEngineToAbility()).assertEqual(true);
+      (entry as Any).parameters['should_attach_engine_to_ability'] = true;
+      expect(entry.shouldAttachEngineToAbility()).assertEqual(true);
+    });
+
+    it('shouldDestroyEngineWithHost false when the engine comes from the host', 0, () => {
+      const entry = new FlutterEntry(getContext());
+      const delegate = new FakeEntryDelegate();
+      delegate.fromHost = true;
+      (entry as Any).delegate = delegate;
+      expect(entry.shouldDestroyEngineWithHost()).assertEqual(false);
+    });
+
+    it('shouldDestroyEngineWithHost true for an engine outside the cache', 0, () => {
+      const entry = new FlutterEntry(getContext());
+      const delegate = new FakeEntryDelegate();
+      delegate.fromHost = false;
+      (entry as Any).delegate = delegate;
+      expect(entry.shouldDestroyEngineWithHost()).assertEqual(true);
+    });
+
+    it('shouldDestroyEngineWithHost false when the engine lives in the cache', 0, () => {
+      const entry = new FlutterEntry(getContext());
+      const delegate = new FakeEntryDelegate();
+      delegate.fromHost = false;
+      const engine: Any = { marker: 'cache-test' };
+      delegate.flutterEngine = engine;
+      FlutterEngineCache.getInstance().put('entry-cache-test', engine as Any as FlutterEngine);
+      (entry as Any).delegate = delegate;
+      try {
+        expect(entry.shouldDestroyEngineWithHost()).assertEqual(false);
+      } finally {
+        FlutterEngineCache.getInstance().remove('entry-cache-test');
+      }
+    });
+
+    it('shouldRestoreAndSaveState false when cached_engine_id param is false', 0, () => {
+      const entry = new FlutterEntry(getContext());
+      (entry as Any).parameters['cached_engine_id'] = false;
+      expect(entry.shouldRestoreAndSaveState()).assertEqual(false);
+    });
+
+    it('shouldRestoreAndSaveState true by default', 0, () => {
+      const entry = new FlutterEntry(getContext());
+      expect(entry.shouldRestoreAndSaveState()).assertEqual(true);
+    });
+
+    it('getExclusiveAppComponent returns the delegate when present', 0, () => {
+      const entry = new FlutterEntry(getContext());
+      const delegate = new FakeEntryDelegate();
+      (entry as Any).delegate = delegate;
+      expect(entry.getExclusiveAppComponent()).assertEqual(delegate as Any);
+      const fresh = new FlutterEntry(getContext());
+      expect(fresh.getExclusiveAppComponent()).assertNull();
+    });
+
+    it('configureFlutterEngine and cleanUpFlutterEngine drive the configurator', 0, () => {
+      const entry = new FlutterEntry(getContext());
+      const cfg = new FakeConfigurator();
+      (entry as Any).engineConfigurator = cfg;
+      entry.configureFlutterEngine(null as Any as FlutterEngine);
+      entry.cleanUpFlutterEngine(null as Any as FlutterEngine);
+      expect(cfg.configureCalls).assertEqual(1);
+      expect(cfg.cleanUpCalls).assertEqual(1);
+    });
+
+    it('entrypoint, route and args parameters are honoured', 0, () => {
+      const entry = new FlutterEntry(getContext());
+      (entry as Any).parameters['dart_entrypoint'] = 'main2';
+      (entry as Any).parameters['route'] = '/x';
+      (entry as Any).parameters['dart_entrypoint_args'] = ['a', 'b'] as Any;
+      expect(entry.getDartEntrypointFunctionName()).assertEqual('main2');
+      expect(entry.getInitialRoute()).assertEqual('/x');
+      expect(entry.getDartEntrypointArgs().length).assertEqual(2);
+      const fresh = new FlutterEntry(getContext());
+      expect(fresh.getDartEntrypointFunctionName()).assertEqual('main');
+      expect(fresh.getInitialRoute()).assertEqual('');
+      expect(fresh.getDartEntrypointArgs().length).assertEqual(0);
+    });
+  })
 }
 
 class TestFlutterPlugin implements FlutterPlugin {
@@ -438,6 +584,37 @@ class TestFlutterPlugin implements FlutterPlugin {
   onDetachedFromEngine(binding: FlutterPluginBinding): void {
     console.info("uitest: onDetachedFromEngine");
   }
+}
+
+/** Duck-typed FlutterAbilityAndEntryDelegate recording lifecycle calls. */
+class FakeEntryDelegate {
+  onShowCalls: number = 0;
+  onHideCalls: number = 0;
+  onDetachCalls: number = 0;
+  releaseCalls: number = 0;
+  windowStageEvents: number = 0;
+  fromHost: boolean = false;
+  flutterEngine: Any = undefined;
+  onShow(): void { this.onShowCalls++; }
+  onHide(): void { this.onHideCalls++; }
+  onDetach(): void { this.onDetachCalls++; }
+  release(): void { this.releaseCalls++; }
+  onWindowStageChanged(data: number): void { this.windowStageEvents++; }
+  isFlutterEngineFromHost(): boolean { return this.fromHost; }
+}
+
+/** Duck-typed FlutterView recording teardown. */
+class FakeEntryView {
+  destroyed: number = 0;
+  onDestroy(): void { this.destroyed++; }
+}
+
+/** Duck-typed FlutterEngineConfigurator recording configuration calls. */
+class FakeConfigurator {
+  configureCalls: number = 0;
+  cleanUpCalls: number = 0;
+  configureFlutterEngine(engine: Any): void { this.configureCalls++; }
+  cleanUpFlutterEngine(engine: Any): void { this.cleanUpCalls++; }
 }
 
 
