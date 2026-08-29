@@ -1,7 +1,7 @@
 Flutter SDK 仓库
 ==============
 
-<span style="color:red">**仓库迁移公告**：Flutter 鸿蒙化相关仓库已整体迁移至 [CPF-Flutter](https://gitcode.com/CPF-Flutter) 组织。本仓库（flutter_flutter）新地址为 [CPF-Flutter/flutter_flutter](https://gitcode.com/CPF-Flutter/flutter_flutter)，旧仓库将不再维护，请及时更新远程地址和依赖引用。详情参见：[迁移公告](https://gitcode.com/openharmony-tpc/flutter_flutter/wiki/Flutter%20%E9%B8%BF%E8%92%99%E5%8C%96%E4%BB%93%E5%BA%93%E8%BF%81%E7%A7%BB%E5%85%AC%E5%91%8A%EF%BC%9A%E5%85%A8%E6%96%B0%20CPF-Flutter%20%E7%BB%84%E7%BB%87%E4%B8%8A%E7%BA%BF)</span>
+<span style="color:red">**仓库迁移公告**：Flutter OH 相关仓库已整体迁移至 [CPF-Flutter](https://gitcode.com/CPF-Flutter) 组织。本仓库（flutter_flutter）新地址为 [CPF-Flutter/flutter_flutter](https://gitcode.com/CPF-Flutter/flutter_flutter)，旧仓库将不再维护，请及时更新远程地址和依赖引用。详情参见：[迁移公告](https://gitcode.com/CPF-Flutter/flutter_flutter/wiki/Flutter%20%E9%B8%BF%E8%92%99%E5%8C%96%E4%BB%93%E5%BA%93%E8%BF%81%E7%A7%BB%E5%85%AC%E5%91%8A%EF%BC%9A%E5%85%A8%E6%96%B0%20CPF-Flutter%20%E7%BB%84%E7%BB%87%E4%B8%8A%E7%BA%BF)</span>
 
 ## 跨平台框架技术选型
 
@@ -16,26 +16,27 @@ Flutter SDK 仓库
 
 ## 仓库说明
 
-本仓库是 **[Flutter SDK](https://github.com/flutter/flutter)** 的 **OpenHarmony** 适配版本，当前版本分支基于 Flutter 官方社区 [![Flutter Version](https://img.shields.io/badge/Flutter-3.7.12-blue?logo=flutter)](https://github.com/flutter/flutter/tree/3.7.12) 构建，由 OpenHarmony-Flutter 团队维护。开发者可使用熟悉的 Flutter 技术栈开发 OpenHarmony 应用，复用现有 Flutter 生态资源。
+本仓库是 **[Flutter SDK](https://github.com/flutter/flutter)** 的 **OpenHarmony** 适配版本，当前版本分支基于 Flutter 官方社区 [![Flutter Version](https://img.shields.io/badge/Flutter-3.7.12-blue?logo=flutter)](https://github.com/flutter/flutter/tree/3.7.12) 构建，由 [CPF-Flutter](https://gitcode.com/CPF-Flutter) 团队维护。开发者可使用熟悉的 Flutter 技术栈开发 OpenHarmony 应用，复用现有 Flutter 生态资源。
 
 ## 版本规划与分支策略
 
 ### 稳定版本
 
 推荐基于版本tag获取稳定版本，版本tag格式如下：
-- 3.7.12-ohos-X.X.X: 基于上游社区3.7.12分支适配OpenHarmony的X.X.X版本。
-- 3.22.1-ohos-X.X.X: 基于上游社区3.22.0分支适配OpenHarmony的X.X.X版本。
-- 3.27.5-ohos-X.X.X: 基于上游社区3.27.4分支适配OpenHarmony的X.X.X版本。
+- 3.41.10-ohos-X.X.X: 基于上游社区3.41.9分支适配OpenHarmony的X.X.X版本。
 - 3.35.8-ohos-X.X.X: 基于上游社区3.35.7分支适配OpenHarmony的X.X.X版本。
+- 3.27.5-ohos-X.X.X: 基于上游社区3.27.4分支适配OpenHarmony的X.X.X版本。
+- 3.22.1-ohos-X.X.X: 基于上游社区3.22.0分支适配OpenHarmony的X.X.X版本。
+- 3.7.12-ohos-X.X.X: 基于上游社区3.7.12分支适配OpenHarmony的X.X.X版本。
 
 ### 版本规划
 
-| Flutter 版本 | 源社区发布时间 | 鸿蒙版本发布时间 | 间隔时间 |
-| :----------- | :------------- | :--------------- | -------- |
-| Flutter 3.35 | 2025/08        | 2026/03          | 7个月    |
-| Flutter 3.41 | 2026/02        | 2026/06          | 4个月    |
-| Flutter 3.44 | 2026/05        | 2026/09          | 4个月    |
-| Flutter 3.47 | 2026/08        | 2026/12          | 4个月    |
+| Flutter 版本 | 源社区发布时间 | Flutter OH 版本发布时间 | 间隔时间 |
+| :----------- | :------------- | :---------------------- | -------- |
+| Flutter 3.35 | 2025/08        | 2026/03                 | 7个月    |
+| Flutter 3.41 | 2026/02        | 2026/06                 | 4个月    |
+| Flutter 3.44 | 2026/05        | 2026/09                 | 4个月    |
+| Flutter 3.47 | 2026/08        | 2026/12                 | 4个月    |
 
 *注：以上时间为预估，实际发版可能会根据质量验收情况及交付规划微调。*
 
@@ -43,15 +44,15 @@ Flutter SDK 仓库
 
 ## 开发指南
 
-- [Flutter OH 开发文档](https://gitcode.com/openharmony-tpc/flutter_samples/blob/master/README.md)
-- [Flutter OH 环境搭建指导](https://gitcode.com/openharmony-tpc/flutter_samples/blob/master/ohos/docs/03_environment/OpenHarmony-flutter%E7%8E%AF%E5%A2%83%E6%90%AD%E5%BB%BA%E6%8C%87%E5%AF%BC.md)
-- [Flutter OH 应用构建指导](https://gitcode.com/openharmony-tpc/flutter_samples/blob/master/ohos/docs/04_development/OpenHarmony-flutter%E5%BA%94%E7%94%A8%E6%9E%84%E5%BB%BA%E6%8C%87%E5%AF%BC.md)
-- [Flutter OH 三方库适配列表](https://gitcode.com/OpenHarmony-Flutter/docs/blob/main/ThirdpartyLibrarites.md)
+- [Flutter OH 开发文档](https://gitcode.com/CPF-Flutter/flutter_samples/blob/master/README.md)
+- [Flutter OH 环境搭建指导](https://gitcode.com/CPF-Flutter/flutter_samples/blob/master/docs/ohos/getting-started/flutter-oh-env-setup.md)
+- [Flutter OH 应用构建指导](https://gitcode.com/CPF-Flutter/flutter_samples/blob/master/docs/ohos/app-development/flutter-oh-app-build-guide.md)
+- [Flutter OH 三方库适配列表](https://gitcode.com/CPF-Flutter/docs/blob/main/ThirdpartyLibrarites.md)
 - [Flutter 官方开发指南与 API 文档](https://docs.flutter.dev/)
 
 ## 升级指导
 
-请参见：[Flutter OH 版本升级指导](https://gitcode.com/openharmony-tpc/flutter_samples/blob/master/ohos/docs/10_appendix/Flutter-OH%E7%89%88%E6%9C%AC%E5%8D%87%E7%BA%A7%E6%8C%87%E5%AF%BC.md)
+请参见：[Flutter OH 版本升级指导](https://gitcode.com/CPF-Flutter/flutter_samples/blob/master/docs/ohos/version/flutter-oh-upgrade-guide.md)
 
 ## 支持指令
 
@@ -140,7 +141,7 @@ Flutter SDK 仓库
 
 9. 如果报`Invalid CEN header (invalid zip64 extra data field size)`异常，请更换Jdk版本，参见[JDK-8313765](https://bugs.openjdk.org/browse/JDK-8313765)
 
-10. 运行debug版本的flutter应用用到鸿蒙设备后报错（release和profile版本正常）
+10. 运行debug版本的flutter应用到 OpenHarmony 设备后报错（release和profile版本正常）
 
     1. 报错信息: `Error while initializing the Dart VM: Wrong full snapshot version, expected '8af474944053df1f0a3be6e6165fa7cf' found 'adb4292f3ec25074ca70abcd2d5c7251'`
     2. 解决方案: 依次执行以下操作
@@ -183,7 +184,7 @@ Flutter SDK 仓库
         #D:\pub_cache\git\flutter_packages-b00939bb44d018f0710d1b080d91dcf4c34ed06\packages\video_player\video_player_ohos\ohossrc\main\module.json5.
         #You need to update the Flutter plugin project structure.
         #See
-        #https://gitcode.com/openharmony-tpc/flutter_samples/blob/master/ohos/docs/09_specifications/update-flutter-plugin-structure.md
+        #https://gitcode.com/CPF-Flutter/flutter_samples/blob/master/docs/ohos/plugin-and-package/update-flutter-plugin-structure.md
        ```
 
 15. 执行`flutter build hap` 时遇到路径校验报错。
@@ -272,13 +273,13 @@ Flutter SDK 仓库
        hvigor ERROR: Build mode 'profile' used in command line is not declared in buildModeSet in /xxx/example/ohos/build-profile.json5.
        ```
 
-> [更多FAQ](https://gitcode.com/openharmony-tpc/flutter_samples/blob/master/ohos/docs/08_FAQ/README.md)
+> [更多FAQ](https://gitcode.com/CPF-Flutter/flutter_samples/blob/master/docs/ohos/faq/README.md)
 
 ## 贡献指南
 
-如果您想为 Flutter-OH 贡献代码，请参考 [Flutter-OH 代码合入流程](https://gitcode.com/openharmony-tpc/flutter_flutter/wiki/Flutter_OH%E4%BB%93%E5%BA%93%E4%BB%A3%E7%A0%81%E5%90%88%E5%85%A5%E6%B5%81%E7%A8%8B.md) 了解详细的贡献步骤和规范。
+如果您想为 Flutter-OH 贡献代码，请参考 [Flutter-OH 代码合入流程](https://gitcode.com/CPF-Flutter/flutter_flutter/wiki/Flutter_OH%E4%BB%93%E5%BA%93%E4%BB%A3%E7%A0%81%E5%90%88%E5%85%A5%E6%B5%81%E7%A8%8B.md) 了解详细的贡献步骤和规范。
 
 ## 问题交流
 
-- 问题反馈：欢迎在 [Flutter框架仓库](https://gitcode.com/openharmony-tpc/flutter_flutter/issues) 以及各个Flutter三方库提交 issue。
+- 问题反馈：欢迎在 [Flutter框架仓库](https://gitcode.com/CPF-Flutter/flutter_flutter/issues) 以及各个Flutter三方库提交 issue。
 
