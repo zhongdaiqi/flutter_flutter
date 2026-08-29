@@ -4,13 +4,10 @@
  * found in the LICENSE_HW file.
  */
 
-#include "flutter/shell/platform/ohos/accessibility/ohos_semantics_node.h"
-
 #include <dlfcn.h>
-
 #include <gtest/gtest.h>
-
 #include "flutter/lib/ui/semantics/semantics_node.h"
+#include "flutter/shell/platform/ohos/accessibility/ohos_semantics_node.h"
 
 // The ArkUI NDK has no getters on ArkUI_AccessibilityElementInfo, so
 // same-signature definitions below capture the setter calls (they take
@@ -88,15 +85,18 @@ class SemanticsNodeTest : public ::testing::Test {
 // ============================================================================
 // NOTE: This file uses the flutter3.41 SemanticsFlags API, which differs from
 // flutter3.35 due to an upstream (non-OHOS) refactor of semantics_flags.h:
-//
-//   - hasCheckedState (bool) + isChecked (bool)  -> isChecked (SemanticsCheckState)
-//   - hasToggledState (bool) + isToggled (bool)  -> isToggled (SemanticsTristate)
-//   - hasEnabledState (bool) + isEnabled (bool)  -> isEnabled (SemanticsTristate)
+//   - hasCheckedState (bool) + isChecked (bool)  -> isChecked
+//   (SemanticsCheckState)
+//   - hasToggledState (bool) + isToggled (bool)  -> isToggled
+//   (SemanticsTristate)
+//   - hasEnabledState (bool) + isEnabled (bool)  -> isEnabled
+//   (SemanticsTristate)
 //   - isFocusable (bool)                          -> removed (IsFocusable() now
 //                                                  derives focusability from
-//                                                  other flags like isTextField)
-//   - isFocused (bool)                           -> isFocused (SemanticsTristate)
-//
+//                                                  other flags like
+//                                                  isTextField)
+//   - isFocused (bool)                           -> isFocused
+//   (SemanticsTristate)
 // flutter3.35 retains the old bool-pair API, so its test file uses
 // hasCheckedState/isToggled=true/isFocusable=true etc. directly. These
 // differences are intentional and should NOT be synced between branches.
@@ -164,7 +164,6 @@ TEST_F(SemanticsNodeTest, HasScrolledTrueAfterScrollPositionChange) {
   // then scrollPosition = node.scrollPosition (new). When they differ,
   // HasScrolled() returns true (correct in this case).
   flutter::SemanticsNode source;
-  source.role = SemanticsRole::kNone;
   source.id = 1;
   source.scrollChildren = 10;
   source.scrollIndex = 2;
@@ -176,7 +175,6 @@ TEST_F(SemanticsNodeTest, HasScrolledTrueAfterScrollPositionChange) {
 TEST_F(SemanticsNodeTest, HasScrolledFalseWhenScrollPositionUnchanged) {
   // First update sets scrollPosition to 0.5.
   flutter::SemanticsNode source;
-  source.role = SemanticsRole::kNone;
   source.id = 1;
   source.scrollChildren = 10;
   source.scrollIndex = 2;
@@ -184,9 +182,9 @@ TEST_F(SemanticsNodeTest, HasScrolledFalseWhenScrollPositionUnchanged) {
   node_.UpdateWithNode(source);
   ASSERT_TRUE(node_.HasScrolled());
 
-  // Second update with same scrollPosition: previousScrollPosition == scrollPosition
+  // Second update with same scrollPosition: previousScrollPosition ==
+  // scrollPosition
   flutter::SemanticsNode source2;
-  source2.role = SemanticsRole::kNone;
   source2.id = 1;
   source2.scrollChildren = 10;
   source2.scrollIndex = 2;
@@ -260,8 +258,7 @@ TEST_F(SemanticsNodeTest, GetAccessibilityTextCombinesValueAndHint) {
   node_.hint = "Enter your name";
   // GetAccessibilityText = value + " ," + GetHintText()
   // GetHintText() = "Name ,Enter your name"
-  EXPECT_EQ(node_.GetAccessibilityText(),
-            "John ,Name ,Enter your name");
+  EXPECT_EQ(node_.GetAccessibilityText(), "John ,Name ,Enter your name");
 }
 
 // ===== IsFocusable with various flags =====
@@ -309,7 +306,8 @@ TEST_F(SemanticsNodeTest, IsFocusableTrueWhenHasHint) {
 // ===== IsCheckable / IsChecked with toggled state =====
 
 TEST_F(SemanticsNodeTest, IsCheckableTrueWhenHasToggledState) {
-  // flutter3.41 replaced hasToggledState with isToggled != SemanticsTristate::kNone.
+  // flutter3.41 replaced hasToggledState with isToggled !=
+  // SemanticsTristate::kNone.
   node_.flags.isToggled = SemanticsTristate::kFalse;
   EXPECT_TRUE(node_.IsCheckable());
 }
@@ -384,8 +382,7 @@ TEST_F(SemanticsNodeTest, OHOSComponentTypeUpdateMultiline) {
   node_.id = 1;
   node_.flags.isMultiline = true;
   node_.OHOSComponentTypeUpdate();
-  EXPECT_STREQ(node_.componentType,
-               OHWidgetName::kEditMultilineTextWidgetName);
+  EXPECT_STREQ(node_.componentType, OHWidgetName::kEditMultilineTextWidgetName);
 }
 
 TEST_F(SemanticsNodeTest, OHOSComponentTypeUpdateLink) {
@@ -411,7 +408,8 @@ TEST_F(SemanticsNodeTest, OHOSComponentTypeUpdateHeader) {
 
 TEST_F(SemanticsNodeTest, OHOSComponentTypeUpdateCheckBox) {
   node_.id = 1;
-  // flutter3.41: hasCheckedState replaced by isChecked != SemanticsCheckState::kNone
+  // flutter3.41: hasCheckedState replaced by isChecked !=
+  // SemanticsCheckState::kNone
   node_.flags.isChecked = SemanticsCheckState::kFalse;
   node_.OHOSComponentTypeUpdate();
   EXPECT_STREQ(node_.componentType, OHWidgetName::kCheckBoxWidgetName);
@@ -427,7 +425,8 @@ TEST_F(SemanticsNodeTest, OHOSComponentTypeUpdateRadioButton) {
 
 TEST_F(SemanticsNodeTest, OHOSComponentTypeUpdateSwitch) {
   node_.id = 1;
-  // flutter3.41: hasToggledState replaced by isToggled != SemanticsTristate::kNone
+  // flutter3.41: hasToggledState replaced by isToggled !=
+  // SemanticsTristate::kNone
   node_.flags.isToggled = SemanticsTristate::kFalse;
   node_.OHOSComponentTypeUpdate();
   EXPECT_STREQ(node_.componentType, OHWidgetName::kSwitchWidgetName);
@@ -547,8 +546,9 @@ TEST_F(SemanticsNodeTest, OHOSActionsUpdateScrollLeftWithImplicitScrolling) {
   // Should contain scroll forward action
   bool found = false;
   for (const auto& action : node_.ohActions) {
-    if (action.actionType == ArkUI_Accessibility_ActionType::
-                                ARKUI_ACCESSIBILITY_NATIVE_ACTION_TYPE_SCROLL_FORWARD) {
+    if (action.actionType ==
+        ArkUI_Accessibility_ActionType::
+            ARKUI_ACCESSIBILITY_NATIVE_ACTION_TYPE_SCROLL_FORWARD) {
       found = true;
       break;
     }
@@ -562,8 +562,9 @@ TEST_F(SemanticsNodeTest, OHOSActionsUpdateScrollRightWithImplicitScrolling) {
   node_.OHOSActionsUpdate();
   bool found = false;
   for (const auto& action : node_.ohActions) {
-    if (action.actionType == ArkUI_Accessibility_ActionType::
-                                ARKUI_ACCESSIBILITY_NATIVE_ACTION_TYPE_SCROLL_BACKWARD) {
+    if (action.actionType ==
+        ArkUI_Accessibility_ActionType::
+            ARKUI_ACCESSIBILITY_NATIVE_ACTION_TYPE_SCROLL_BACKWARD) {
       found = true;
       break;
     }
@@ -577,8 +578,9 @@ TEST_F(SemanticsNodeTest, OHOSActionsUpdateScrollUpWithImplicitScrolling) {
   node_.OHOSActionsUpdate();
   bool found = false;
   for (const auto& action : node_.ohActions) {
-    if (action.actionType == ArkUI_Accessibility_ActionType::
-                                ARKUI_ACCESSIBILITY_NATIVE_ACTION_TYPE_SCROLL_FORWARD) {
+    if (action.actionType ==
+        ArkUI_Accessibility_ActionType::
+            ARKUI_ACCESSIBILITY_NATIVE_ACTION_TYPE_SCROLL_FORWARD) {
       found = true;
       break;
     }
@@ -592,8 +594,9 @@ TEST_F(SemanticsNodeTest, OHOSActionsUpdateScrollDownWithImplicitScrolling) {
   node_.OHOSActionsUpdate();
   bool found = false;
   for (const auto& action : node_.ohActions) {
-    if (action.actionType == ArkUI_Accessibility_ActionType::
-                                ARKUI_ACCESSIBILITY_NATIVE_ACTION_TYPE_SCROLL_BACKWARD) {
+    if (action.actionType ==
+        ArkUI_Accessibility_ActionType::
+            ARKUI_ACCESSIBILITY_NATIVE_ACTION_TYPE_SCROLL_BACKWARD) {
       found = true;
       break;
     }
@@ -617,8 +620,9 @@ TEST_F(SemanticsNodeTest, OHOSActionsUpdateIncrease) {
   node_.OHOSActionsUpdate();
   bool found = false;
   for (const auto& action : node_.ohActions) {
-    if (action.actionType == ArkUI_Accessibility_ActionType::
-                                ARKUI_ACCESSIBILITY_NATIVE_ACTION_TYPE_SCROLL_FORWARD) {
+    if (action.actionType ==
+        ArkUI_Accessibility_ActionType::
+            ARKUI_ACCESSIBILITY_NATIVE_ACTION_TYPE_SCROLL_FORWARD) {
       found = true;
       break;
     }
@@ -631,8 +635,9 @@ TEST_F(SemanticsNodeTest, OHOSActionsUpdateDecrease) {
   node_.OHOSActionsUpdate();
   bool found = false;
   for (const auto& action : node_.ohActions) {
-    if (action.actionType == ArkUI_Accessibility_ActionType::
-                                ARKUI_ACCESSIBILITY_NATIVE_ACTION_TYPE_SCROLL_BACKWARD) {
+    if (action.actionType ==
+        ArkUI_Accessibility_ActionType::
+            ARKUI_ACCESSIBILITY_NATIVE_ACTION_TYPE_SCROLL_BACKWARD) {
       found = true;
       break;
     }
@@ -645,8 +650,9 @@ TEST_F(SemanticsNodeTest, OHOSActionsUpdateSetSelection) {
   node_.OHOSActionsUpdate();
   bool found = false;
   for (const auto& action : node_.ohActions) {
-    if (action.actionType == ArkUI_Accessibility_ActionType::
-                                ARKUI_ACCESSIBILITY_NATIVE_ACTION_TYPE_SELECT_TEXT) {
+    if (action.actionType ==
+        ArkUI_Accessibility_ActionType::
+            ARKUI_ACCESSIBILITY_NATIVE_ACTION_TYPE_SELECT_TEXT) {
       found = true;
       break;
     }
@@ -660,7 +666,7 @@ TEST_F(SemanticsNodeTest, OHOSActionsUpdateCopy) {
   bool found = false;
   for (const auto& action : node_.ohActions) {
     if (action.actionType == ArkUI_Accessibility_ActionType::
-                                ARKUI_ACCESSIBILITY_NATIVE_ACTION_TYPE_COPY) {
+                                 ARKUI_ACCESSIBILITY_NATIVE_ACTION_TYPE_COPY) {
       found = true;
       break;
     }
@@ -674,7 +680,7 @@ TEST_F(SemanticsNodeTest, OHOSActionsUpdateCut) {
   bool found = false;
   for (const auto& action : node_.ohActions) {
     if (action.actionType == ArkUI_Accessibility_ActionType::
-                                ARKUI_ACCESSIBILITY_NATIVE_ACTION_TYPE_CUT) {
+                                 ARKUI_ACCESSIBILITY_NATIVE_ACTION_TYPE_CUT) {
       found = true;
       break;
     }
@@ -688,7 +694,7 @@ TEST_F(SemanticsNodeTest, OHOSActionsUpdatePaste) {
   bool found = false;
   for (const auto& action : node_.ohActions) {
     if (action.actionType == ArkUI_Accessibility_ActionType::
-                                ARKUI_ACCESSIBILITY_NATIVE_ACTION_TYPE_PASTE) {
+                                 ARKUI_ACCESSIBILITY_NATIVE_ACTION_TYPE_PASTE) {
       found = true;
       break;
     }
@@ -697,7 +703,8 @@ TEST_F(SemanticsNodeTest, OHOSActionsUpdatePaste) {
 }
 
 TEST_F(SemanticsNodeTest, OHOSActionsUpdateMoveCursorForwardByCharacter) {
-  node_.actions |= static_cast<int32_t>(ACTIONS_::kMoveCursorForwardByCharacter);
+  node_.actions |=
+      static_cast<int32_t>(ACTIONS_::kMoveCursorForwardByCharacter);
   node_.OHOSActionsUpdate();
   bool found = false;
   for (const auto& action : node_.ohActions) {
@@ -712,7 +719,8 @@ TEST_F(SemanticsNodeTest, OHOSActionsUpdateMoveCursorForwardByCharacter) {
 }
 
 TEST_F(SemanticsNodeTest, OHOSActionsUpdateMoveCursorBackwardByCharacter) {
-  node_.actions |= static_cast<int32_t>(ACTIONS_::kMoveCursorBackwardByCharacter);
+  node_.actions |=
+      static_cast<int32_t>(ACTIONS_::kMoveCursorBackwardByCharacter);
   node_.OHOSActionsUpdate();
   bool found = false;
   for (const auto& action : node_.ohActions) {
@@ -761,8 +769,9 @@ TEST_F(SemanticsNodeTest, OHOSActionsUpdateSetText) {
   node_.OHOSActionsUpdate();
   bool found = false;
   for (const auto& action : node_.ohActions) {
-    if (action.actionType == ArkUI_Accessibility_ActionType::
-                                ARKUI_ACCESSIBILITY_NATIVE_ACTION_TYPE_SET_TEXT) {
+    if (action.actionType ==
+        ArkUI_Accessibility_ActionType::
+            ARKUI_ACCESSIBILITY_NATIVE_ACTION_TYPE_SET_TEXT) {
       found = true;
       break;
     }
@@ -772,7 +781,8 @@ TEST_F(SemanticsNodeTest, OHOSActionsUpdateSetText) {
 
 TEST_F(SemanticsNodeTest, OHOSActionsUpdateGainFocusWhenFocusable) {
   // When IsFocusable() is true, gain/clear focus actions should be added.
-  // flutter3.41 removed isFocusable flag; use isTextField to make IsFocusable() true.
+  // flutter3.41 removed isFocusable flag; use isTextField to make IsFocusable()
+  // true.
   node_.flags.isTextField = true;
   node_.OHOSActionsUpdate();
   bool found_gain = false;
@@ -793,7 +803,8 @@ TEST_F(SemanticsNodeTest, OHOSActionsUpdateGainFocusWhenFocusable) {
   EXPECT_TRUE(found_clear);
 }
 
-TEST_F(SemanticsNodeTest, OHOSActionsUpdateGainFocusWhenDidGainAccessibilityFocus) {
+TEST_F(SemanticsNodeTest,
+       OHOSActionsUpdateGainFocusWhenDidGainAccessibilityFocus) {
   node_.actions |= static_cast<int32_t>(ACTIONS_::kDidGainAccessibilityFocus);
   node_.OHOSActionsUpdate();
   bool found_gain = false;
@@ -808,7 +819,8 @@ TEST_F(SemanticsNodeTest, OHOSActionsUpdateGainFocusWhenDidGainAccessibilityFocu
   EXPECT_TRUE(found_gain);
 }
 
-TEST_F(SemanticsNodeTest, OHOSActionsUpdateClearFocusWhenDidLoseAccessibilityFocus) {
+TEST_F(SemanticsNodeTest,
+       OHOSActionsUpdateClearFocusWhenDidLoseAccessibilityFocus) {
   node_.actions |= static_cast<int32_t>(ACTIONS_::kDidLoseAccessibilityFocus);
   node_.OHOSActionsUpdate();
   bool found_clear = false;
@@ -827,7 +839,6 @@ TEST_F(SemanticsNodeTest, OHOSActionsUpdateClearFocusWhenDidLoseAccessibilityFoc
 
 TEST_F(SemanticsNodeTest, UpdateWithNodeSetsId) {
   flutter::SemanticsNode source;
-  source.role = SemanticsRole::kNone;
   source.id = 42;
   node_.UpdateWithNode(source);
   EXPECT_EQ(node_.id, 42);
@@ -836,7 +847,6 @@ TEST_F(SemanticsNodeTest, UpdateWithNodeSetsId) {
 
 TEST_F(SemanticsNodeTest, UpdateWithNodeSetsLabel) {
   flutter::SemanticsNode source;
-  source.role = SemanticsRole::kNone;
   source.id = 1;
   source.label = "MyLabel";
   node_.UpdateWithNode(source);
@@ -846,7 +856,6 @@ TEST_F(SemanticsNodeTest, UpdateWithNodeSetsLabel) {
 
 TEST_F(SemanticsNodeTest, UpdateWithNodeSetsFlags) {
   flutter::SemanticsNode source;
-  source.role = SemanticsRole::kNone;
   source.id = 1;
   source.flags.isButton = true;
   node_.UpdateWithNode(source);
@@ -856,7 +865,6 @@ TEST_F(SemanticsNodeTest, UpdateWithNodeSetsFlags) {
 
 TEST_F(SemanticsNodeTest, UpdateWithNodeSetsActions) {
   flutter::SemanticsNode source;
-  source.role = SemanticsRole::kNone;
   source.id = 1;
   source.actions = static_cast<int32_t>(ACTIONS_::kTap);
   node_.UpdateWithNode(source);
@@ -866,7 +874,6 @@ TEST_F(SemanticsNodeTest, UpdateWithNodeSetsActions) {
 
 TEST_F(SemanticsNodeTest, UpdateWithNodeSetsRect) {
   flutter::SemanticsNode source;
-  source.role = SemanticsRole::kNone;
   source.id = 1;
   source.rect = SkRect::MakeXYWH(10.0f, 20.0f, 30.0f, 40.0f);
   node_.UpdateWithNode(source);
@@ -879,7 +886,6 @@ TEST_F(SemanticsNodeTest, UpdateWithNodeSetsRect) {
 
 TEST_F(SemanticsNodeTest, UpdateWithNodeSetsChildrenInTraversalOrder) {
   flutter::SemanticsNode source;
-  source.role = SemanticsRole::kNone;
   source.id = 1;
   source.childrenInTraversalOrder = {2, 3, 4};
   node_.UpdateWithNode(source);
@@ -891,7 +897,6 @@ TEST_F(SemanticsNodeTest, UpdateWithNodeSetsChildrenInTraversalOrder) {
 
 TEST_F(SemanticsNodeTest, UpdateWithNodeSetsTextSelection) {
   flutter::SemanticsNode source;
-  source.role = SemanticsRole::kNone;
   source.id = 1;
   source.textSelectionBase = 5;
   source.textSelectionExtent = 10;
@@ -903,7 +908,6 @@ TEST_F(SemanticsNodeTest, UpdateWithNodeSetsTextSelection) {
 
 TEST_F(SemanticsNodeTest, UpdateWithNodeSetsScrollInfo) {
   flutter::SemanticsNode source;
-  source.role = SemanticsRole::kNone;
   source.id = 1;
   source.scrollChildren = 10;
   source.scrollIndex = 2;
@@ -918,7 +922,6 @@ TEST_F(SemanticsNodeTest, UpdateWithNodeSetsScrollInfo) {
 
 TEST_F(SemanticsNodeTest, UpdateWithNodeTriggersComponentTypeUpdateForRoot) {
   flutter::SemanticsNode source;
-  source.role = SemanticsRole::kNone;
   source.id = 0;  // root node
   node_.UpdateWithNode(source);
   EXPECT_STREQ(node_.componentType, OHWidgetName::kRootWidgetName);
@@ -927,7 +930,6 @@ TEST_F(SemanticsNodeTest, UpdateWithNodeTriggersComponentTypeUpdateForRoot) {
 
 TEST_F(SemanticsNodeTest, UpdateWithNodeTriggersComponentTypeUpdateForButton) {
   flutter::SemanticsNode source;
-  source.role = SemanticsRole::kNone;
   source.id = 1;
   source.flags.isButton = true;
   node_.UpdateWithNode(source);
@@ -938,7 +940,6 @@ TEST_F(SemanticsNodeTest, UpdateWithNodeTriggersComponentTypeUpdateForButton) {
 TEST_F(SemanticsNodeTest, UpdateWithNodeSetsTextWidgetWhenLabelAdded) {
   // Start with kOtherWidgetName (default)
   flutter::SemanticsNode source;
-  source.role = SemanticsRole::kNone;
   source.id = 1;
   source.label = "Hello";
   node_.UpdateWithNode(source);
@@ -947,10 +948,10 @@ TEST_F(SemanticsNodeTest, UpdateWithNodeSetsTextWidgetWhenLabelAdded) {
   EXPECT_STREQ(node_.componentType, OHWidgetName::kTextWidgetName);
 }
 
-// Pass a node with only value different, covering the value != node.value branch
+// Pass a node with only value different, covering the value != node.value
+// branch
 TEST_F(SemanticsNodeTest, UpdateWithNodeDetectsValueChange) {
   flutter::SemanticsNode source;
-  source.role = SemanticsRole::kNone;
   source.id = 1;
   source.value = "old_value";
   node_.UpdateWithNode(source);
@@ -961,7 +962,6 @@ TEST_F(SemanticsNodeTest, UpdateWithNodeDetectsValueChange) {
   node_.contentChanged = false;
 
   flutter::SemanticsNode source2;
-  source2.role = SemanticsRole::kNone;
   source2.id = 1;
   source2.value = "new_value";
   node_.UpdateWithNode(source2);
@@ -972,7 +972,6 @@ TEST_F(SemanticsNodeTest, UpdateWithNodeDetectsValueChange) {
 // Pass a node with only hint different, covering the hint != node.hint branch
 TEST_F(SemanticsNodeTest, UpdateWithNodeDetectsHintChange) {
   flutter::SemanticsNode source;
-  source.role = SemanticsRole::kNone;
   source.id = 1;
   source.hint = "old_hint";
   node_.UpdateWithNode(source);
@@ -983,7 +982,6 @@ TEST_F(SemanticsNodeTest, UpdateWithNodeDetectsHintChange) {
   node_.contentChanged = false;
 
   flutter::SemanticsNode source2;
-  source2.role = SemanticsRole::kNone;
   source2.id = 1;
   source2.hint = "new_hint";
   node_.UpdateWithNode(source2);
@@ -991,10 +989,10 @@ TEST_F(SemanticsNodeTest, UpdateWithNodeDetectsHintChange) {
   EXPECT_TRUE(node_.contentChanged);
 }
 
-// Pass a node with only tooltip different, covering the tooltip != node.tooltip branch
+// Pass a node with only tooltip different, covering the tooltip != node.tooltip
+// branch
 TEST_F(SemanticsNodeTest, UpdateWithNodeDetectsTooltipChange) {
   flutter::SemanticsNode source;
-  source.role = SemanticsRole::kNone;
   source.id = 1;
   source.tooltip = "old_tooltip";
   node_.UpdateWithNode(source);
@@ -1005,7 +1003,6 @@ TEST_F(SemanticsNodeTest, UpdateWithNodeDetectsTooltipChange) {
   node_.contentChanged = false;
 
   flutter::SemanticsNode source2;
-  source2.role = SemanticsRole::kNone;
   source2.id = 1;
   source2.tooltip = "new_tooltip";
   node_.UpdateWithNode(source2);
@@ -1013,11 +1010,11 @@ TEST_F(SemanticsNodeTest, UpdateWithNodeDetectsTooltipChange) {
   EXPECT_TRUE(node_.contentChanged);
 }
 
-// Pass non-empty tooltip + kOtherWidgetName, covering the !tooltip.empty() branch
+// Pass non-empty tooltip + kOtherWidgetName, covering the !tooltip.empty()
+// branch
 TEST_F(SemanticsNodeTest, UpdateWithNodeSetsTextWidgetWhenTooltipAdded) {
   // node_ default componentType is kOtherWidgetName
   flutter::SemanticsNode source;
-  source.role = SemanticsRole::kNone;
   source.id = 1;
   source.tooltip = "A tooltip";
   node_.UpdateWithNode(source);
@@ -1028,17 +1025,16 @@ TEST_F(SemanticsNodeTest, UpdateWithNodeSetsTextWidgetWhenTooltipAdded) {
 TEST_F(SemanticsNodeTest, UpdateWithNodeSetsTextWidgetWhenHintAdded) {
   // node_ default componentType is kOtherWidgetName
   flutter::SemanticsNode source;
-  source.role = SemanticsRole::kNone;
   source.id = 1;
   source.hint = "A hint";
   node_.UpdateWithNode(source);
   EXPECT_STREQ(node_.componentType, OHWidgetName::kTextWidgetName);
 }
 
-// Pass a node with only scrollChildren different (scrollIndex same), covering the scrollChildren != node.scrollChildren branch
+// Pass a node with only scrollChildren different (scrollIndex same), covering
+// the scrollChildren != node.scrollChildren branch
 TEST_F(SemanticsNodeTest, UpdateWithNodeDetectsScrollChildrenChange) {
   flutter::SemanticsNode source;
-  source.role = SemanticsRole::kNone;
   source.id = 1;
   source.scrollChildren = 10;
   source.scrollIndex = 2;
@@ -1050,19 +1046,18 @@ TEST_F(SemanticsNodeTest, UpdateWithNodeDetectsScrollChildrenChange) {
   node_.scrollChanged = false;
 
   flutter::SemanticsNode source2;
-  source2.role = SemanticsRole::kNone;
   source2.id = 1;
   source2.scrollChildren = 20;  // only scrollChildren changes
-  source2.scrollIndex = 2;       // scrollIndex unchanged
+  source2.scrollIndex = 2;      // scrollIndex unchanged
   node_.UpdateWithNode(source2);
   EXPECT_EQ(node_.scrollChildren, 20);
   EXPECT_TRUE(node_.scrollChanged);
 }
 
-// Pass a node with only textSelectionExtent different, covering the textSelectionExtent != node.textSelectionExtent branch
+// Pass a node with only textSelectionExtent different, covering the
+// textSelectionExtent != node.textSelectionExtent branch
 TEST_F(SemanticsNodeTest, UpdateWithNodeDetectsTextSelectionExtentChange) {
   flutter::SemanticsNode source;
-  source.role = SemanticsRole::kNone;
   source.id = 1;
   source.textSelectionBase = 5;
   source.textSelectionExtent = 10;
@@ -1074,19 +1069,18 @@ TEST_F(SemanticsNodeTest, UpdateWithNodeDetectsTextSelectionExtentChange) {
   node_.selectChanged = false;
 
   flutter::SemanticsNode source2;
-  source2.role = SemanticsRole::kNone;
   source2.id = 1;
-  source2.textSelectionBase = 5;    // unchanged
+  source2.textSelectionBase = 5;     // unchanged
   source2.textSelectionExtent = 20;  // only extent changes
   node_.UpdateWithNode(source2);
   EXPECT_EQ(node_.textSelectionExtent, 20);
   EXPECT_TRUE(node_.selectChanged);
 }
 
-// Pass a node with only transform different (rect same), covering the transform != node.transform branch
+// Pass a node with only transform different (rect same), covering the transform
+// != node.transform branch
 TEST_F(SemanticsNodeTest, UpdateWithNodeDetectsTransformChange) {
   flutter::SemanticsNode source;
-  source.role = SemanticsRole::kNone;
   source.id = 1;
   source.rect = SkRect::MakeXYWH(0.0f, 0.0f, 100.0f, 100.0f);
   source.transform = SkM44();  // identity
@@ -1097,10 +1091,10 @@ TEST_F(SemanticsNodeTest, UpdateWithNodeDetectsTransformChange) {
   node_.rectChanged = false;
 
   flutter::SemanticsNode source2;
-  source2.role = SemanticsRole::kNone;
   source2.id = 1;
-  source2.rect = SkRect::MakeXYWH(0.0f, 0.0f, 100.0f, 100.0f);  // rect unchanged
-  source2.transform = SkM44::Scale(2.0f, 2.0f);                  // transform changes
+  source2.rect =
+      SkRect::MakeXYWH(0.0f, 0.0f, 100.0f, 100.0f);  // rect unchanged
+  source2.transform = SkM44::Scale(2.0f, 2.0f);      // transform changes
   node_.UpdateWithNode(source2);
   EXPECT_TRUE(node_.rectChanged);
 }
@@ -1144,10 +1138,10 @@ TEST_F(SemanticsNodeTest, UpdateSelfRecursivelySingleNodeNeedUpdateTrue) {
   EXPECT_TRUE(node_.rectChanged);
   // absoluteTransform should be fatherTransform * transform
   // With identity fatherTransform and scale(2,2), points should be scaled
-  EXPECT_FLOAT_EQ(node_.absoluteRect.fLeft, 20.0f);    // 10 * 2
-  EXPECT_FLOAT_EQ(node_.absoluteRect.fTop, 40.0f);     // 20 * 2
-  EXPECT_FLOAT_EQ(node_.absoluteRect.fRight, 220.0f);  // (10+100) * 2
-  EXPECT_FLOAT_EQ(node_.absoluteRect.fBottom, 140.0f); // (20+50) * 2
+  EXPECT_FLOAT_EQ(node_.absoluteRect.fLeft, 20.0f);     // 10 * 2
+  EXPECT_FLOAT_EQ(node_.absoluteRect.fTop, 40.0f);      // 20 * 2
+  EXPECT_FLOAT_EQ(node_.absoluteRect.fRight, 220.0f);   // (10+100) * 2
+  EXPECT_FLOAT_EQ(node_.absoluteRect.fBottom, 140.0f);  // (20+50) * 2
 }
 
 TEST_F(SemanticsNodeTest, UpdateSelfRecursivelyRectChangedForcesUpdate) {
@@ -1436,7 +1430,8 @@ TEST_F(SemanticsNodeTest, UpdateSelfRecursivelyExistChildrenUnchanged) {
 
   parent.UpdateSelfRecursively(visitorId, visitorOrder, fatherTransform, false);
 
-  // childrenChanged should NOT be set since existChildrenInTraversalOrder matches
+  // childrenChanged should NOT be set since existChildrenInTraversalOrder
+  // matches
   EXPECT_FALSE(parent.childrenChanged);
 }
 
@@ -1598,7 +1593,8 @@ TEST_F(SemanticsNodeTest, FillElementInfoWithParentRootNode) {
 // ===== UpdateSelfRecursively with transform composition =====
 
 TEST_F(SemanticsNodeTest, UpdateSelfRecursivelyTransformComposition) {
-  // Test that child's absoluteTransform = parent's absoluteTransform * child's transform
+  // Test that child's absoluteTransform = parent's absoluteTransform * child's
+  // transform
   SemanticsNodeExtend parent;
   SemanticsNodeExtend child;
 
@@ -1629,11 +1625,10 @@ TEST_F(SemanticsNodeTest, UpdateSelfRecursivelyTransformComposition) {
   EXPECT_FLOAT_EQ(parent.absoluteRect.fRight, 300.0f);
   EXPECT_FLOAT_EQ(parent.absoluteRect.fBottom, 300.0f);
 
-  // Child absoluteRect: parent_transform * child_transform applied to (0,0,50,50)
-  // parent: translate(100,100), child: scale(2,2)
-  // composed: translate(100,100) * scale(2,2) = points get scaled then translated
-  // (0,0) -> (0,0) -> (100,100)
-  // (50,50) -> (100,100) -> (200,200)
+  // Child absoluteRect: parent_transform * child_transform applied to
+  // (0,0,50,50) parent: translate(100,100), child: scale(2,2) composed:
+  // translate(100,100) * scale(2,2) = points get scaled then translated (0,0)
+  // -> (0,0) -> (100,100) (50,50) -> (100,100) -> (200,200)
   EXPECT_FLOAT_EQ(child.absoluteRect.fLeft, 100.0f);
   EXPECT_FLOAT_EQ(child.absoluteRect.fTop, 100.0f);
   EXPECT_FLOAT_EQ(child.absoluteRect.fRight, 200.0f);
@@ -1641,6 +1636,7 @@ TEST_F(SemanticsNodeTest, UpdateSelfRecursivelyTransformComposition) {
 }
 
 // ===== UiTest semantics bridge: text field hints, identifiers, ranges =====
+// SemanticsNode::role is not default-initialized, so test nodes set it.
 
 // ===== FillElementInfoWithContent: text field hint exposure =====
 
@@ -2097,6 +2093,103 @@ TEST_F(SemanticsNodeTest, UpdateWithNodeKeepsIdentifierWhenOnlyValueChanged) {
   EXPECT_TRUE(node_.contentChanged);
   EXPECT_EQ(node_.identifier, "id");
   EXPECT_EQ(node_.value, "b");
+}
+
+TEST_F(SemanticsNodeTest, HasChangedLabelTrueWhenLabelEmptyPrevNonEmpty) {
+  node_.previousLabel = "old";
+  EXPECT_TRUE(node_.HasChangedLabel());
+}
+
+TEST_F(SemanticsNodeTest, HasChangedLabelTrueWhenLabelNonEmptyPrevEmpty) {
+  node_.label = "new";
+  EXPECT_TRUE(node_.HasChangedLabel());
+}
+
+TEST_F(SemanticsNodeTest, HasChangedLabelTrueWhenBothNonEmptyAndDifferent) {
+  node_.label = "new";
+  node_.previousLabel = "old";
+  EXPECT_TRUE(node_.HasChangedLabel());
+}
+
+TEST_F(SemanticsNodeTest, HasChangedLabelFalseWhenBothNonEmptyAndEqual) {
+  node_.label = "same";
+  node_.previousLabel = "same";
+  EXPECT_FALSE(node_.HasChangedLabel());
+}
+
+TEST_F(SemanticsNodeTest, IsFocusableTrueWhenPlatformViewNode) {
+  node_.platformViewId = 7;
+  EXPECT_TRUE(node_.IsFocusable());
+}
+
+TEST_F(SemanticsNodeTest, IsFocusableTrueWhenSelected) {
+  node_.flags.isSelected = SemanticsTristate::kTrue;
+  EXPECT_TRUE(node_.IsFocusable());
+  EXPECT_TRUE(node_.IsSelected());
+}
+
+TEST_F(SemanticsNodeTest, IsFocusableTrueWhenFocused) {
+  node_.flags.isFocused = SemanticsTristate::kTrue;
+  EXPECT_TRUE(node_.IsFocusable());
+  EXPECT_TRUE(node_.IsFocused());
+}
+
+TEST_F(SemanticsNodeTest, IsFocusableTrueWhenEnabledTristateSet) {
+  node_.flags.isEnabled = SemanticsTristate::kTrue;
+  EXPECT_TRUE(node_.IsFocusable());
+  EXPECT_TRUE(node_.IsEnabled());
+  node_.flags.isEnabled = SemanticsTristate::kFalse;
+  EXPECT_TRUE(node_.IsFocusable());
+  EXPECT_FALSE(node_.IsEnabled());
+}
+
+TEST_F(SemanticsNodeTest, IsFocusableTrueWhenInMutuallyExclusiveGroup) {
+  node_.flags.isInMutuallyExclusiveGroup = true;
+  EXPECT_TRUE(node_.IsFocusable());
+}
+
+TEST_F(SemanticsNodeTest, IsFocusableTrueWhenToggledStateSet) {
+  node_.flags.isToggled = SemanticsTristate::kFalse;
+  EXPECT_TRUE(node_.IsFocusable());
+}
+
+TEST_F(SemanticsNodeTest, IsFocusableTrueWhenSliderFlag) {
+  node_.flags.isSlider = true;
+  EXPECT_TRUE(node_.IsFocusable());
+  EXPECT_TRUE(node_.IsSlider());
+}
+
+TEST_F(SemanticsNodeTest, IsCheckableTrueWhenCheckStateNotNone) {
+  node_.flags.isChecked = SemanticsCheckState::kFalse;
+  EXPECT_TRUE(node_.IsCheckable());
+}
+
+TEST_F(SemanticsNodeTest, IsCheckedTrueWhenCheckStateTrue) {
+  node_.flags.isChecked = SemanticsCheckState::kTrue;
+  EXPECT_TRUE(node_.IsChecked());
+}
+
+TEST_F(SemanticsNodeTest, IsCheckedFalseWhenCheckStateMixedWithoutToggle) {
+  node_.flags.isChecked = SemanticsCheckState::kMixed;
+  EXPECT_FALSE(node_.IsChecked());
+}
+
+TEST_F(SemanticsNodeTest, IsPasswordFalseWhenTextFieldNotObscured) {
+  node_.flags.isTextField = true;
+  EXPECT_FALSE(node_.IsPassword());
+}
+
+TEST_F(SemanticsNodeTest, IsScrollableForEachSingleScrollAction) {
+  const SemanticsAction scroll_actions[] = {
+      SemanticsAction::kScrollLeft, SemanticsAction::kScrollRight,
+      SemanticsAction::kScrollUp, SemanticsAction::kScrollDown};
+  for (auto action : scroll_actions) {
+    SemanticsNodeExtend node;
+    node.id = 1;
+    node.actions = static_cast<int32_t>(action);
+    EXPECT_TRUE(node.IsScrollable());
+  }
+  EXPECT_FALSE(node_.IsScrollable());
 }
 
 }  // namespace testing
