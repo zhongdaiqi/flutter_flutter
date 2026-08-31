@@ -394,6 +394,8 @@ TaskFunction createBasicMaterialCompileTest() {
       throw 'Failed to create default Flutter app in ${sampleDir.path}';
     }
 
+    await injectOhosSigningConfig(sampleDir.path);
+
     return CompileTest(sampleDir.path).run();
   };
 }
@@ -1758,6 +1760,10 @@ class CompileTest {
     return inDirectory<TaskResult>(testDirectory, () async {
       await flutter('packages', options: <String>['get']);
 
+      if (deviceOperatingSystem == DeviceOperatingSystem.ohos) {
+        await injectOhosSigningConfig(testDirectory);
+      }
+
       // "initial" compile required downloading and creating the `android/.gradle` directory while "full"
       // compiles only run `flutter clean` between runs.
       final Map<String, dynamic> compileInitialRelease = await _compileApp(deleteGradleCache: true);
@@ -2065,7 +2071,14 @@ class CompileTest {
       case DeviceOperatingSystem.linux:
         throw Exception('Unsupported option for Linux devices');
       case DeviceOperatingSystem.ohos:
-        throw Exception('Unsupported option for OHOS devices');
+        options.insert(0, 'hap');
+        options.add('--tree-shake-icons');
+        options.add('--split-debug-info=infos/');
+        watch.start();
+        await flutter('build', options: options);
+        watch.stop();
+        final File hap = _findOhosHap(dir(path.join(cwd, 'build')), dir(path.join(cwd, 'ohos')));
+        releaseSizeInBytes = hap.lengthSync();
       case DeviceOperatingSystem.windows:
         unawaited(stderr.flush());
         options.insert(0, 'windows');
@@ -2131,7 +2144,7 @@ class CompileTest {
       case DeviceOperatingSystem.linux:
         throw Exception('Unsupported option for Linux devices');
       case DeviceOperatingSystem.ohos:
-        throw Exception('Unsupported option for OHOS devices');
+        options.insert(0, 'hap');
       case DeviceOperatingSystem.macos:
         unawaited(stderr.flush());
         options.insert(0, 'macos');
@@ -2574,4 +2587,67 @@ String? _findDarwinAppInBuildDirectory(String searchDirectory) {
     }
   }
   return null;
+}
+
+File _findOhosHap(Directory buildDir, Directory ohosDir) {
+  // The HAP output path varies by project configuration. Check known locations.
+  final List<String> knownPaths = <String>[
+    path.join(buildDir.path, 'ohos', 'hap', 'entry-default-signed.hap'),
+    path.join(
+      ohosDir.path,
+      'entry',
+      'build',
+      'default',
+      'outputs',
+      'default',
+      'entry-default-signed.hap',
+    ),
+  ];
+  for (final String candidatePath in knownPaths) {
+    final File candidate = file(candidatePath);
+    if (candidate.existsSync()) {
+      return candidate;
+    }
+  }
+  throw 'Failed to find entry-default-signed.hap in ${buildDir.path} or ${ohosDir.path}';
+}
+
+/// Injects OHos signing configuration into a Flutter project's ohos directory.
+///
+/// Reads the signing config from the `OHOS_SIGNING_CONFIG` environment
+/// variable, which should point to a JSON file containing `signingConfigs`
+/// and optionally `bundleName`. This is required for OHos projects created
+/// in temporary directories that don't have signing configured.
+Future<void> injectOhosSigningConfig(String projectPath) async {
+  final String? configPath = Platform.environment['OHOS_SIGNING_CONFIG'];
+  if (configPath == null || configPath.isEmpty) {
+    return;
+  }
+  final File configFile = File(configPath);
+  if (!configFile.existsSync()) {
+    return;
+  }
+  final Map<String, dynamic> config =
+      json.decode(configFile.readAsStringSync()) as Map<String, dynamic>;
+
+  final File bpFile = File(path.join(projectPath, 'ohos', 'build-profile.json5'));
+  if (bpFile.existsSync()) {
+    String content = bpFile.readAsStringSync();
+    final String signingStr = '"signingConfigs": ${json.encode(config['signingConfigs'])}';
+    content = content.replaceAll(RegExp(r'"signingConfigs":\s*\[.*?\]', dotAll: true), signingStr);
+    bpFile.writeAsStringSync(content);
+  }
+
+  final String? bundleName = config['bundleName'] as String?;
+  if (bundleName != null && bundleName.isNotEmpty) {
+    final File appFile = File(path.join(projectPath, 'ohos', 'AppScope', 'app.json5'));
+    if (appFile.existsSync()) {
+      String content = appFile.readAsStringSync();
+      content = content.replaceAll(
+        RegExp(r'"bundleName"\s*:\s*"[^"]*"'),
+        '"bundleName": "$bundleName"',
+      );
+      appFile.writeAsStringSync(content);
+    }
+  }
 }
