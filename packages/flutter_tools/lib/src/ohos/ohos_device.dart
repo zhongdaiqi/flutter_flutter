@@ -308,6 +308,7 @@ class OhosDevice extends Device {
         logger: _logger,
       );
     }
+    final bool traceStartup = platformArgs['trace-startup'] as bool? ?? false;
     final cmd = <String>[
       'shell',
       'aa',
@@ -319,6 +320,39 @@ class OhosDevice extends Device {
     ];
     if (debuggingOptions.debuggingEnabled && debuggingOptions.startPaused) {
       cmd.addAll(<String>['--pb', 'start-paused', 'true']);
+    }
+    if (debuggingOptions.enableDartProfiling) {
+      cmd.addAll(<String>['--pb', 'enable-dart-profiling', 'true']);
+    }
+    if (traceStartup) {
+      cmd.addAll(<String>['--pb', 'trace-startup', 'true']);
+    }
+    if (debuggingOptions.enableSoftwareRendering) {
+      cmd.addAll(<String>['--pb', 'enable-software-rendering', 'true']);
+    }
+    if (debuggingOptions.skiaDeterministicRendering) {
+      cmd.addAll(<String>['--pb', 'skia-deterministic-rendering', 'true']);
+    }
+    if (debuggingOptions.traceSkia) {
+      cmd.addAll(<String>['--pb', 'trace-skia', 'true']);
+    }
+    if (debuggingOptions.traceSystrace) {
+      cmd.addAll(<String>['--pb', 'trace-systrace', 'true']);
+    }
+    if (debuggingOptions.endlessTraceBuffer) {
+      cmd.addAll(<String>['--pb', 'endless-trace-buffer', 'true']);
+    }
+    if (debuggingOptions.purgePersistentCache) {
+      cmd.addAll(<String>['--pb', 'purge-persistent-cache', 'true']);
+    }
+    if (debuggingOptions.useTestFonts) {
+      cmd.addAll(<String>['--pb', 'use-test-fonts', 'true']);
+    }
+    if (debuggingOptions.disableServiceAuthCodes) {
+      cmd.addAll(<String>['--pb', 'disable-service-auth-codes', 'true']);
+    }
+    if (route != null) {
+      cmd.addAll(<String>['--ps', 'route', route]);
     }
     final String result = (await runHdcCheckedAsync(cmd)).stdout;
     // This invocation returns 0 even when it fails.
@@ -733,6 +767,10 @@ class HdcLogReader extends DeviceLogReader {
 
       if (acceptLine) {
         _acceptedLastLine = true;
+        // Normalize ohos hilog "flutter settings log message: <msg>" to the
+        // standard "flutter: <msg>" format expected by the flutter tool and
+        // tests.
+        line = line.replaceAll('flutter settings log message: ', 'flutter: ');
         _linesController.add(line);
         return;
       }

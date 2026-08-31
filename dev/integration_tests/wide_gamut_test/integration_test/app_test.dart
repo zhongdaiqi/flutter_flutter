@@ -118,14 +118,100 @@ bool _findBGR10Color(
   return foundDeepRed;
 }
 
-bool _findColor(List<dynamic> result, List<double> color, {double epsilon = 0.01}) {
+bool _findRGBA8888Color(
+  Uint8List bytes,
+  int width,
+  int height,
+  List<double> color, {
+  required double epsilon,
+}) {
+  expect(bytes.lengthInBytes, width * height * 4);
+  final double r = color[0].clamp(0.0, 1.0);
+  final double g = color[1].clamp(0.0, 1.0);
+  final double b = color[2].clamp(0.0, 1.0);
+  bool found = false;
+  for (int i = 0; i < bytes.lengthInBytes; i += 4) {
+    final double red = bytes[i] / 255.0;
+    final double green = bytes[i + 1] / 255.0;
+    final double blue = bytes[i + 2] / 255.0;
+    if (_isAlmost(red, r, epsilon) &&
+        _isAlmost(green, g, epsilon) &&
+        _isAlmost(blue, b, epsilon)) {
+      found = true;
+    }
+  }
+  return found;
+}
+
+bool _findBGRA8888Color(
+  Uint8List bytes,
+  int width,
+  int height,
+  List<double> color, {
+  required double epsilon,
+}) {
+  expect(bytes.lengthInBytes, width * height * 4);
+  final double r = color[0].clamp(0.0, 1.0);
+  final double g = color[1].clamp(0.0, 1.0);
+  final double b = color[2].clamp(0.0, 1.0);
+  bool found = false;
+  for (int i = 0; i < bytes.lengthInBytes; i += 4) {
+    final double blue = bytes[i] / 255.0;
+    final double green = bytes[i + 1] / 255.0;
+    final double red = bytes[i + 2] / 255.0;
+    if (_isAlmost(red, r, epsilon) &&
+        _isAlmost(green, g, epsilon) &&
+        _isAlmost(blue, b, epsilon)) {
+      found = true;
+    }
+  }
+  return found;
+}
+
+bool _findColor(
+  List<dynamic> result,
+  List<double> color, {
+  double epsilon = 0.01,
+}) {
   expect(result, isNotNull);
   expect(result.length, 4);
   final [int width, int height, String format, Uint8List bytes] = result;
   return switch (format) {
-    'MTLPixelFormatBGR10_XR' => _findBGR10Color(bytes, width, height, color, epsilon: epsilon),
-    'MTLPixelFormatBGRA10_XR' => _findBGRA10Color(bytes, width, height, color, epsilon: epsilon),
-    'MTLPixelFormatRGBA16Float' => _findRGBAF16Color(bytes, width, height, color, epsilon: epsilon),
+    'MTLPixelFormatBGR10_XR' => _findBGR10Color(
+      bytes,
+      width,
+      height,
+      color,
+      epsilon: epsilon,
+    ),
+    'MTLPixelFormatBGRA10_XR' => _findBGRA10Color(
+      bytes,
+      width,
+      height,
+      color,
+      epsilon: epsilon,
+    ),
+    'MTLPixelFormatRGBA16Float' => _findRGBAF16Color(
+      bytes,
+      width,
+      height,
+      color,
+      epsilon: epsilon,
+    ),
+    'RGBA_8888' => _findRGBA8888Color(
+      bytes,
+      width,
+      height,
+      color,
+      epsilon: epsilon,
+    ),
+    'BGRA_8888' => _findBGRA8888Color(
+      bytes,
+      width,
+      height,
+      color,
+      epsilon: epsilon,
+    ),
     _ => fail('Unsupported pixel format: $format'),
   };
 }
@@ -139,7 +225,8 @@ void main() {
       await tester.pumpAndSettle(const Duration(seconds: 2));
 
       const MethodChannel channel = MethodChannel('flutter/screenshot');
-      final List<Object?> result = await channel.invokeMethod('test') as List<Object?>;
+      final List<Object?> result =
+          await channel.invokeMethod('test') as List<Object?>;
       expect(_findColor(result, _deepRed), isTrue);
     });
     testWidgets('look for display p3 deepest red', (WidgetTester tester) async {
@@ -147,7 +234,8 @@ void main() {
       await tester.pumpAndSettle(const Duration(seconds: 2));
 
       const MethodChannel channel = MethodChannel('flutter/screenshot');
-      final List<Object?> result = await channel.invokeMethod('test') as List<Object?>;
+      final List<Object?> result =
+          await channel.invokeMethod('test') as List<Object?>;
       expect(_findColor(result, _deepRed), isTrue);
     });
     testWidgets('no p3 deepest red without image', (WidgetTester tester) async {
@@ -155,7 +243,8 @@ void main() {
       await tester.pumpAndSettle(const Duration(seconds: 2));
 
       const MethodChannel channel = MethodChannel('flutter/screenshot');
-      final List<Object?> result = await channel.invokeMethod('test') as List<Object?>;
+      final List<Object?> result =
+          await channel.invokeMethod('test') as List<Object?>;
       expect(_findColor(result, _deepRed), isFalse);
       expect(_findColor(result, <double>[0.0, 1.0, 0.0]), isFalse);
     });
@@ -164,60 +253,79 @@ void main() {
       await tester.pumpAndSettle(const Duration(seconds: 2));
 
       const MethodChannel channel = MethodChannel('flutter/screenshot');
-      final List<Object?> result = await channel.invokeMethod('test') as List<Object?>;
+      final List<Object?> result =
+          await channel.invokeMethod('test') as List<Object?>;
       expect(_findColor(result, _deepRed), isTrue);
       expect(_findColor(result, <double>[0.0, 1.0, 0.0]), isTrue);
     });
-    testWidgets('draw image with wide gamut works', (WidgetTester tester) async {
+    testWidgets('draw image with wide gamut works', (
+      WidgetTester tester,
+    ) async {
       app.run(app.Setup.drawnImage);
       await tester.pumpAndSettle(const Duration(seconds: 2));
 
       const MethodChannel channel = MethodChannel('flutter/screenshot');
-      final List<Object?> result = await channel.invokeMethod('test') as List<Object?>;
+      final List<Object?> result =
+          await channel.invokeMethod('test') as List<Object?>;
       expect(_findColor(result, <double>[0.0, 1.0, 0.0]), isTrue);
     });
-    testWidgets('draw container with wide gamut works', (WidgetTester tester) async {
+    testWidgets('draw container with wide gamut works', (
+      WidgetTester tester,
+    ) async {
       app.run(app.Setup.container);
       await tester.pumpAndSettle(const Duration(seconds: 2));
 
       const MethodChannel channel = MethodChannel('flutter/screenshot');
-      final List<Object?> result = await channel.invokeMethod('test') as List<Object?>;
+      final List<Object?> result =
+          await channel.invokeMethod('test') as List<Object?>;
       expect(_findColor(result, _deepRed), isTrue);
     });
 
-    testWidgets('draw wide gamut linear gradient works', (WidgetTester tester) async {
+    testWidgets('draw wide gamut linear gradient works', (
+      WidgetTester tester,
+    ) async {
       app.run(app.Setup.linearGradient);
       await tester.pumpAndSettle(const Duration(seconds: 2));
 
       const MethodChannel channel = MethodChannel('flutter/screenshot');
-      final List<Object?> result = await channel.invokeMethod('test') as List<Object?>;
+      final List<Object?> result =
+          await channel.invokeMethod('test') as List<Object?>;
       expect(_findColor(result, _deepRed), isTrue);
     });
 
-    testWidgets('draw wide gamut radial gradient works', (WidgetTester tester) async {
+    testWidgets('draw wide gamut radial gradient works', (
+      WidgetTester tester,
+    ) async {
       app.run(app.Setup.radialGradient);
       await tester.pumpAndSettle(const Duration(seconds: 2));
 
       const MethodChannel channel = MethodChannel('flutter/screenshot');
-      final List<Object?> result = await channel.invokeMethod('test') as List<Object?>;
+      final List<Object?> result =
+          await channel.invokeMethod('test') as List<Object?>;
       expect(_findColor(result, _deepRed, epsilon: 0.05), isTrue);
     });
 
-    testWidgets('draw wide gamut conical gradient works', (WidgetTester tester) async {
+    testWidgets('draw wide gamut conical gradient works', (
+      WidgetTester tester,
+    ) async {
       app.run(app.Setup.conicalGradient);
       await tester.pumpAndSettle(const Duration(seconds: 2));
 
       const MethodChannel channel = MethodChannel('flutter/screenshot');
-      final List<Object?> result = await channel.invokeMethod('test') as List<Object?>;
+      final List<Object?> result =
+          await channel.invokeMethod('test') as List<Object?>;
       expect(_findColor(result, _deepRed, epsilon: 0.05), isTrue);
     });
 
-    testWidgets('draw wide gamut sweep gradient works', (WidgetTester tester) async {
+    testWidgets('draw wide gamut sweep gradient works', (
+      WidgetTester tester,
+    ) async {
       app.run(app.Setup.sweepGradient);
       await tester.pumpAndSettle(const Duration(seconds: 2));
 
       const MethodChannel channel = MethodChannel('flutter/screenshot');
-      final List<Object?> result = await channel.invokeMethod('test') as List<Object?>;
+      final List<Object?> result =
+          await channel.invokeMethod('test') as List<Object?>;
       expect(_findColor(result, _deepRed), isTrue);
     });
   });
