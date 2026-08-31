@@ -39,13 +39,13 @@ fml::RefPtr<OHOSNativeWindow> MakeWindow(OHNativeWindow* handle) {
 }
 
 constexpr int kUtFdSize = 4 << 20;
-constexpr char kUtFdPath[] = "/data/local/tmp/.ohos_surface_sw_ut_fd";
-constexpr char kStubFallbackFdPath[] =
-    "/data/local/tmp/.stub_graphic_buffer_fd";
 
 int TestBackingFd() {
   static const int kFd = [] {
-    int fd = static_cast<int>(::syscall(SYS_openat, AT_FDCWD, kUtFdPath,
+    char ut_fd_path[4096];
+    snprintf(ut_fd_path, sizeof(ut_fd_path), "%s/.ohos_surface_sw_ut_fd",
+             GetUtTmpDir());
+    int fd = static_cast<int>(::syscall(SYS_openat, AT_FDCWD, ut_fd_path,
                                         O_CREAT | O_RDWR | O_TRUNC, 0600));
     if (fd >= 0 && ::ftruncate(fd, kUtFdSize) != 0) {
       fd = -1;
@@ -56,7 +56,11 @@ int TestBackingFd() {
 }
 
 int StubFallbackOpen(const char* path, int /*flags*/) {
-  return ::strcmp(path, kStubFallbackFdPath) == 0 ? TestBackingFd() : -1;
+  // 与 ace_graphic_ndk_stub 的回退路径同源(都经 GetUtTmpDir 拼接),
+  // 两边必须一致才能匹配。
+  char expect[4096];
+  snprintf(expect, sizeof(expect), "%s/.stub_graphic_buffer_fd", GetUtTmpDir());
+  return ::strcmp(path, expect) == 0 ? TestBackingFd() : -1;
 }
 
 class StubBackingFdGuard {

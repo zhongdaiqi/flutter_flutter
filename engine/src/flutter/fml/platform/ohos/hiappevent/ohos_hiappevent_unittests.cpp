@@ -41,6 +41,7 @@
 #include <string>
 #include <vector>
 #include "flutter/fml/platform/ohos/dynamic_library_loader.h"
+#include "flutter/shell/platform/ohos/test_stubs/libc_wrapper_stub.h"
 #include "gtest/gtest.h"
 
 #define private public
@@ -281,6 +282,8 @@ class OhosHiappEventTest : public ::testing::Test {
   void SetUp() override {
     ResetCallLog();
     ResetFakeLog();
+    redirect_ = std::make_unique<::ScopedDlopenRedirect>(
+        "libhiappevent", ::DlopenRedirectMode::kFailOpen);
     // Reset global atomic state
     ScrollStatus.store(-1);
     scroll_start_frame_.store(0);
@@ -289,6 +292,8 @@ class OhosHiappEventTest : public ::testing::Test {
     scroll_end_time_utc_ms.store(0);
     last_frame_number_.store(0);
   }
+
+  std::unique_ptr<::ScopedDlopenRedirect> redirect_;
 
   // Helper: create a MissedFrameInfo with specified duration
   static MissedFrameInfo MakeFrameInfo(int64_t duration_us,
