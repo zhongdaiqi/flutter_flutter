@@ -9,6 +9,7 @@
 #undef private
 
 #include <gtest/gtest.h>
+#include <native_image/native_image.h>
 #include <atomic>
 #include <cstring>
 #include <map>
@@ -40,9 +41,6 @@
 #include "flutter/shell/platform/ohos/platform_message_handler_ohos.h"
 #include "flutter/shell/platform/ohos/surface/ohos_native_window.h"
 #include "flutter/shell/platform/ohos/test_stubs/ace_graphic_ndk_stub.h"
-#if !defined(OHOS_X64_UNITTEST)
-#include <native_image/native_image.h>
-#endif
 
 namespace flutter {
 
@@ -115,40 +113,6 @@ class NullDelegate : public PlatformView::Delegate {
   Settings settings_;
 };
 
-#if defined(OHOS_X64_UNITTEST)
-
-// x64 模拟器：hdc shell 起不了 JIT VM（mmap 无权限），绕开 OHOSShellHolder
-// 直接构造 PlatformViewOHOS。
-class TestViewHandle {
- public:
-  explicit TestViewHandle(const Settings& settings)
-      : runners_("test",
-                 platform_thread_.GetTaskRunner(),
-                 raster_thread_.GetTaskRunner(),
-                 ui_thread_.GetTaskRunner(),
-                 io_thread_.GetTaskRunner()) {
-    delegate_.settings_ = settings;
-    napi_facade_ = std::make_shared<PlatformViewOHOSNapi>(nullptr);
-    view_ = std::make_unique<PlatformViewOHOS>(
-        delegate_, runners_, napi_facade_, /*use_software_rendering=*/true);
-  }
-
-  bool IsValid() const { return view_ != nullptr; }
-  PlatformViewOHOS* view() { return view_.get(); }
-
- private:
-  NullDelegate delegate_;
-  fml::Thread platform_thread_;
-  fml::Thread raster_thread_;
-  fml::Thread ui_thread_;
-  fml::Thread io_thread_;
-  TaskRunners runners_;
-  std::shared_ptr<PlatformViewOHOSNapi> napi_facade_;
-  std::unique_ptr<PlatformViewOHOS> view_;
-};
-
-#else
-
 // 真机：原路径，完整 Shell + Dart VM。
 class TestViewHandle {
  public:
@@ -166,37 +130,8 @@ class TestViewHandle {
   std::unique_ptr<OHOSShellHolder> holder_;
 };
 
-#endif  // defined(OHOS_X64_UNITTEST)
-
 OHNativeWindow* const kPvUtHandleA = reinterpret_cast<OHNativeWindow*>(0x5000);
 OHNativeWindow* const kPvUtHandleB = reinterpret_cast<OHNativeWindow*>(0x5100);
-
-#if defined(OHOS_X64_UNITTEST)
-
-fml::RefPtr<OHOSNativeWindow> MakePvUtWindow(OHNativeWindow* handle) {
-  return fml::MakeRefCounted<OHOSNativeWindow>(handle, false);
-}
-
-bool PvUtInjectOffscreenAcquireFailure() {
-  g_stub_graphic_fail_mask =
-      kStubFailNativeImageCreate | kStubFailAcquireNativeWindow;
-  return true;
-}
-void PvUtClearOffscreenAcquireFailure() {
-  g_stub_graphic_fail_mask = 0;
-}
-
-void PvUtSetWindowGeometry(int32_t width, int32_t height) {
-  g_stub_geometry_width = width;
-  g_stub_geometry_height = height;
-}
-
-class PvUtKnobGuard {
- private:
-  GraphicStubKnobGuard stub_guard_;
-};
-
-#else
 
 std::vector<OH_NativeImage*>& PvUtRegistryImages() {
   static std::vector<OH_NativeImage*> images;
@@ -247,8 +182,6 @@ class PvUtKnobGuard {
     g_pv_ut_window_height = 0;
   }
 };
-
-#endif  // defined(OHOS_X64_UNITTEST)
 
 class PvOhosRecordingDelegate : public NullDelegate {
  public:
@@ -621,14 +554,6 @@ class WbFakeTexture : public OHOSExternalTexture {
 
 OHNativeWindow* const kWbHandleA = reinterpret_cast<OHNativeWindow*>(0x6000);
 
-#if defined(OHOS_X64_UNITTEST)
-
-fml::RefPtr<OHOSNativeWindow> WbMakeWindow(OHNativeWindow* handle) {
-  return fml::MakeRefCounted<OHOSNativeWindow>(handle, false);
-}
-
-#else
-
 std::vector<OH_NativeImage*>& WbRegistryImages() {
   static std::vector<OH_NativeImage*> images;
   return images;
@@ -646,8 +571,6 @@ fml::RefPtr<OHOSNativeWindow> WbMakeWindow(OHNativeWindow* request) {
   }
   return fml::MakeRefCounted<OHOSNativeWindow>(window, false);
 }
-
-#endif  // defined(OHOS_X64_UNITTEST)
 
 class WbMapEntry {
  public:
@@ -956,9 +879,7 @@ TEST_F(PlatformViewOHOSUt, PreloadOffscreenThenSecondPreloadSkips) {
 
 TEST_F(PlatformViewOHOSUt, PreloadRetriesWhenOffscreenPrepareFails) {
   PvUtKnobGuard guard;
-  if (!PvUtInjectOffscreenAcquireFailure()) {
-    GTEST_SKIP() << "offscreen acquire-failure injection needs x64 stubs";
-  }
+  PvUtInjectOffscreenAcquireFailure();
   view()->Preload(100, 100);
   FlushTasks();
   EXPECT_EQ(delegate().created_count(), 0);
@@ -1200,11 +1121,6 @@ TEST_F(PlatformViewOHOSUt, HandlePlatformMessageRegistersPendingResponse) {
 
 TEST_F(PlatformViewOHOSUt, AccessibilityLifecycleAndSemanticsTree) {
   bridge()->is_accessibility_enabled_ = false;
-#if defined(OHOS_X64_UNITTEST)
-  static char provider_storage;
-  bridge()->provider_ohos_ =
-      reinterpret_cast<ArkUI_AccessibilityProvider*>(&provider_storage);
-#endif
 
   SemanticsNodeUpdates nodes;
   SemanticsNode child;
@@ -1216,13 +1132,6 @@ TEST_F(PlatformViewOHOSUt, AccessibilityLifecycleAndSemanticsTree) {
   root.childrenInTraversalOrder = {1};
   nodes[0] = root;
   base()->UpdateSemantics(kFlutterImplicitViewId, nodes, {});
-#if defined(OHOS_X64_UNITTEST)
-  auto* node1 = bridge()->tree_.FindNodeById(1);
-  ASSERT_NE(node1, nullptr);
-  auto* root_node = bridge()->tree_.FindNodeById(0);
-  ASSERT_NE(root_node, nullptr);
-  EXPECT_TRUE(node1->hasUpdate);
-#else
   EXPECT_EQ(bridge()->tree_.FindNodeById(1), nullptr);
   bridge()->tree_.UpdateWithNodes(nodes);
   auto* node1 = bridge()->tree_.FindNodeById(1);
@@ -1230,7 +1139,6 @@ TEST_F(PlatformViewOHOSUt, AccessibilityLifecycleAndSemanticsTree) {
   auto* root_node = bridge()->tree_.FindNodeById(0);
   ASSERT_NE(root_node, nullptr);
   EXPECT_TRUE(node1->hasUpdate);
-#endif
 
   auto message = std::make_unique<char[]>(16);
   std::strncpy(message.get(), "welcome", 15);
@@ -1441,11 +1349,6 @@ TEST_F(PlatformViewOHOSUt, UpdateDisplaySizeSingleAxisChangeResetsViewport) {
 
 TEST_F(PlatformViewOHOSUt, SetSemanticsTreeEnabledTrueKeepsTree) {
   bridge()->is_accessibility_enabled_ = false;
-#if defined(OHOS_X64_UNITTEST)
-  static char provider_storage;
-  bridge()->provider_ohos_ =
-      reinterpret_cast<ArkUI_AccessibilityProvider*>(&provider_storage);
-#endif
   SemanticsNodeUpdates nodes;
   SemanticsNode root;
   root.id = 0;
@@ -1456,16 +1359,9 @@ TEST_F(PlatformViewOHOSUt, SetSemanticsTreeEnabledTrueKeepsTree) {
   node.label = "keep";
   nodes[1] = node;
   base()->UpdateSemantics(kFlutterImplicitViewId, nodes, {});
-#if defined(OHOS_X64_UNITTEST)
-  ASSERT_NE(bridge()->tree_.FindNodeById(1), nullptr);
-#else
   EXPECT_EQ(bridge()->tree_.FindNodeById(1), nullptr);
-#endif
 
   base()->SetSemanticsEnabled(true);
-#if defined(OHOS_X64_UNITTEST)
-  EXPECT_NE(bridge()->tree_.FindNodeById(1), nullptr);
-#endif
 }
 
 TEST_F(PlatformViewOHOSWbTest, UnknownTextureIdReturnsEarly) {
@@ -1754,7 +1650,6 @@ TEST_F(PlatformViewOHOSWbTest, DeferredAggressiveCancelledByPipVisible) {
   EXPECT_EQ(view()->current_reclaim_level_, GpuReclaimLevel::kRestore);
 }
 
-#if !defined(OHOS_X64_UNITTEST)
 TEST_F(PlatformViewOHOSWbTest, SkiaArmOnGlContextWhenEglWorks) {
   std::shared_ptr<OHOSContext> gl_context = CreateOHOSContext(
       runners(), OHOSRenderingAPI::kOpenGLES, false, false, false);
@@ -1776,9 +1671,7 @@ TEST_F(PlatformViewOHOSWbTest, SkiaArmOnGlContextWhenEglWorks) {
   EXPECT_FALSE(gl_view.onscreen_context_valid_.load());
   FlushTasks();
 }
-#endif  // !defined(OHOS_X64_UNITTEST)
 
-#if !defined(OHOS_X64_UNITTEST)
 TEST_F(PlatformViewOHOSWbTest, TryFreeSkiaGpuResourcesOnGlContext) {
   std::shared_ptr<OHOSContext> gl_context = CreateOHOSContext(
       runners(), OHOSRenderingAPI::kOpenGLES, false, false, false);
@@ -1800,7 +1693,6 @@ TEST_F(PlatformViewOHOSWbTest, TryFreeSkiaGpuResourcesOnGlContext) {
       PlatformViewOHOS::TryFreeSkiaGpuResources(gl_surface, gl_context));
   EXPECT_EQ(gl_surface->IsValid(), was_valid);
 }
-#endif  // !defined(OHOS_X64_UNITTEST)
 
 TEST_F(PlatformViewOHOSWbTest, NullMessageGuardKeepsLifecycleState) {
   EXPECT_EQ(view()->lifecycle_state_, AppLifecycleState::kDetached);
