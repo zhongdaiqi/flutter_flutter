@@ -439,4 +439,47 @@ export default function ByteBufferTest() {
     })
   })
 
+  describe('ByteBuffer.uncovered.arms', () => {
+    it('bytesRemaining is 0 without dataView', 0, () => {
+      const empty: ByteBuffer = new ByteBuffer();
+      expect(empty.bytesRemaining).assertEqual(0);
+      const arr = empty.getUint8Array(0, 0);
+      expect(arr).not().assertNull();
+    });
+
+    it('setBool false does not throw', 0, () => {
+      const bb = ByteBuffer.from(new ArrayBuffer(4));
+      bb.setBool(0, false);
+      expect(bb.getInt8(0)).assertEqual(0);
+    });
+
+    it('setString rejects non utf-8 encoding', 0, () => {
+      const bb = ByteBuffer.from(new ArrayBuffer(16));
+      let threw = false;
+      try {
+        bb.setString(0, 'hi', 'ascii');
+      } catch (e) { threw = true; }
+      expect(threw).assertEqual(true);
+    });
+
+    it('from with explicit byteLength slices the view', 0, () => {
+      const src = new ArrayBuffer(16);
+      const bb = ByteBuffer.from(src, 0, 8);
+      expect(bb.byteLength).assertEqual(8);
+    });
+
+    it('getUint16Array with byteLength does not throw', 0, () => {
+      const bb = ByteBuffer.from(new ArrayBuffer(16));
+      const arr = bb.getUint16Array(0, 4);
+      expect(arr).not().assertNull();
+    });
+
+    it('readString without byteLength advances to end', 0, () => {
+      const bb = ByteBuffer.from(new ArrayBuffer(16));
+      bb.writeString('ab');
+      bb.reset();
+      const s = bb.readString();
+      expect(typeof s).assertEqual('string');
+    });
+  });
 }

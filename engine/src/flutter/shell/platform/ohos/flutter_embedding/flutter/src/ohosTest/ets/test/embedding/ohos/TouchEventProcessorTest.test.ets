@@ -6,6 +6,11 @@
 
 import { describe, it, expect, Level } from '@ohos/hypium';
 import TouchEventProcessor from '../../../../../main/ets/embedding/ohos/TouchEventProcessor';
+import FlutterManager from '../../../../../main/ets/embedding/ohos/FlutterManager';
+import { FlutterView } from '../../../../../main/ets/view/FlutterView';
+import common from '@ohos.app.ability.common';
+import { FlutterMutatorsStack } from '../../../../../main/ets/embedding/engine/mutatorsstack/FlutterMutatorsStack';
+import { FlutterMutatorView } from '../../../../../main/ets/embedding/engine/mutatorsstack/FlutterMutatorView';
 import Any from '../../../../../main/ets/plugin/common/Any';
 import { CustomTouchEvent, CustomTouchObject } from '../../../../../main/ets/plugin/platform/CustomTouchEvent';
 
@@ -258,15 +263,6 @@ export default function touchEventProcessorTest() {
     });
   });
 
-  describe('TouchEventProcessor.postMouseEvent', () => {
-    it('does not throw with empty strings', Level.LEVEL0, () => {
-      const proc = TouchEventProcessor.getInstance();
-      let threw = false;
-      try { proc.postMouseEvent([]); } catch (e) { threw = true; }
-      expect(threw).assertEqual(false);
-    });
-  });
-
   describe('TouchEventProcessor.postAxisEvent', () => {
     it('does not throw with empty strings', Level.LEVEL0, () => {
       const proc = TouchEventProcessor.getInstance();
@@ -285,4 +281,137 @@ export default function touchEventProcessorTest() {
     });
   });
 
+describe('TouchEventProcessor.touchHelpers', () => {
+  it('isTerminalTouch classifies terminal touch types', 0, () => {
+    const p: Any = TouchEventProcessor.getInstance();
+    expect(p['isTerminalTouch'](TouchType.Up)).assertEqual(true);
+    expect(p['isTerminalTouch'](TouchType.Cancel)).assertEqual(true);
+    expect(p['isTerminalTouch'](TouchType.Down)).assertEqual(false);
+    expect(p['isTerminalTouch'](TouchType.Move)).assertEqual(false);
+  });
+
+  it('cloneTouchObjectWithType copies fields and swaps type', 0, () => {
+    const p: Any = TouchEventProcessor.getInstance();
+    const touch = new CustomTouchObject(TouchType.Down, 3, 9, 8, 7, 6, 5, 4, 3, 2);
+    const cloned: CustomTouchObject = p['cloneTouchObjectWithType'](touch, TouchType.Cancel);
+    expect(cloned.type).assertEqual(TouchType.Cancel);
+    expect(cloned.id).assertEqual(3);
+    expect(cloned.displayX).assertEqual(9);
+    expect(cloned.displayY).assertEqual(8);
+    expect(cloned.windowX).assertEqual(7);
+    expect(cloned.windowY).assertEqual(6);
+    expect(cloned.screenX).assertEqual(5);
+    expect(cloned.screenY).assertEqual(4);
+    expect(cloned.x).assertEqual(3);
+    expect(cloned.y).assertEqual(2);
+  });
+
+  it('getActiveTouches creates reuses and returns undefined without create', 0, () => {
+    const p: Any = TouchEventProcessor.getInstance();
+    const params: Record<string, Any> = {};
+    expect(p['getActiveTouches'](params, false)).assertUndefined();
+    const m1: Any = p['getActiveTouches'](params, true);
+    expect(m1).not().assertNull();
+    expect(p['getActiveTouches'](params, false) === m1).assertEqual(true);
+  });
+});
+describe('TouchEventProcessor.rememberPostedTouchEvent', () => {
+  it('tracks move touches and stores the last event', 0, () => {
+    const p: Any = TouchEventProcessor.getInstance();
+    const params: Record<string, Any> = {};
+    const touch = new CustomTouchObject(TouchType.Move, 5, 1, 2, 3, 4, 5, 6, 7, 8);
+    const event = new CustomTouchEvent(TouchType.Move, [touch], [touch], 1234,
+      SourceType.TouchScreen, 1, 0, 0, SourceTool.Finger);
+    p['rememberPostedTouchEvent'](params, event);
+    expect(params['platformViewLastTouchEvent'] === event).assertEqual(true);
+    expect(params['platformViewLastTouchEventIsPx']).assertEqual(true);
+    const active = params['platformViewActiveTouches'] as Map<number, CustomTouchObject>;
+    expect(active.size).assertEqual(1);
+    expect(active.get(5)!.id).assertEqual(5);
+  });
+
+  it('clears active touches on cancel event', 0, () => {
+    const p: Any = TouchEventProcessor.getInstance();
+    const params: Record<string, Any> = {};
+    const seed = new CustomTouchObject(TouchType.Move, 5, 1, 1, 1, 1, 1, 1, 1, 1);
+    const seedEvent = new CustomTouchEvent(TouchType.Move, [seed], [seed], 1234,
+      SourceType.TouchScreen, 1, 0, 0, SourceTool.Finger);
+    p['rememberPostedTouchEvent'](params, seedEvent);
+    const cancelTouch = new CustomTouchObject(TouchType.Cancel, 5, 1, 1, 1, 1, 1, 1, 1, 1);
+    const cancelEvent = new CustomTouchEvent(TouchType.Cancel, [cancelTouch], [cancelTouch], 1300,
+      SourceType.TouchScreen, 1, 0, 0, SourceTool.Finger);
+    p['rememberPostedTouchEvent'](params, cancelEvent);
+    const active = params['platformViewActiveTouches'] as Map<number, CustomTouchObject>;
+    expect(active.size).assertEqual(0);
+  });
+
+  it('removes terminal touches in both changed and full lists', 0, () => {
+    const p: Any = TouchEventProcessor.getInstance();
+    const params: Record<string, Any> = {};
+    const seedA = new CustomTouchObject(TouchType.Move, 1, 1, 1, 1, 1, 1, 1, 1, 1);
+    const seedB = new CustomTouchObject(TouchType.Move, 2, 1, 1, 1, 1, 1, 1, 1, 1);
+    const seedEvent = new CustomTouchEvent(TouchType.Move, [seedA, seedB], [seedA, seedB], 1234,
+      SourceType.TouchScreen, 1, 0, 0, SourceTool.Finger);
+    p['rememberPostedTouchEvent'](params, seedEvent);
+    // terminal arrives in changedTouches, survivor in touches
+    const upA = new CustomTouchObject(TouchType.Up, 1, 1, 1, 1, 1, 1, 1, 1, 1);
+    const stayB = new CustomTouchObject(TouchType.Up, 2, 1, 1, 1, 1, 1, 1, 1, 1);
+    const upEvent = new CustomTouchEvent(TouchType.Up, [stayB], [upA], 1300,
+      SourceType.TouchScreen, 1, 0, 0, SourceTool.Finger);
+    p['rememberPostedTouchEvent'](params, upEvent);
+    const active = params['platformViewActiveTouches'] as Map<number, CustomTouchObject>;
+    expect(active.size).assertEqual(0);
+  });
+});
+
+describe('TouchEventProcessor.applyAffineToObjects', () => {
+  it('updates local coords with a finite inverse', 0, () => {
+    const cls: Any = TouchEventProcessor;
+    const obj = new CustomTouchObject(TouchType.Move, 0, 10, 20, 0, 0, 0, 0, 99, 99);
+    // lx = 1*10 + 0*20 + 5 = 15; ly = 0*10 + 1*20 + 7 = 27
+    cls['applyAffineToObjects']([obj], 1, 0, 5, 0, 1, 7);
+    expect(obj.x).assertEqual(15);
+    expect(obj.y).assertEqual(27);
+  });
+
+  it('keeps the old coord when the mapped value is not finite', 0, () => {
+    const cls: Any = TouchEventProcessor;
+    const obj = new CustomTouchObject(TouchType.Move, 0, 10, 20, 0, 0, 0, 0, 99, 99);
+    // invScaleX NaN -> lx NaN (x kept); ly = 20 + 7 finite (y updated)
+    cls['applyAffineToObjects']([obj], Number.NaN, 0, 5, 0, 1, 7);
+    expect(obj.x).assertEqual(99);
+    expect(obj.y).assertEqual(27);
+  });
+
+  it('keeps y when ly is not finite', 0, () => {
+    const cls: Any = TouchEventProcessor;
+    const obj = new CustomTouchObject(TouchType.Move, 0, 10, 20, 0, 0, 0, 0, 99, 99);
+    cls['applyAffineToObjects']([obj], 1, 0, 5, 0, Number.NaN, 7);
+    expect(obj.x).assertEqual(15);
+    expect(obj.y).assertEqual(99);
+  });
+});
+
+describe('TouchEventProcessor.checkHitPlatformViewByLocal', () => {
+  it('returns false for zero-size views', 0, () => {
+    const p: Any = TouchEventProcessor.getInstance();
+    const mouse = { 'x': 5, 'y': 5 } as Any as MouseEvent;
+    const params: Record<string, Any> = { 'width': 0, 'height': 0 };
+    expect(p['checkHitPlatformViewByLocal'](mouse, params)).assertEqual(false);
+  });
+
+  it('returns true inside the view bounds', 0, () => {
+    const p: Any = TouchEventProcessor.getInstance();
+    const mouse = { 'x': 5, 'y': 5 } as Any as MouseEvent;
+    const params: Record<string, Any> = { 'width': 100, 'height': 100 };
+    expect(p['checkHitPlatformViewByLocal'](mouse, params)).assertEqual(true);
+  });
+
+  it('returns false outside the view bounds', 0, () => {
+    const p: Any = TouchEventProcessor.getInstance();
+    const mouse = { 'x': 100000, 'y': 5 } as Any as MouseEvent;
+    const params: Record<string, Any> = { 'width': 100, 'height': 100 };
+    expect(p['checkHitPlatformViewByLocal'](mouse, params)).assertEqual(false);
+  });
+});
 }

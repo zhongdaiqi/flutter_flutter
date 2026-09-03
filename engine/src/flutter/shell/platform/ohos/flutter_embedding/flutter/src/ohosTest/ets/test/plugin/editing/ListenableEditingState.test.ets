@@ -39,6 +39,19 @@ class TestWatcher implements EditingStateWatcher {
   }
 }
 
+class NestedBatchWatcher implements EditingStateWatcher {
+  host: ListenableEditingState | null = null;
+  extra: TestWatcher = new TestWatcher();
+  didChangeEditingState(_t: boolean, _sel: boolean, _c: boolean): void {
+    if (this.host !== null) {
+      this.host.addEditingStateListener(this.extra);
+      this.host.beginBatchEdit();
+      this.host.removeEditingStateListener(this.extra);
+      this.host.endBatchEdit();
+    }
+  }
+}
+
 class TestMovement implements inputMethod.Movement {
   direction: inputMethod.Direction;
   constructor(direction: inputMethod.Direction) {
@@ -1658,6 +1671,105 @@ export default function ListenableEditingStateTest() {
       s.setSelectionEnd(1);
       s.handleInsertTextEvent('XY');
       expect(s.getStringCache()).assertEqual('aXYef');
+    });
+
+    it('handleMoveCursorEvent unknown direction does not throw', 0, () => {
+      const s: ListenableEditingState = new ListenableEditingState(null, 0, undefined);
+      s.setStringCache('ab');
+      s.setSelectionStart(1);
+      s.setSelectionEnd(1);
+      let threw = false;
+      try { s.handleMoveCursorEvent(99 as inputMethod.Direction); } catch (e) { threw = true; }
+      expect(threw).assertEqual(false);
+      expect(s.getSelectionStart()).assertEqual(1);
+      expect(s.getSelectionEnd()).assertEqual(1);
+    });
+
+    it('handleExtendActionEvent unknown action does not throw', 0, () => {
+      const s: ListenableEditingState = new ListenableEditingState(null, 0, undefined);
+      s.setStringCache('ab');
+      let threw = false;
+      try { s.handleExtendActionEvent(99 as inputMethod.ExtendAction); } catch (e) { threw = true; }
+      expect(threw).assertEqual(false);
+    });
+
+    it('notifyListener forwards flags to watcher', 0, () => {
+      const s: ListenableEditingState = new ListenableEditingState(null, 0, undefined);
+      const watcher: TestWatcher = new TestWatcher();
+      s.notifyListener(watcher, true, false, true);
+      expect(watcher.callCount).assertEqual(1);
+      expect(watcher.textChanged).assertEqual(true);
+      expect(watcher.compChanged).assertEqual(true);
+    });
+
+    it('handleInsertPreviewTextEvent returns when listeners are null', 0, () => {
+      const s: ListenableEditingState = new ListenableEditingState(null, 0, undefined);
+      s.setStringCache('abc');
+      const anyS: Any = s;
+      anyS['mListeners'] = null;
+      let threw = false;
+      try { s.handleInsertPreviewTextEvent('X', new TestRange(1, 1)); } catch (e) { threw = true; }
+      expect(threw).assertEqual(false);
+    });
+
+    it('beginBatchEdit logs when called from listener', 0, () => {
+      const s: ListenableEditingState = new ListenableEditingState(null, 0, undefined);
+      const watcher: NestedBatchWatcher = new NestedBatchWatcher();
+      watcher.host = s;
+      let threw = false;
+      try { s.notifyListener(watcher, true, false, false); } catch (e) { threw = true; }
+      expect(threw).assertEqual(false);
+    });
+
+    it('handleNewlineEvent inserts in the middle of text', 0, () => {
+      const s: ListenableEditingState = new ListenableEditingState(null, 0, undefined);
+      s.setStringCache('ab');
+      s.setSelectionStart(1);
+      s.setSelectionEnd(1);
+      s.handleNewlineEvent();
+      expect(s.getStringCache()).assertEqual('a\nb');
+      expect(s.getSelectionStart()).assertEqual(2);
+      expect(s.getSelectionEnd()).assertEqual(2);
+    });
+
+    it('handleNewlineEvent returns when listeners are null', 0, () => {
+      const s: ListenableEditingState = new ListenableEditingState(null, 0, undefined);
+      s.setStringCache('ab');
+      s.setSelectionStart(2);
+      s.setSelectionEnd(2);
+      const anyS: Any = s;
+      anyS['mListeners'] = null;
+      let threw = false;
+      try { s.handleNewlineEvent(); } catch (e) { threw = true; }
+      expect(threw).assertEqual(false);
+    });
+
+    it('handleInsertTextEvent returns when listeners are null', 0, () => {
+      const s: ListenableEditingState = new ListenableEditingState(null, 0, undefined);
+      s.setStringCache('ab');
+      const anyS: Any = s;
+      anyS['mListeners'] = null;
+      let threw = false;
+      try { s.handleInsertTextEvent('x'); } catch (e) { threw = true; }
+      expect(threw).assertEqual(false);
+    });
+
+    it('handleMoveCursorEvent collapses a range selection', 0, () => {
+      const s: ListenableEditingState = new ListenableEditingState(null, 0, undefined);
+      s.setStringCache('abcd');
+      s.setSelectionStart(1);
+      s.setSelectionEnd(3);
+      s.handleMoveCursorEvent(inputMethod.Direction.CURSOR_LEFT);
+      expect(s.getSelectionStart()).assertEqual(1);
+      expect(s.getSelectionEnd()).assertEqual(1);
+    });
+
+    it('handleSelectByMovementEvent unknown direction does not throw', 0, () => {
+      const s: ListenableEditingState = new ListenableEditingState(null, 0, undefined);
+      const movement: TestMovement = new TestMovement(99 as inputMethod.Direction);
+      let threw = false;
+      try { s.handleSelectByMovementEvent(movement); } catch (e) { threw = true; }
+      expect(threw).assertEqual(false);
     });
     })
 }

@@ -70,6 +70,26 @@ function makePageNode(id: number, type: number, value: string, focused: boolean 
   };
 }
 
+class FakeAbilityInfo {
+  moduleName: string = '';
+  name: string = '';
+}
+
+class FakeAbilityContext {
+  abilityInfo: FakeAbilityInfo | null = null;
+}
+
+class ThrowingAbilityContext {
+  get abilityInfo(): FakeAbilityInfo {
+    throw new Error('no info');
+  }
+}
+
+class FakeAutoSaveCallback {
+  onSuccess: () => void = (): void => {};
+  onFailure: () => void = (): void => {};
+}
+
 export default function ohosAutoFillHelperTest() {
   describe('OhosAutoFillHelper.hintToAutoFillType', () => {
     it('maps password hint', Level.LEVEL1, () => {
@@ -409,6 +429,39 @@ export default function ohosAutoFillHelperTest() {
       // Only one node (f2 skipped)
       expect(vd.pageNodeInfos.length).assertEqual(1);
     });
+
+    it('uses stored valid fieldRects in rectForField', Level.LEVEL1, () => {
+      const cfg: Configuration = makeConfig(makeAutofill('u', new Array<string>('username'), 'u'));
+      const m: Map<string, number> = new Map<string, number>();
+      m.set('u', 0);
+      const fieldRects: Map<string, AutoFillFieldRect> = new Map<string, AutoFillFieldRect>();
+      fieldRects.set('u', makeRect(5, 6, 40, 50));
+      const vd = OhosAutoFillHelper.buildViewData(makeHostInfo(), cfg, m, null, null, fieldRects);
+      expect(vd.pageNodeInfos[0].rect.width).assertEqual(40);
+      expect(vd.pageNodeInfos[0].rect.height).assertEqual(50);
+    });
+
+    it('unfocused field reuses valid focusedFieldRect', Level.LEVEL1, () => {
+      const f1: Configuration = makeConfig(makeAutofill('u', new Array<string>('username'), 'u'));
+      const f2: Configuration = makeConfig(makeAutofill('p', new Array<string>('password'), 'p'));
+      const cfg: Configuration = makeConfig(
+        makeAutofill('u', new Array<string>('username'), 'u'),
+        new Array<Configuration>(f1, f2)
+      );
+      const m: Map<string, number> = new Map<string, number>();
+      m.set('u', 0);
+      m.set('p', 1);
+      const vd = OhosAutoFillHelper.buildViewData(makeHostInfo(), cfg, m, makeRect(1, 2, 30, 40), null);
+      expect(vd.pageNodeInfos.length).assertEqual(2);
+    });
+
+    it('primaryHintTag falls back when hints are empty', Level.LEVEL1, () => {
+      const cfg: Configuration = makeConfig(makeAutofill('u', new Array<string>(), 'alice', 'hint'));
+      const m: Map<string, number> = new Map<string, number>();
+      m.set('u', 0);
+      const vd = OhosAutoFillHelper.buildViewData(makeHostInfo(), cfg, m, null, null);
+      expect(vd.pageNodeInfos.length).assertEqual(1);
+    });
   });
 
   describe('OhosAutoFillHelper.buildViewDataForSave (extended)', () => {
@@ -473,6 +526,84 @@ export default function ohosAutoFillHelperTest() {
       const vd: OhosViewData = makeViewData(new Array<OhosPageNodeInfo>());
       const m: Map<number, string> = OhosAutoFillHelper.parseFillResult(vd as Any);
       expect(m.size).assertEqual(0);
+    });
+  });
+
+  describe('OhosAutoFillHelper.setHostAbilityContext.and.request', () => {
+    it('setHostAbilityContext with abilityInfo names', Level.LEVEL1, () => {
+      const info: FakeAbilityInfo = new FakeAbilityInfo();
+      info.moduleName = 'entry';
+      info.name = 'EntryAbility';
+      const ctx: FakeAbilityContext = new FakeAbilityContext();
+      ctx.abilityInfo = info;
+      let threw = false;
+      try {
+        OhosAutoFillHelper.setHostAbilityContext(ctx as Any);
+      } catch (e) { threw = true; }
+      expect(threw).assertEqual(false);
+    });
+
+    it('setHostAbilityContext with empty abilityInfo', Level.LEVEL1, () => {
+      const ctx: FakeAbilityContext = new FakeAbilityContext();
+      ctx.abilityInfo = null;
+      let threw = false;
+      try {
+        OhosAutoFillHelper.setHostAbilityContext(ctx as Any);
+      } catch (e) { threw = true; }
+      expect(threw).assertEqual(false);
+    });
+
+    it('setHostAbilityContext swallows getter throw', Level.LEVEL1, () => {
+      let threw = false;
+      try {
+        OhosAutoFillHelper.setHostAbilityContext(new ThrowingAbilityContext() as Any);
+      } catch (e) { threw = true; }
+      expect(threw).assertEqual(false);
+    });
+
+    it('setHostAbilityContext ignores empty module and ability names', Level.LEVEL1, () => {
+      const info: FakeAbilityInfo = new FakeAbilityInfo();
+      info.moduleName = '';
+      info.name = '';
+      const ctx: FakeAbilityContext = new FakeAbilityContext();
+      ctx.abilityInfo = info;
+      let threw = false;
+      try {
+        OhosAutoFillHelper.setHostAbilityContext(ctx as Any);
+      } catch (e) { threw = true; }
+      expect(threw).assertEqual(false);
+    });
+
+    it('requestAutoFill invokes failure callback without crashing', Level.LEVEL1, () => {
+      let failed = false;
+      let threw = false;
+      try {
+        OhosAutoFillHelper.requestAutoFill(
+          null as Any,
+          makeViewData(new Array<OhosPageNodeInfo>()),
+          0,
+          (_v: Map<number, string>) => {},
+          (_c: number) => { failed = true; }
+        );
+      } catch (e) { threw = true; }
+      expect(threw).assertEqual(false);
+      expect(failed).assertEqual(true);
+    });
+
+    it('requestAutoSave invokes failure for invalid view data', Level.LEVEL1, () => {
+      let failed = false;
+      let threw = false;
+      try {
+        const cb: FakeAutoSaveCallback = new FakeAutoSaveCallback();
+        cb.onFailure = (): void => { failed = true; };
+        OhosAutoFillHelper.requestAutoSave(
+          null as Any,
+          makeViewData(new Array<OhosPageNodeInfo>()),
+          cb as Any
+        );
+      } catch (e) { threw = true; }
+      expect(threw).assertEqual(false);
+      expect(failed).assertEqual(true);
     });
   });
 }

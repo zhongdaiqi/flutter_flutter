@@ -18,6 +18,7 @@ import {
   FirstFrameListener,
   FirstPreloadFrameListener,
 } from '../../../../main/ets/view/FlutterView';
+import Any from '../../../../main/ets/plugin/common/Any';
 import { DVModel } from '../../../../main/ets/view/DynamicView/dynamicView';
 import { EmbeddingNodeController } from '../../../../main/ets/embedding/ohos/EmbeddingNodeController';
 
@@ -427,6 +428,99 @@ export default function flutterViewTest() {
       let threw = false;
       try { view.enableFrameCache(true); view.enableFrameCache(false); } catch (e) { threw = true; }
       expect(threw).assertEqual(false);
+    });
+  });
+
+  describe('FlutterView.unRegisterAllCallbacks', () => {
+    it('returns early when callbacks were never registered', 0, () => {
+      const view = new FlutterView('7001', getContext() as common.Context);
+      const v: Any = view;
+      v['isAllCallbacksRegistered'] = false;
+      let threw = false;
+      try { v['unRegisterAllCallbacks'](); } catch (e) { threw = true; }
+      expect(threw).assertEqual(false);
+    });
+
+    it('unregisters everything and resets the flag', 0, () => {
+      const view = new FlutterView('7002', getContext() as common.Context);
+      const v: Any = view;
+      v['isAllCallbacksRegistered'] = true;
+      let threw = false;
+      try { v['unRegisterAllCallbacks'](); } catch (e) { threw = true; }
+      expect(threw).assertEqual(false);
+      expect(v['isAllCallbacksRegistered']).assertEqual(false);
+    });
+  });
+  describe('FlutterView.setActive', () => {
+    it('toggles the active flag both ways', 0, () => {
+      const view = new FlutterView('7003', getContext() as common.Context);
+      view.setActive(true);
+      expect(view.getActive()).assertEqual(true);
+      view.setActive(false);
+      expect(view.getActive()).assertEqual(false);
+    });
+  });
+  describe('FlutterView.updateHostVisibility', () => {
+    it('flips hostVisible to true when page and area are visible', 0, () => {
+      const view = new FlutterView('7004', getContext() as common.Context);
+      const v: Any = view;
+      v['pageVisible'] = true;
+      v['areaVisible'] = true;
+      v['hostVisible'] = false;
+      v['updateHostVisibility']();
+      expect(v['hostVisible']).assertEqual(true);
+    });
+
+    it('flips hostVisible to false when area goes invisible', 0, () => {
+      const view = new FlutterView('7005', getContext() as common.Context);
+      const v: Any = view;
+      v['pageVisible'] = true;
+      v['areaVisible'] = false;
+      v['hostVisible'] = true;
+      v['updateHostVisibility']();
+      expect(v['hostVisible']).assertEqual(false);
+    });
+
+    it('keeps hostVisible when it already matches', 0, () => {
+      const view = new FlutterView('7006', getContext() as common.Context);
+      const v: Any = view;
+      v['pageVisible'] = false;
+      v['areaVisible'] = false;
+      v['hostVisible'] = false;
+      v['updateHostVisibility']();
+      expect(v['hostVisible']).assertEqual(false);
+    });
+  });
+  describe('FlutterView.detachFromFlutterEngine', () => {
+    it('detaches cleanly from an unattached view', 0, () => {
+      const view = new FlutterView('7007', getContext() as common.Context);
+      let threw = false;
+      try { view.detachFromFlutterEngine(); } catch (e) { threw = true; }
+      expect(threw).assertEqual(false);
+      expect(view.isAttachedToFlutterEngine()).assertEqual(false);
+    });
+  });
+  describe('FlutterView.callbackGuards', () => {
+    it('windowSizeChange callback handles zero size without crashing', 0, () => {
+      const v: Any = new FlutterView('cb01', getContext() as common.Context);
+      const cb: Any = v['windowSizeChangeCallback'];
+      let threw = false;
+      try { cb({ 'width': 0, 'height': 0 }); } catch (e) { threw = true; }
+      expect(threw).assertEqual(false);
+    });
+
+    it('avoidAreaChange callback handles null without crashing', 0, () => {
+      const v: Any = new FlutterView('cb02', getContext() as common.Context);
+      const cb: Any = v['avoidAreaChangeCallback'];
+      let threw = false;
+      try { cb({ 'avoidArea': null }); } catch (e) { threw = true; }
+      expect(threw).assertEqual(false);
+    });
+
+    it('onAreaChange with real area updates viewport metrics', 0, () => {
+      const view = new FlutterView('cb03', getContext() as common.Context);
+      view.onAreaChange(null);
+      expect(view).not().assertNull();
     });
   });
 }

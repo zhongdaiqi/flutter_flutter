@@ -456,5 +456,139 @@ export default function platformViewsChannelTest() {
       expect(true).assertEqual(true);
     });
   });
+
+  describe('PlatformViewsChannel.create.hybrid.and.errors', () => {
+    it('invokeViewFocused does not throw', Level.LEVEL0, () => {
+      const channel: PlatformViewsChannel = createChannel();
+      let threw = false;
+      try { channel.invokeViewFocused(9); } catch (e) { threw = true; }
+      expect(threw).assertEqual(false);
+    });
+
+    it('create hybrid uses createForPlatformViewLayer and RTL', Level.LEVEL0, () => {
+      const channel: PlatformViewsChannel = createChannel();
+      const handler: FakePlatformViewsHandler = new FakePlatformViewsHandler();
+      channel.setPlatformViewsHandler(handler);
+      const result: FakeMethodResult = new FakeMethodResult();
+      const args: Map<string, Any> = new Map();
+      args.set('id', 7);
+      args.set('viewType', 'hybrid_view');
+      args.set('direction', 1);
+      args.set('hybrid', true);
+      channel.create(new MethodCall('create', args), result);
+      expect(handler.createPlatformViewCalls).assertEqual(1);
+      expect(result.successCalls).assertEqual(1);
+    });
+
+    it('create texture with hybridFallback and NON_TEXTURE_FALLBACK returns null', Level.LEVEL0, () => {
+      const channel: PlatformViewsChannel = createChannel();
+      const handler: FakePlatformViewsHandler = new FakePlatformViewsHandler();
+      handler.createTextureResult = -2;
+      channel.setPlatformViewsHandler(handler);
+      const result: FakeMethodResult = new FakeMethodResult();
+      const args: Map<string, Any> = new Map();
+      args.set('id', 2);
+      args.set('viewType', 'tex');
+      args.set('width', 10);
+      args.set('height', 20);
+      args.set('direction', 0);
+      args.set('hybridFallback', true);
+      args.set('top', 1);
+      args.set('left', 2);
+      channel.create(new MethodCall('create', args), result);
+      expect(handler.createTextureCalls).assertEqual(1);
+      expect(result.successCalls).assertEqual(1);
+      expect(result.successResult).assertEqual(null);
+    });
+
+    it('create texture NON_TEXTURE_FALLBACK without hybridFallback errors', Level.LEVEL0, () => {
+      const channel: PlatformViewsChannel = createChannel();
+      const handler: FakePlatformViewsHandler = new FakePlatformViewsHandler();
+      handler.createTextureResult = -2;
+      channel.setPlatformViewsHandler(handler);
+      const result: FakeMethodResult = new FakeMethodResult();
+      const args: Map<string, Any> = new Map();
+      args.set('id', 3);
+      args.set('viewType', 'tex');
+      args.set('width', 10);
+      args.set('height', 20);
+      args.set('direction', 0);
+      channel.create(new MethodCall('create', args), result);
+      expect(result.errorCalls).assertEqual(1);
+    });
+
+    it('dispose resize offset setDirection catch handler throw', Level.LEVEL0, () => {
+      const channel: PlatformViewsChannel = createChannel();
+      class ThrowingHandler extends FakePlatformViewsHandler {
+        dispose(_viewId: number): void { throw new Error('dispose boom'); }
+        resize(_req: PlatformViewResizeRequest, _cb: PlatformViewBufferResized): void {
+          throw new Error('resize boom');
+        }
+        offset(_id: number, _top: number, _left: number, _t?: Array<number>): void {
+          throw new Error('offset boom');
+        }
+        setDirection(_id: number, _d: Direction): void { throw new Error('dir boom'); }
+        onTouch(_t: PlatformViewTouch): void { throw new Error('touch boom'); }
+      }
+      const handler: ThrowingHandler = new ThrowingHandler();
+      channel.setPlatformViewsHandler(handler);
+      const disposeResult: FakeMethodResult = new FakeMethodResult();
+      const idArgs: Map<string, Any> = new Map();
+      idArgs.set('id', 1);
+      channel.dispose(new MethodCall('dispose', idArgs), disposeResult);
+      expect(disposeResult.errorCalls).assertEqual(1);
+      const resizeResult: FakeMethodResult = new FakeMethodResult();
+      const resizeArgs: Map<string, Any> = new Map();
+      resizeArgs.set('id', 1);
+      resizeArgs.set('width', 8);
+      resizeArgs.set('height', 9);
+      channel.resize(new MethodCall('resize', resizeArgs), resizeResult);
+      expect(resizeResult.errorCalls).assertEqual(1);
+      const offsetResult: FakeMethodResult = new FakeMethodResult();
+      const offsetArgs: Map<string, Any> = new Map();
+      offsetArgs.set('id', 1);
+      offsetArgs.set('top', 0);
+      offsetArgs.set('left', 0);
+      offsetArgs.set('transform', [1, 0, 0, 0, 1, 0]);
+      channel.offset(new MethodCall('offset', offsetArgs), offsetResult);
+      expect(offsetResult.errorCalls).assertEqual(1);
+      const dirResult: FakeMethodResult = new FakeMethodResult();
+      const dirArgs: Map<string, Any> = new Map();
+      dirArgs.set('id', 1);
+      dirArgs.set('direction', 1);
+      channel.setDirection(new MethodCall('setDirection', dirArgs), dirResult);
+      expect(dirResult.errorCalls).assertEqual(1);
+      const touchResult: FakeMethodResult = new FakeMethodResult();
+      const touchArgs: Array<Any> = [1, 100, 200, 0, 1, null, null, 0, 0, 1.0, 1.0, 1, 0, 0, 0, 1];
+      channel.touch(new MethodCall('touch', touchArgs), touchResult);
+      expect(touchResult.errorCalls).assertEqual(1);
+    });
+
+    it('setDirection falls back to Ltr for unsupported value', Level.LEVEL0, () => {
+      const channel: PlatformViewsChannel = createChannel();
+      const handler: FakePlatformViewsHandler = new FakePlatformViewsHandler();
+      channel.setPlatformViewsHandler(handler);
+      const result: FakeMethodResult = new FakeMethodResult();
+      const args: Map<string, Any> = new Map();
+      args.set('id', 4);
+      args.set('direction', 99);
+      channel.setDirection(new MethodCall('setDirection', args), result);
+      expect(result.successCalls).assertEqual(1);
+    });
+
+    it('offset with null transform still succeeds', Level.LEVEL0, () => {
+      const channel: PlatformViewsChannel = createChannel();
+      const handler: FakePlatformViewsHandler = new FakePlatformViewsHandler();
+      channel.setPlatformViewsHandler(handler);
+      const result: FakeMethodResult = new FakeMethodResult();
+      const args: Map<string, Any> = new Map();
+      args.set('id', 5);
+      args.set('top', 3);
+      args.set('left', 4);
+      args.set('transform', null);
+      channel.offset(new MethodCall('offset', args), result);
+      expect(result.successCalls).assertEqual(1);
+    });
+  });
 }
 

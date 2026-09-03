@@ -23,6 +23,8 @@ import FlutterApplicationInfo from '../../../../../main/ets/embedding/engine/loa
 import { FlutterCallbackInformation } from '../../../../../main/ets/view/FlutterCallbackInformation';
 import FlutterLoader from '../../../../../main/ets/embedding/engine/loader/FlutterLoader';
 import { Action } from '../../../../../main/ets/embedding/engine/systemchannels/AccessibilityChannel';
+import Any from '../../../../../main/ets/plugin/common/Any';
+import FlutterInjector from '../../../../../main/ets/FlutterInjector';
 
 //jit产物默认kenel文件
 const DEFAULT_KERNEL_BLOB = "kernel_blob.bin";
@@ -637,8 +639,26 @@ it('setExternalNativeImagePtr does not throw when detached', 0, () => {
       try { attachedNapi.setPipVisible(true); attachedNapi.setPipVisible(false); } catch (e) { threw = true; }
       expect(threw).assertEqual(false);
     });
+  })
 
-      })
+describe('FlutterNapi.stateChange', () => {
+  it('accessibilityStateChange toggles without a delegate', 0, () => {
+    const napi: Any = FlutterInjector.getInstance().getFlutterNapi();
+    let threw = false;
+    try {
+      napi['accessibilityStateChange'](true);
+      napi['accessibilityStateChange'](false);
+    } catch (e) { threw = true; }
+    expect(threw).assertEqual(false);
+  });
+
+  it('resetExternalTexture with a valid id does not throw', 0, () => {
+    const napi: Any = FlutterInjector.getInstance().getFlutterNapi();
+    let threw = false;
+    try { napi['resetExternalTexture'](1); } catch (e) { threw = true; }
+    expect(threw).assertEqual(false);
+  });
+});
 }
 
 class InitResult {

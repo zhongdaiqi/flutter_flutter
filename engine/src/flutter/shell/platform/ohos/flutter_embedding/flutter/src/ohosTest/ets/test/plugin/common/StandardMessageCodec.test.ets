@@ -7,6 +7,8 @@
 import { describe, it, expect, Level } from '@ohos/hypium';
 import Any from '../../../../../main/ets/plugin/common/Any';
 import StandardMessageCodec from '../../../../../main/ets/plugin/common/StandardMessageCodec';
+import { ByteBuffer } from '../../../../../main/ets/util/ByteBuffer';
+import HashMap from '@ohos.util.HashMap';
 
 export default function standardMessageCodecTest() {
   const codec = StandardMessageCodec.INSTANCE;
@@ -205,6 +207,63 @@ export default function standardMessageCodecTest() {
       } catch (e) {
         threw = true;
       }
+      expect(threw).assertEqual(true);
+    });
+  });
+
+  describe('StandardMessageCodec.writeValue.edge', () => {
+    it('round-trips int64 number beyond int32', Level.LEVEL1, () => {
+      const number = 3000000000;
+      const decoded: Any = codec.decodeMessage(codec.encodeMessage(number));
+      expect(decoded).assertEqual(number);
+    });
+
+    it('encodes integer outside max safe integer as float64', Level.LEVEL1, () => {
+      const number = 1e20;
+      let threw = false;
+      try {
+        const encoded = codec.encodeMessage(number);
+        expect(encoded).not().assertNull();
+      } catch (e) { threw = true; }
+      expect(threw).assertEqual(false);
+    });
+
+    it('encodes bigint outside int64 as BIGINT', Level.LEVEL1, () => {
+      const value: bigint = BigInt('1267650600228229401496703205376');
+      const decoded: Any = codec.decodeMessage(codec.encodeMessage(value));
+      expect(decoded).assertEqual(value);
+    });
+
+    it('round-trips HashMap as map', Level.LEVEL1, () => {
+      const hm: HashMap<string, number> = new HashMap<string, number>();
+      hm.set('k', 1);
+      const decoded: Any = codec.decodeMessage(codec.encodeMessage(hm));
+      expect(decoded).not().assertNull();
+    });
+
+    it('throws for unsupported function value', Level.LEVEL1, () => {
+      let threw = false;
+      try {
+        codec.encodeMessage((): void => {});
+      } catch (e) { threw = true; }
+      expect(threw).assertEqual(true);
+    });
+
+    it('writeSize compact encodings and unknown type', Level.LEVEL1, () => {
+      const stream = ByteBuffer.from(new ArrayBuffer(32));
+      codec.writeSize(stream, 10);
+      codec.writeSize(stream, 300);
+      codec.writeSize(stream, 70000);
+      codec.writeAlignment(stream, 1);
+      stream.reset();
+      expect(codec.readSize(stream)).assertEqual(10);
+      expect(codec.readSize(stream)).assertEqual(300);
+      expect(codec.readSize(stream)).assertEqual(70000);
+      codec.readAlignment(ByteBuffer.from(new ArrayBuffer(16)), 8);
+      let threw = false;
+      try {
+        codec.readValueOfType(99, ByteBuffer.from(new ArrayBuffer(8)));
+      } catch (e) { threw = true; }
       expect(threw).assertEqual(true);
     });
   });

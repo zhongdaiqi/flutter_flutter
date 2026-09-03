@@ -1,7 +1,7 @@
 import { describe, it, expect, Level } from '@ohos/hypium';
 import { HashMap } from '@kit.ArkTS';
 import Any from '../../../../../../main/ets/plugin/common/Any';
-import AccessibilityChannel, { Action } from '../../../../../../main/ets/embedding/engine/systemchannels/AccessibilityChannel';
+import AccessibilityChannel, { Action, DefaultHandler } from '../../../../../../main/ets/embedding/engine/systemchannels/AccessibilityChannel';
 import DartExecutor from '../../../../../../main/ets/embedding/engine/dart/DartExecutor';
 import FlutterNapi from '../../../../../../main/ets/embedding/engine/FlutterNapi';
 import { resourceManager } from '@kit.LocalizationKit';
@@ -295,6 +295,25 @@ export default function accessibilityChannelTest() {
         channel.dispatchSemanticsAction(3, Action.SCROLL_RIGHT);
       } catch (e) { threw = true; }
       expect(threw).assertEqual(false);
+    });
+  });
+
+  describe('AccessibilityChannel.DefaultHandler', () => {
+    it('announce onTap onLongPress onTooltip throw without native shell', Level.LEVEL1, () => {
+      const flutterNapi: FlutterNapi = new FlutterNapi();
+      const handler = new DefaultHandler(flutterNapi);
+      let announceThrew = false;
+      try { handler.announce('hello'); } catch (e) { announceThrew = true; }
+      expect(announceThrew).assertEqual(true);
+      let tapThrew = false;
+      try { handler.onTap(1); } catch (e) { tapThrew = true; }
+      expect(tapThrew).assertEqual(true);
+      let longPressThrew = false;
+      try { handler.onLongPress(2); } catch (e) { longPressThrew = true; }
+      expect(longPressThrew).assertEqual(true);
+      let tooltipThrew = false;
+      try { handler.onTooltip('tip'); } catch (e) { tooltipThrew = true; }
+      expect(tooltipThrew).assertEqual(true);
     });
   });
 }

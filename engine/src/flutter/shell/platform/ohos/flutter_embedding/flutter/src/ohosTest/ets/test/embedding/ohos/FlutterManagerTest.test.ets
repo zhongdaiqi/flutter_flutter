@@ -16,7 +16,7 @@ import { beforeAll, describe, expect, it } from '@ohos/hypium';
 import { window } from '@kit.ArkUI';
 import common from '@ohos.app.ability.common';
 import { Context } from '@kit.AbilityKit';
-import FlutterManager, { FullScreenListener, DragDropCallback } from '../../../../../main/ets/embedding/ohos/FlutterManager';
+import FlutterManager, { FullScreenListener, DragDropCallback, DefaultFullScreenListener } from '../../../../../main/ets/embedding/ohos/FlutterManager';
 
 function sleep(time: number) {
   return new Promise<void>((resolve: Function) => setTimeout(resolve, time));
@@ -246,6 +246,39 @@ export default function FlutterManagerTest() {
       expect(threw).assertEqual(false);
     })
   })
+
+describe('FlutterManager.DefaultFullScreenListener', () => {
+  it('setUseFullScreenForFreeWindow applies the flag before window work', 0, () => {
+    const listener = new DefaultFullScreenListener();
+    expect(listener.useFullScreen()).assertEqual(true);
+    try {
+      listener.setUseFullScreenForFreeWindow(false);
+    } catch (e) {
+      // window stage is unavailable in the test environment; the flag is
+      // applied before that call, which is what this test pins.
+    }
+    expect(listener.useFullScreen()).assertEqual(false);
+  });
+
+  it('setUseFullScreen applies the flag before window work', 0, () => {
+    const listener = new DefaultFullScreenListener();
+    try {
+      listener.setUseFullScreen(false);
+    } catch (e) {
+      // same window-stage boundary as above
+    }
+    expect(listener.useFullScreen()).assertEqual(false);
+  });
+});
+describe('FlutterManager.freeWindowMode', () => {
+  it('isInFreeMultiWindowMode returns false without a window stage', 0, () => {
+    let result: boolean = true;
+    let threw = false;
+    try { result = FlutterManager.getInstance().isInFreeMultiWindowMode(); } catch (e) { threw = true; }
+    expect(threw).assertEqual(false);
+    expect(result).assertEqual(false);
+  });
+});
 }
 
 class DragDropCallbackImpl implements DragDropCallback {
@@ -258,4 +291,6 @@ class TestFullScreenListener implements FullScreenListener {
   setUseFullScreen(_useFullScreen: boolean, _context?: Context | null | undefined): void {}
   setUseFullScreenForFreeWindow(_useFullScreen: boolean, _context?: Context | null | undefined): void {}
   onScreenStateChanged(_data: window.WindowStatusType): void {}
+
+
 }

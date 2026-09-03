@@ -20,6 +20,35 @@ import intl from '@ohos.intl';
 import DartExecutor from '../../../../../main/ets/embedding/engine/dart/DartExecutor';
 import FlutterInjector from '../../../../../main/ets/FlutterInjector';
 import Any from '../../../../../main/ets/plugin/common/Any';
+import MethodCall from '../../../../../main/ets/plugin/common/MethodCall';
+import { MethodResult } from '../../../../../main/ets/plugin/common/MethodChannel';
+
+class LocResourceResult implements MethodResult {
+  successCalls: number = 0;
+  successValue: Any = undefined;
+  errorCalls: number = 0;
+  notImplCalls: number = 0;
+  success(result: Any): void {
+    this.successCalls++;
+    this.successValue = result;
+  }
+  error(_c: string, _m: string, _d: Any): void {
+    this.errorCalls++;
+  }
+  notImplemented(): void {
+    this.notImplCalls++;
+  }
+}
+
+class LocPluginFixture {
+  public plugin: Any;
+  constructor() {
+    const context: Any = getContext();
+    const channel = new LocalizationChannel(
+      new DartExecutor(FlutterInjector.getInstance().getFlutterNapi(), context.resourceManager));
+    this.plugin = new LocalizationPlugin(context, channel);
+  }
+}
 
 export default function LocalizationPluginTest() {
   describe('LocalizationPluginTest', () => {
@@ -52,4 +81,68 @@ export default function LocalizationPluginTest() {
       localizationPlugin.sendLocaleToFlutter();
     })
   })
+describe('LocalizationPlugin.localeFromString', () => {
+  it('parses language script and country', 0, () => {
+    const fx = new LocPluginFixture();
+    const plugin: Any = fx.plugin;
+    const locale: Any = plugin['localeFromString']('zh-Hans-CN');
+    expect(locale.language).assertEqual('zh');
+    expect(locale.script).assertEqual('Hans');
+    expect(locale.region).assertEqual('CN');
+  });
+
+    it('parses language and country without script', 0, () => {
+    const fx = new LocPluginFixture();
+    const plugin: Any = fx.plugin;
+    const locale: Any = plugin['localeFromString']('zh_CN');
+    expect(locale.language).assertEqual('zh');
+    expect(locale.region).assertEqual('CN');
+  });
+
+  it('skips country when part length is 1', 0, () => {
+    const fx = new LocPluginFixture();
+    const plugin: Any = fx.plugin;
+    let threw = false;
+    try {
+      const locale: Any = plugin['localeFromString']('en-X');
+      expect(locale).not().assertNull();
+    } catch (e) { threw = true; }
+    expect(threw).assertEqual(false);
+  });
+});
+
+describe('LocalizationPlugin.getStringResource.via.channel', () => {
+  it('missing key returns without throwing', 0, () => {
+    const context: common.Context = getContext();
+    const napi = FlutterInjector.getInstance().getFlutterNapi();
+    const dartExecutor = new DartExecutor(napi, context.resourceManager);
+    const channel = new LocalizationChannel(dartExecutor);
+    const plugin = new LocalizationPlugin(context, channel);
+    expect(plugin).not().assertNull();
+    const args: Map<string, string> = new Map();
+    args.set('key', 'missing_key_for_coverage_xyz');
+    const result: LocResourceResult = new LocResourceResult();
+    channel.onMethodCall(new MethodCall('Localization.getStringResource', args), result);
+    expect(result.successCalls).assertEqual(1);
+    expect(result.successValue).assertNull();
+    expect(result.errorCalls).assertEqual(0);
+  });
+
+  it('locale override path does not throw', 0, () => {
+    const context: common.Context = getContext();
+    const napi = FlutterInjector.getInstance().getFlutterNapi();
+    const dartExecutor = new DartExecutor(napi, context.resourceManager);
+    const channel = new LocalizationChannel(dartExecutor);
+    const plugin = new LocalizationPlugin(context, channel);
+    expect(plugin).not().assertNull();
+    const args: Map<string, string> = new Map();
+    args.set('key', 'missing_key_for_coverage_xyz');
+    args.set('locale', 'zh-CN');
+    const result: LocResourceResult = new LocResourceResult();
+    channel.onMethodCall(new MethodCall('Localization.getStringResource', args), result);
+    expect(result.successCalls).assertEqual(1);
+    expect(result.successValue).assertNull();
+    expect(result.errorCalls).assertEqual(0);
+  });
+});
 }
