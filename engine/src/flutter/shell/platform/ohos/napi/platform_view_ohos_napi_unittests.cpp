@@ -1534,8 +1534,6 @@ TEST_F(PlatformViewOHOSNapiTest, SoftwareRenderingEnabledGateBothSides) {
             nullptr);
 }
 
-#if !defined(OHOS_X64_UNITTEST)
-
 TEST_F(PlatformViewOHOSNapiTest, NativeDispatchEmptyPlatformMessageFullChain) {
   Settings settings;
   settings.ohos_rendering_api = OHOSRenderingAPI::kSoftware;
@@ -1667,8 +1665,6 @@ TEST_F(PlatformViewOHOSNapiTest, NativeMiscHolderTails) {
   EXPECT_EQ(PlatformViewOHOSNapi::nativeSetViewportMetrics(env, nullptr),
             nullptr);
 }
-
-#endif  // !defined(OHOS_X64_UNITTEST)
 
 }  // namespace testing
 }  // namespace flutter

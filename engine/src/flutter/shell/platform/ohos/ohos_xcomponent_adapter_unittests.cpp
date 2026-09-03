@@ -517,8 +517,6 @@ TEST_F(XComponentAdapterTest, ExportRegistersEmptyIdBase) {
   EXPECT_NO_FATAL_FAILURE(adapter->Export(env, exports));
 }
 
-#if !defined(OHOS_X64_UNITTEST)
-
 TEST_F(XComponentAdapterTest, MouseWheelActionUpdateDispatchesScroll) {
   Settings settings;
   settings.ohos_rendering_api = OHOSRenderingAPI::kSoftware;
@@ -551,8 +549,6 @@ TEST_F(XComponentAdapterTest, TouchDroppedAsDuplicateUpReachesProcessor) {
   EXPECT_NO_FATAL_FAILURE(xc.OnDispatchTouchEvent(
       reinterpret_cast<OH_NativeXComponent*>(0x1), nullptr));
 }
-
-#endif  // !defined(OHOS_X64_UNITTEST)
 
 }  // namespace testing
 }  // namespace flutter

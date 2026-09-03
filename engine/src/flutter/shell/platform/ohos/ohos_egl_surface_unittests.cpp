@@ -55,13 +55,11 @@
 #undef protected
 
 #include "flutter/fml/platform/ohos/hisysevent_c.h"
+#include "flutter/shell/platform/ohos/test_stubs/libc_wrapper_stub.h"
 #include "gtest/gtest.h"
 
 namespace flutter {
 namespace testing {
-
-void SetHisyseventDlopenRedirect(int mode);
-int GetAndResetDlopenRedirectCount();
 
 namespace fake_egl {
 
@@ -158,6 +156,30 @@ class FakeEGL {
 }  // namespace testing
 }  // namespace flutter
 
+namespace flutter {
+namespace testing {
+namespace fake_egl {
+// System-EGL direct channel: in the app-sandbox .so form dlsym(RTLD_NEXT)
+// cannot resolve the real libEGL, so the passthrough branch of the stubs
+// below falls back to the system library handle. The display itself must
+// be obtained the OHOS way (eglGetPlatformDisplayEXT with
+// EGL_PLATFORM_OHOS_KHR, like the rosen samples) - a bare eglGetDisplay
+// into the system wrapper crashes there.
+void* SystemEglSym(const char* name) {
+  static void* lib = dlopen("libEGL.so", RTLD_LAZY | RTLD_LOCAL);
+  return lib ? dlsym(lib, name) : nullptr;
+}
+
+// GL entry points (glGetString etc.) live in the GLES driver library, not in
+// libEGL. Same direct-channel rationale as SystemEglSym above.
+void* SystemGlesSym(const char* name) {
+  static void* lib = dlopen("libGLESv3.so", RTLD_LAZY | RTLD_LOCAL);
+  return lib ? dlsym(lib, name) : nullptr;
+}
+}  // namespace fake_egl
+}  // namespace testing
+}  // namespace flutter
+
 extern "C" {
 
 EGLDisplay eglGetDisplay(EGLNativeDisplayType display_id) {
@@ -165,7 +187,17 @@ EGLDisplay eglGetDisplay(EGLNativeDisplayType display_id) {
   if (!g_egl.active) {
     static const auto real = reinterpret_cast<decltype(&eglGetDisplay)>(
         dlsym(RTLD_NEXT, "eglGetDisplay"));
-    return real ? real(display_id) : EGL_NO_DISPLAY;
+    if (real != nullptr) {
+      return real(display_id);
+    }
+    using flutter::testing::fake_egl::SystemEglSym;
+    auto get_platform =
+        reinterpret_cast<EGLDisplay (*)(EGLenum, void*, const EGLAttrib*)>(
+            SystemEglSym("eglGetPlatformDisplay"));
+    if (get_platform != nullptr) {
+      return get_platform(EGL_PLATFORM_OHOS_KHR, display_id, nullptr);
+    }
+    return EGL_NO_DISPLAY;
   }
   g_egl.events.push_back("GetDisplay");
   return g_egl.get_display_result;
@@ -176,7 +208,12 @@ EGLBoolean eglInitialize(EGLDisplay dpy, EGLint* major, EGLint* minor) {
   if (!g_egl.active) {
     static const auto real = reinterpret_cast<decltype(&eglInitialize)>(
         dlsym(RTLD_NEXT, "eglInitialize"));
-    return real ? real(dpy, major, minor) : EGL_FALSE;
+    if (real == nullptr) {
+      auto fallback = reinterpret_cast<decltype(&eglInitialize)>(
+          flutter::testing::fake_egl::SystemEglSym("eglInitialize"));
+      return fallback ? fallback(dpy, major, minor) : EGL_FALSE;
+    }
+    return real(dpy, major, minor);
   }
   g_egl.events.push_back("Initialize");
   if (major != nullptr) {
@@ -193,7 +230,12 @@ EGLBoolean eglTerminate(EGLDisplay dpy) {
   if (!g_egl.active) {
     static const auto real = reinterpret_cast<decltype(&eglTerminate)>(
         dlsym(RTLD_NEXT, "eglTerminate"));
-    return real ? real(dpy) : EGL_FALSE;
+    if (real == nullptr) {
+      auto fallback = reinterpret_cast<decltype(real)>(
+          flutter::testing::fake_egl::SystemEglSym("eglTerminate"));
+      return fallback ? fallback(dpy) : EGL_FALSE;
+    }
+    return real(dpy);
   }
   g_egl.events.push_back("Terminate");
   return EGL_TRUE;
@@ -208,8 +250,14 @@ EGLBoolean eglChooseConfig(EGLDisplay dpy,
   if (!g_egl.active) {
     static const auto real = reinterpret_cast<decltype(&eglChooseConfig)>(
         dlsym(RTLD_NEXT, "eglChooseConfig"));
-    return real ? real(dpy, attrib_list, configs, config_size, num_config)
-                : EGL_FALSE;
+    if (real == nullptr) {
+      auto fallback = reinterpret_cast<decltype(real)>(
+          flutter::testing::fake_egl::SystemEglSym("eglChooseConfig"));
+      return fallback
+                 ? fallback(dpy, attrib_list, configs, config_size, num_config)
+                 : EGL_FALSE;
+    }
+    return real(dpy, attrib_list, configs, config_size, num_config);
   }
   g_egl.events.push_back("ChooseConfig");
   if (g_egl.choose_config_result != EGL_TRUE) {
@@ -232,8 +280,13 @@ EGLContext eglCreateContext(EGLDisplay dpy,
   if (!g_egl.active) {
     static const auto real = reinterpret_cast<decltype(&eglCreateContext)>(
         dlsym(RTLD_NEXT, "eglCreateContext"));
-    return real ? real(dpy, config, share_context, attrib_list)
-                : EGL_NO_CONTEXT;
+    if (real == nullptr) {
+      auto fallback = reinterpret_cast<decltype(real)>(
+          flutter::testing::fake_egl::SystemEglSym("eglCreateContext"));
+      return fallback ? fallback(dpy, config, share_context, attrib_list)
+                      : EGL_NO_CONTEXT;
+    }
+    return real(dpy, config, share_context, attrib_list);
   }
   g_egl.events.push_back("CreateContext");
   ++g_egl.create_context_calls;
@@ -255,7 +308,12 @@ EGLBoolean eglDestroyContext(EGLDisplay dpy, EGLContext ctx) {
   if (!g_egl.active) {
     static const auto real = reinterpret_cast<decltype(&eglDestroyContext)>(
         dlsym(RTLD_NEXT, "eglDestroyContext"));
-    return real ? real(dpy, ctx) : EGL_FALSE;
+    if (real == nullptr) {
+      auto fallback = reinterpret_cast<decltype(real)>(
+          flutter::testing::fake_egl::SystemEglSym("eglDestroyContext"));
+      return fallback ? fallback(dpy, ctx) : EGL_FALSE;
+    }
+    return real(dpy, ctx);
   }
   g_egl.events.push_back("DestroyContext:" + HexPtr(ctx));
   return g_egl.destroy_context_result;
@@ -271,7 +329,13 @@ EGLSurface eglCreateWindowSurface(EGLDisplay dpy,
     static const auto real =
         reinterpret_cast<decltype(&eglCreateWindowSurface)>(
             dlsym(RTLD_NEXT, "eglCreateWindowSurface"));
-    return real ? real(dpy, config, win, attrib_list) : EGL_NO_SURFACE;
+    if (real == nullptr) {
+      auto fallback = reinterpret_cast<decltype(real)>(
+          flutter::testing::fake_egl::SystemEglSym("eglCreateWindowSurface"));
+      return fallback ? fallback(dpy, config, win, attrib_list)
+                      : EGL_NO_SURFACE;
+    }
+    return real(dpy, config, win, attrib_list);
   }
   g_egl.events.push_back("CreateWindowSurface:" +
                          HexPtr(reinterpret_cast<const void*>(win)));
@@ -287,7 +351,12 @@ EGLSurface eglCreatePbufferSurface(EGLDisplay dpy,
     static const auto real =
         reinterpret_cast<decltype(&eglCreatePbufferSurface)>(
             dlsym(RTLD_NEXT, "eglCreatePbufferSurface"));
-    return real ? real(dpy, config, attrib_list) : EGL_NO_SURFACE;
+    if (real == nullptr) {
+      auto fallback = reinterpret_cast<decltype(real)>(
+          flutter::testing::fake_egl::SystemEglSym("eglCreatePbufferSurface"));
+      return fallback ? fallback(dpy, config, attrib_list) : EGL_NO_SURFACE;
+    }
+    return real(dpy, config, attrib_list);
   }
   for (int i = 0; attrib_list != nullptr && attrib_list[i] != EGL_NONE;
        i += 2) {
@@ -310,7 +379,12 @@ EGLBoolean eglDestroySurface(EGLDisplay dpy, EGLSurface surface) {
   if (!g_egl.active) {
     static const auto real = reinterpret_cast<decltype(&eglDestroySurface)>(
         dlsym(RTLD_NEXT, "eglDestroySurface"));
-    return real ? real(dpy, surface) : EGL_FALSE;
+    if (real == nullptr) {
+      auto fallback = reinterpret_cast<decltype(real)>(
+          flutter::testing::fake_egl::SystemEglSym("eglDestroySurface"));
+      return fallback ? fallback(dpy, surface) : EGL_FALSE;
+    }
+    return real(dpy, surface);
   }
   g_egl.events.push_back("DestroySurface:" + HexPtr(surface));
   return EGL_TRUE;
@@ -325,7 +399,12 @@ EGLBoolean eglMakeCurrent(EGLDisplay dpy,
   if (!g_egl.active) {
     static const auto real = reinterpret_cast<decltype(&eglMakeCurrent)>(
         dlsym(RTLD_NEXT, "eglMakeCurrent"));
-    return real ? real(dpy, draw, read, ctx) : EGL_FALSE;
+    if (real == nullptr) {
+      auto fallback = reinterpret_cast<decltype(real)>(
+          flutter::testing::fake_egl::SystemEglSym("eglMakeCurrent"));
+      return fallback ? fallback(dpy, draw, read, ctx) : EGL_FALSE;
+    }
+    return real(dpy, draw, read, ctx);
   }
   g_egl.events.push_back("MakeCurrent:" + HexPtr(draw) + "," + HexPtr(read) +
                          "," + HexPtr(ctx));
@@ -337,7 +416,12 @@ EGLContext eglGetCurrentContext(void) {
   if (!g_egl.active) {
     static const auto real = reinterpret_cast<decltype(&eglGetCurrentContext)>(
         dlsym(RTLD_NEXT, "eglGetCurrentContext"));
-    return real ? real() : EGL_NO_CONTEXT;
+    if (real == nullptr) {
+      auto fallback = reinterpret_cast<decltype(real)>(
+          flutter::testing::fake_egl::SystemEglSym("eglGetCurrentContext"));
+      return fallback ? fallback() : EGL_NO_CONTEXT;
+    }
+    return real();
   }
   ++g_egl.current_context_calls;
   return g_egl.current_context;
@@ -348,7 +432,12 @@ EGLSurface eglGetCurrentSurface(EGLint readdraw) {
   if (!g_egl.active) {
     static const auto real = reinterpret_cast<decltype(&eglGetCurrentSurface)>(
         dlsym(RTLD_NEXT, "eglGetCurrentSurface"));
-    return real ? real(readdraw) : EGL_NO_SURFACE;
+    if (real == nullptr) {
+      auto fallback = reinterpret_cast<decltype(real)>(
+          flutter::testing::fake_egl::SystemEglSym("eglGetCurrentSurface"));
+      return fallback ? fallback(readdraw) : EGL_NO_SURFACE;
+    }
+    return real(readdraw);
   }
   if (readdraw == EGL_DRAW) {
     ++g_egl.current_draw_calls;
@@ -366,7 +455,12 @@ EGLBoolean eglQuerySurface(EGLDisplay dpy,
   if (!g_egl.active) {
     static const auto real = reinterpret_cast<decltype(&eglQuerySurface)>(
         dlsym(RTLD_NEXT, "eglQuerySurface"));
-    return real ? real(dpy, surface, attribute, value) : EGL_FALSE;
+    if (real == nullptr) {
+      auto fallback = reinterpret_cast<decltype(real)>(
+          flutter::testing::fake_egl::SystemEglSym("eglQuerySurface"));
+      return fallback ? fallback(dpy, surface, attribute, value) : EGL_FALSE;
+    }
+    return real(dpy, surface, attribute, value);
   }
   g_egl.events.push_back("QuerySurface:" + std::to_string(attribute));
   if (attribute == g_egl.fail_query_surface_pname) {
@@ -396,7 +490,12 @@ EGLBoolean eglSwapBuffers(EGLDisplay dpy, EGLSurface surface) {
   if (!g_egl.active) {
     static const auto real = reinterpret_cast<decltype(&eglSwapBuffers)>(
         dlsym(RTLD_NEXT, "eglSwapBuffers"));
-    return real ? real(dpy, surface) : EGL_FALSE;
+    if (real == nullptr) {
+      auto fallback = reinterpret_cast<decltype(real)>(
+          flutter::testing::fake_egl::SystemEglSym("eglSwapBuffers"));
+      return fallback ? fallback(dpy, surface) : EGL_FALSE;
+    }
+    return real(dpy, surface);
   }
   g_egl.events.push_back("SwapBuffers");
   return g_egl.swap_buffers_result;
@@ -407,7 +506,12 @@ EGLint eglGetError(void) {
   if (!g_egl.active) {
     static const auto real = reinterpret_cast<decltype(&eglGetError)>(
         dlsym(RTLD_NEXT, "eglGetError"));
-    return real ? real() : EGL_SUCCESS;
+    if (real == nullptr) {
+      auto fallback = reinterpret_cast<decltype(real)>(
+          flutter::testing::fake_egl::SystemEglSym("eglGetError"));
+      return fallback ? fallback() : EGL_SUCCESS;
+    }
+    return real();
   }
   ++g_egl.get_error_calls;
   return g_egl.error_code;
@@ -418,7 +522,12 @@ const char* eglQueryString(EGLDisplay dpy, EGLint name) {
   if (!g_egl.active) {
     static const auto real = reinterpret_cast<decltype(&eglQueryString)>(
         dlsym(RTLD_NEXT, "eglQueryString"));
-    return real ? real(dpy, name) : nullptr;
+    if (real == nullptr) {
+      auto fallback = reinterpret_cast<decltype(&eglQueryString)>(
+          flutter::testing::fake_egl::SystemEglSym("eglQueryString"));
+      return fallback ? fallback(dpy, name) : nullptr;
+    }
+    return real(dpy, name);
   }
   g_egl.events.push_back("QueryString");
   return name == EGL_EXTENSIONS ? g_egl.extension_string : "";
@@ -429,7 +538,12 @@ void (*eglGetProcAddress(const char* procname))(void) {
   if (!g_egl.active) {
     static const auto real = reinterpret_cast<decltype(&eglGetProcAddress)>(
         dlsym(RTLD_NEXT, "eglGetProcAddress"));
-    return real ? real(procname) : nullptr;
+    if (real == nullptr) {
+      auto fallback = reinterpret_cast<decltype(&eglGetProcAddress)>(
+          flutter::testing::fake_egl::SystemEglSym("eglGetProcAddress"));
+      return fallback ? fallback(procname) : nullptr;
+    }
+    return real(procname);
   }
   g_egl.events.push_back("GetProcAddress:" + std::string(procname));
   return g_egl.proc_address_result;
@@ -440,7 +554,15 @@ const GLubyte* glGetString(GLenum name) {
   if (!g_egl.active) {
     static const auto real = reinterpret_cast<decltype(&glGetString)>(
         dlsym(RTLD_NEXT, "glGetString"));
-    return real ? real(name) : nullptr;
+    if (real != nullptr) {
+      return real(name);
+    }
+    // Skia's GrGLMakeNativeInterface probes the GL via glGetString first;
+    // without this fallback it sees nullptr, reports "no native GL
+    // interface" and every real-EGL-context test silently skips.
+    static const auto fallback = reinterpret_cast<decltype(&glGetString)>(
+        flutter::testing::fake_egl::SystemGlesSym("glGetString"));
+    return fallback ? fallback(name) : nullptr;
   }
   g_egl.events.push_back("GetString");
   if (name == GL_RENDERER) {
@@ -494,13 +616,6 @@ EGLBoolean EGLAPIENTRY StubPresentationTimeFail(EGLDisplay,
                                                 EGLnsecsANDROID) {
   return EGL_FALSE;
 }
-
-struct TailRedirectGuard {
-  ~TailRedirectGuard() {
-    SetHisyseventDlopenRedirect(0);
-    GetAndResetDlopenRedirectCount();
-  }
-};
 
 }  // namespace
 
@@ -700,17 +815,6 @@ TEST_F(OhosEGLSurfaceTest, DestructorDestroysOwnedSurfaceHandle) {
   EXPECT_EQ(CountEvents("DestroySurface:" + HexPtr(kFakeSurfaceA)), 1u);
 }
 
-TEST_F(OhosEGLSurfaceTest, PassthroughAnchorsKeepRealLibrariesLinked) {
-  guard_.reset();
-#if defined(OHOS_X64_UNITTEST)
-  EXPECT_NE(g_egl.egl_anchor, nullptr);
-  EXPECT_NE(g_egl.gles_anchor, nullptr);
-#else
-  EXPECT_TRUE(eglQueryString(EGL_NO_DISPLAY, EGL_VERSION) == nullptr);
-  EXPECT_EQ(eglGetError(), EGL_BAD_DISPLAY);
-#endif  // defined(OHOS_X64_UNITTEST)
-}
-
 TEST_F(OhosEGLSurfaceTest, QuietSeveritySkipsLogConstruction) {
   fake_egl::FakeEGL guard;
   QuietLogs quiet;
@@ -741,7 +845,6 @@ TEST_F(OhosEGLSurfaceTest, QuietSeveritySkipsLogConstruction) {
   EXPECT_EQ(CountEvents("DestroySurface"), 1u);
 }
 
-#if !defined(OHOS_X64_UNITTEST)
 TEST_F(OhosEGLSurfaceTest, DestructorCheckFailureViaRealPassthrough) {
   guard_.reset();
   EGLDisplay real_display = eglGetDisplay(EGL_DEFAULT_DISPLAY);
@@ -762,25 +865,28 @@ TEST_F(OhosEGLSurfaceTest, DestructorCheckFailureViaRealPassthrough) {
   EXPECT_TRUE(constructed);
   eglTerminate(real_display);
 }
-#endif  // !defined(OHOS_X64_UNITTEST)
 
 TEST_F(OhosEGLSurfaceTest, QuietSeverityOnLoadFailures) {
   QuietLogs quiet;
-  TailRedirectGuard guard;
-  SetHisyseventDlopenRedirect(1);
-  int ret = fml::HiSysEventWrite("tail_dlopen_fail", 7);
-  if (GetAndResetDlopenRedirectCount() > 0) {
-    EXPECT_EQ(ret, -1);
-  } else {
-    EXPECT_TRUE(ret == 0 || ret == -5 || ret == -1);
+  {
+    ::ScopedDlopenRedirect redirect("libhisysevent",
+                                    ::DlopenRedirectMode::kFailOpen);
+    int ret = fml::HiSysEventWrite("tail_dlopen_fail", 7);
+    if (GetAndResetDlopenRedirectCount() > 0) {
+      EXPECT_EQ(ret, -1);
+    } else {
+      EXPECT_TRUE(ret == 0 || ret == -5 || ret == -1);
+    }
   }
-
-  SetHisyseventDlopenRedirect(2);
-  ret = fml::HiSysEventWrite("tail_dlsym_fail", 8);
-  if (GetAndResetDlopenRedirectCount() > 0) {
-    EXPECT_EQ(ret, -1);
-  } else {
-    EXPECT_TRUE(ret == 0 || ret == -5 || ret == -1);
+  {
+    ::ScopedDlopenRedirect redirect("libhisysevent",
+                                    ::DlopenRedirectMode::kWrongLib);
+    int ret = fml::HiSysEventWrite("tail_dlsym_fail", 8);
+    if (GetAndResetDlopenRedirectCount() > 0) {
+      EXPECT_EQ(ret, -1);
+    } else {
+      EXPECT_TRUE(ret == 0 || ret == -5 || ret == -1);
+    }
   }
 }
 

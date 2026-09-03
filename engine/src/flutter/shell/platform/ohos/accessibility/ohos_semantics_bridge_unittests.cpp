@@ -19,12 +19,7 @@ class SemanticsBridgeTest : public ::testing::Test {
  protected:
   SemanticsBridge bridge_;
 
-  void SetUp() override {
-    bridge_.is_accessibility_enabled_ = true;
-#if defined(OHOS_X64_UNITTEST)
-    bridge_.provider_ohos_ = MakeProvider();
-#endif
-  }
+  void SetUp() override { bridge_.is_accessibility_enabled_ = true; }
 
   ArkUI_AccessibilityElementInfo* MakeInfo() {
     return OH_ArkUI_CreateAccessibilityElementInfo();
@@ -72,9 +67,6 @@ TEST_F(SemanticsBridgeTest, SendSemanticsEventRespectsEnabledState) {
       node1, ARKUI_ACCESSIBILITY_NATIVE_EVENT_TYPE_CLICKED, nullptr);
   EXPECT_FALSE(node1->hasUpdate);
 
-#if defined(OHOS_X64_UNITTEST)
-  bridge_.provider_ohos_ = MakeProvider();
-#endif
   bridge_.SendSemanticsEvent(
       node1, ARKUI_ACCESSIBILITY_NATIVE_EVENT_TYPE_FOCUS_NODE_UPDATE, nullptr);
   EXPECT_FALSE(node1->hasUpdate);

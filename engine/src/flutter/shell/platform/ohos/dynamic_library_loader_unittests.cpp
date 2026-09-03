@@ -13,19 +13,11 @@ namespace testing {
 
 namespace {
 
-#if defined(OHOS_X64_UNITTEST)
-constexpr const char* kLibName = "libc.so";
-constexpr const char* kSymbolA = "malloc";
-constexpr const char* kSymbolB = "free";
-constexpr const char* kSymbolC = "strlen";
-constexpr int kMinApi = 0;
-#else
 constexpr const char* kLibName = "libace_ndk.z.so";
 constexpr const char* kSymbolA = "OH_ArkUI_UIInputEvent_GetDeviceId";
 constexpr const char* kSymbolB = "OH_ArkUI_AxisEvent_GetAxisAction";
 constexpr const char* kSymbolC = "OH_ArkUI_UIInputEvent_GetModifierKeyStates";
 constexpr int kMinApi = 14;
-#endif
 
 }  // namespace
 
