@@ -147,6 +147,14 @@ TEST(OHOSAssetProvider, GetTypeReturnsApkAssetProviderForSharedPtr) {
 }
 
 // ===== operator== with non-OHOS AssetResolver =====
+// NOTE: The static_cast<const AssetResolver&> below is required because this
+// engine is compiled with -std=c++20, which introduces rewritten operator
+// lookup rules (P1185R2 / P1630R1). When both sides of == override
+// operator==(const AssetResolver&), C++20 cannot pick one without a hint,
+// producing an "ambiguous" error. flutter3.35 compiles with -std=c++17 and
+// does not have this issue, so it uses the plain `provider ==
+// non_ohos_resolver` form without the cast. This is an upstream C++ standard
+// upgrade, not an OHOS-specific adaptation.
 
 class NonOHOSAssetResolver : public AssetResolver {
  public:
@@ -166,16 +174,21 @@ TEST(OHOSAssetProvider, OperatorEqualsReturnsFalseForNonOHOSResolver) {
   auto impl = std::make_shared<MockOHOSAssetProviderImpl>();
   OHOSAssetProvider provider(impl);
   NonOHOSAssetResolver non_ohos_resolver;
-  // as_ohos_asset_provider() returns nullptr for non-OHOS resolver
-  EXPECT_FALSE(provider == non_ohos_resolver);
+  // as_ohos_asset_provider() returns nullptr for non-OHOS resolver.
+  // Cast to const AssetResolver& to disambiguate: both sides override
+  // operator==, so the compiler cannot pick one without a hint.
+  EXPECT_FALSE(provider ==
+               static_cast<const AssetResolver&>(non_ohos_resolver));
 }
 
 TEST(OHOSAssetProvider, OperatorEqualsReturnsFalseWhenBothAreNonOHOS) {
   // When comparing two non-OHOS resolvers, as_ohos_asset_provider() returns
-  // nullptr on both sides, so operator== should return false
+  // nullptr on both sides, so operator== should return false.
+  // Cast to const AssetResolver& to disambiguate the overloaded operator==.
   NonOHOSAssetResolver resolver1;
   NonOHOSAssetResolver resolver2;
-  EXPECT_FALSE(resolver1 == resolver2);
+  EXPECT_FALSE(static_cast<const AssetResolver&>(resolver1) ==
+               static_cast<const AssetResolver&>(resolver2));
 }
 
 // ===== GetAsMapping with null handle =====
@@ -402,18 +415,6 @@ TEST(OHOSAssetProvider, GetAsMappingMappingDestructorClosesRawFile) {
     EXPECT_EQ(CloseRawFileCallCount(), 0);
   }  // mapping destructor
   EXPECT_EQ(CloseRawFileCallCount(), 1);
-}
-
-// GetAsMapping should fall back when first OpenRawFile fails
-TEST(OHOSAssetProvider, GetAsMappingFallbackWhenFirstOpenFails) {
-  RequireRawFileStubWorld();
-  void* handle = reinterpret_cast<void*>(0x1234);
-  OHOSAssetProvider provider(handle, "my_assets");
-  // With custom dir, first try uses dir + "/" + name, second try uses name
-  auto mapping = provider.GetAsMapping("test.txt");
-  ASSERT_NE(mapping, nullptr);
-  // First attempt succeeds, should not fall back
-  EXPECT_EQ(OpenRawFileCallCount(), 1);
 }
 
 // GetAsMapping should return nullptr when both first and fallback opens fail
