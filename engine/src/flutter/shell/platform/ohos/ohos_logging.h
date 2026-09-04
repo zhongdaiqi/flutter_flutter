@@ -15,9 +15,9 @@
   ((void)OH_LOG_Print(LOG_APP, LOG_DEBUG, APP_LOG_DOMAIN, APP_LOG_TAG, \
                       __VA_ARGS__))
 
-#define LOGI(...)                                                             \
-  ((void)OH_LOG_Print(LOG_APP, !(FML_LOG_IS_ON(INFO)) ? LOG_DEBUG : LOG_INFO, \
-                      APP_LOG_DOMAIN, APP_LOG_TAG, __VA_ARGS__))
+#define LOGI(...)                                                     \
+  ((void)OH_LOG_Print(LOG_APP, LOG_INFO, APP_LOG_DOMAIN, APP_LOG_TAG, \
+                      __VA_ARGS__))
 
 #define LOGW(...)                                                     \
   ((void)OH_LOG_Print(LOG_APP, LOG_WARN, APP_LOG_DOMAIN, APP_LOG_TAG, \

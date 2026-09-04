@@ -82,7 +82,8 @@ bool OhosSurfaceGLSkia::OnScreenSurfaceResize(const SkISize& size) {
   // Check if surface/window is valid - may be null after
   // TeardownOnScreenContext
   if (!onscreen_surface_ || !native_window_) {
-    FML_LOG(WARNING) << "OnScreenSurfaceResize: surface or window is null (after teardown?)";
+    FML_LOG(WARNING)
+        << "OnScreenSurfaceResize: surface or window is null (after teardown?)";
     return false;
   }
 
@@ -137,7 +138,8 @@ bool OhosSurfaceGLSkia::SetNativeWindow(fml::RefPtr<OHOSNativeWindow> window) {
   // Create the onscreen surface.
   FML_LOG(INFO) << "SetNativeWindow create onscreensurface";
   onscreen_surface_ = GLContextPtr()->CreateOnscreenSurface(window);
-  if (!onscreen_surface_->IsValid()) {
+  if (!onscreen_surface_ || !onscreen_surface_->IsValid()) {
+    FML_LOG(ERROR) << "SetNativeWindow onscreen_surface invalid";
     return false;
   }
   if (need_current) {
@@ -155,7 +157,8 @@ bool OhosSurfaceGLSkia::PaintOffscreenData(OHNativeWindowBuffer* buffer,
   int ret =
       OH_NativeWindow_NativeWindowAttachBuffer(onscreen_nativewindow, buffer);
   if (ret != 0) {
-    FML_LOG(ERROR) << "OH_NativeWindow_NativeWindowAttachBuffer() failed in PaintOffscreenData, ret = "
+    FML_LOG(ERROR) << "OH_NativeWindow_NativeWindowAttachBuffer() failed in "
+                      "PaintOffscreenData, ret = "
                    << ret;
     return false;
   }
@@ -163,7 +166,8 @@ bool OhosSurfaceGLSkia::PaintOffscreenData(OHNativeWindowBuffer* buffer,
   ret = OH_NativeWindow_NativeWindowFlushBuffer(onscreen_nativewindow, buffer,
                                                 fence_fd, {});
   if (ret != 0) {
-    FML_LOG(ERROR) << "OH_NativeWindow_NativeWindowFlushBuffer() failed in PaintOffscreenData, ret = "
+    FML_LOG(ERROR) << "OH_NativeWindow_NativeWindowFlushBuffer() failed in "
+                      "PaintOffscreenData, ret = "
                    << ret;
   }
   FML_LOG(INFO) << "PaintOffscreenData " << buffer;
@@ -177,7 +181,8 @@ std::unique_ptr<GLContextResult> OhosSurfaceGLSkia::GLContextMakeCurrent() {
   // Check if onscreen_surface_ is valid - it may be null after
   // TeardownOnScreenContext
   if (!onscreen_surface_) {
-    FML_LOG(WARNING) << "GLContextMakeCurrent: onscreen_surface_ is null (after teardown?)";
+    FML_LOG(WARNING)
+        << "GLContextMakeCurrent: onscreen_surface_ is null (after teardown?)";
     return std::make_unique<GLContextDefaultResult>(false);
   }
   auto status = onscreen_surface_->MakeCurrent();
@@ -237,7 +242,8 @@ bool OhosSurfaceGLSkia::GLContextPresent(const GLPresentInfo& present_info) {
   // Check if onscreen_surface_ is valid - it may be null after
   // TeardownOnScreenContext
   if (!onscreen_surface_) {
-    FML_LOG(WARNING) << "GLContextPresent: onscreen_surface_ is null (after teardown?)";
+    FML_LOG(WARNING)
+        << "GLContextPresent: onscreen_surface_ is null (after teardown?)";
     return false;
   }
   if (native_window_ && native_window_->IsValid() &&
@@ -261,7 +267,8 @@ GLFBOInfo OhosSurfaceGLSkia::GLContextFBO(GLFrameInfo frame_info) const {
   // Check if onscreen_surface_ is valid - it may be null after
   // TeardownOnScreenContext
   if (!onscreen_surface_) {
-    FML_LOG(WARNING) << "GLContextFBO: onscreen_surface_ is null (after teardown?)";
+    FML_LOG(WARNING)
+        << "GLContextFBO: onscreen_surface_ is null (after teardown?)";
     return GLFBOInfo{.fbo_id = 0};
   }
   // The default window bound framebuffer on Ohos.
