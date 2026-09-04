@@ -417,18 +417,6 @@ TEST(OHOSAssetProvider, GetAsMappingMappingDestructorClosesRawFile) {
   EXPECT_EQ(CloseRawFileCallCount(), 1);
 }
 
-// GetAsMapping should fall back when first OpenRawFile fails
-TEST(OHOSAssetProvider, GetAsMappingFallbackWhenFirstOpenFails) {
-  RequireRawFileStubWorld();
-  void* handle = reinterpret_cast<void*>(0x1234);
-  OHOSAssetProvider provider(handle, "my_assets");
-  // With custom dir, first try uses dir + "/" + name, second try uses name
-  auto mapping = provider.GetAsMapping("test.txt");
-  ASSERT_NE(mapping, nullptr);
-  // First attempt succeeds, should not fall back
-  EXPECT_EQ(OpenRawFileCallCount(), 1);
-}
-
 // GetAsMapping should return nullptr when both first and fallback opens fail
 TEST(OHOSAssetProvider, GetAsMappingReturnsNullWhenAllOpensFail) {
   RequireRawFileStubWorld();

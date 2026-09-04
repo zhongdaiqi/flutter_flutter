@@ -6,6 +6,8 @@
 
 #include <dlfcn.h>
 #include <gtest/gtest.h>
+#include <unordered_set>
+#include <vector>
 #include "flutter/lib/ui/semantics/semantics_node.h"
 #include "flutter/shell/platform/ohos/accessibility/ohos_semantics_node.h"
 
@@ -501,21 +503,6 @@ TEST_F(SemanticsNodeTest, OHOSComponentTypeUpdateSliderWhenHasDecreaseAction) {
   EXPECT_STREQ(node_.componentType, OHWidgetName::kSliderWidgetName);
 }
 
-TEST_F(SemanticsNodeTest, OHOSComponentTypeUpdateSeekbarWhenIncreaseNoSlider) {
-  // kIncrease/kDecrease without isSlider flag → kSeekbarWidgetName
-  // But kIncrease is caught earlier by the isSlider || HasAction(kIncrease)
-  // branch, so to reach kSeekbarWidgetName we need kDecrease only (without
-  // isSlider). However kDecrease is also caught by that same branch. So
-  // kSeekbarWidgetName is actually unreachable when isSlider is false because
-  // the slider branch already catches HasAction(kIncrease) ||
-  // HasAction(kDecrease). This test verifies the slider branch takes priority.
-  node_.id = 1;
-  node_.actions |= static_cast<int32_t>(ACTIONS_::kDecrease);
-  node_.OHOSComponentTypeUpdate();
-  // The slider branch catches HasAction(kDecrease) first
-  EXPECT_STREQ(node_.componentType, OHWidgetName::kSliderWidgetName);
-}
-
 TEST_F(SemanticsNodeTest, OHOSComponentTypeUpdateScrollWidget) {
   node_.id = 1;
   node_.flags.hasImplicitScrolling = true;
@@ -835,6 +822,19 @@ TEST_F(SemanticsNodeTest,
   EXPECT_TRUE(found_clear);
 }
 
+TEST_F(SemanticsNodeTest, OHOSActionsUpdateEmptyBodyActions) {
+  node_.actions |= static_cast<int32_t>(ACTIONS_::kShowOnScreen) |
+                   static_cast<int32_t>(ACTIONS_::kCustomAction) |
+                   static_cast<int32_t>(ACTIONS_::kDismiss);
+  EXPECT_TRUE(node_.HasAction(ACTIONS_::kShowOnScreen));
+  EXPECT_TRUE(node_.HasAction(ACTIONS_::kCustomAction));
+  EXPECT_TRUE(node_.HasAction(ACTIONS_::kDismiss));
+  node_.OHOSActionsUpdate();
+  EXPECT_TRUE(node_.HasAction(ACTIONS_::kShowOnScreen));
+  EXPECT_TRUE(node_.HasAction(ACTIONS_::kCustomAction));
+  EXPECT_TRUE(node_.HasAction(ACTIONS_::kDismiss));
+}
+
 // ===== UpdateWithNode =====
 
 TEST_F(SemanticsNodeTest, UpdateWithNodeSetsId) {
@@ -861,6 +861,90 @@ TEST_F(SemanticsNodeTest, UpdateWithNodeSetsFlags) {
   node_.UpdateWithNode(source);
   EXPECT_TRUE(node_.flags.isButton);
   EXPECT_TRUE(node_.flagChanged);
+
+  auto retouch = [&](auto mutate) {
+    flutter::SemanticsNode again;
+    again.id = 1;
+    again.flags = node_.flags;
+    node_.UpdateWithNode(again);
+    mutate();
+    node_.UpdateWithNode(again);
+  };
+  retouch([&] { node_.flags.isChecked = SemanticsCheckState::kTrue; });
+  retouch([&] { node_.flags.isSelected = SemanticsTristate::kTrue; });
+  retouch([&] { node_.flags.isEnabled = SemanticsTristate::kTrue; });
+  retouch([&] { node_.flags.isToggled = SemanticsTristate::kTrue; });
+  retouch([&] { node_.flags.isExpanded = SemanticsTristate::kTrue; });
+  retouch([&] { node_.flags.isRequired = SemanticsTristate::kTrue; });
+  retouch([&] { node_.flags.isFocused = SemanticsTristate::kTrue; });
+  retouch([&] { node_.flags.isButton = !node_.flags.isButton; });
+  retouch([&] { node_.flags.isTextField = !node_.flags.isTextField; });
+  retouch([&] {
+    node_.flags.isInMutuallyExclusiveGroup =
+        !node_.flags.isInMutuallyExclusiveGroup;
+  });
+  retouch([&] { node_.flags.isHeader = !node_.flags.isHeader; });
+  retouch([&] { node_.flags.isObscured = !node_.flags.isObscured; });
+  retouch([&] { node_.flags.scopesRoute = !node_.flags.scopesRoute; });
+  retouch([&] { node_.flags.namesRoute = !node_.flags.namesRoute; });
+  retouch([&] { node_.flags.isHidden = !node_.flags.isHidden; });
+  retouch([&] { node_.flags.isImage = !node_.flags.isImage; });
+  retouch([&] { node_.flags.isLiveRegion = !node_.flags.isLiveRegion; });
+  retouch([&] {
+    node_.flags.hasImplicitScrolling = !node_.flags.hasImplicitScrolling;
+  });
+  retouch([&] { node_.flags.isMultiline = !node_.flags.isMultiline; });
+  retouch([&] { node_.flags.isReadOnly = !node_.flags.isReadOnly; });
+  retouch([&] { node_.flags.isLink = !node_.flags.isLink; });
+  retouch([&] { node_.flags.isSlider = !node_.flags.isSlider; });
+  retouch([&] { node_.flags.isKeyboardKey = !node_.flags.isKeyboardKey; });
+}
+
+TEST_F(SemanticsNodeTest,
+       UpdateWithNodeComparesIncomingFlagsWhenPreviousMatches) {
+  flutter::SemanticsNode base;
+  base.id = 1;
+  node_.UpdateWithNode(base);
+
+  auto apply_only = [&](auto mutate) {
+    flutter::SemanticsNode sync;
+    sync.id = 1;
+    sync.flags = node_.flags;
+    node_.UpdateWithNode(sync);
+
+    flutter::SemanticsNode next;
+    next.id = 1;
+    next.flags = node_.flags;
+    mutate(next.flags);
+    node_.flagChanged = false;
+    node_.UpdateWithNode(next);
+    EXPECT_TRUE(node_.flagChanged);
+  };
+
+  apply_only([](auto& f) { f.isChecked = SemanticsCheckState::kTrue; });
+  apply_only([](auto& f) { f.isSelected = SemanticsTristate::kTrue; });
+  apply_only([](auto& f) { f.isEnabled = SemanticsTristate::kTrue; });
+  apply_only([](auto& f) { f.isToggled = SemanticsTristate::kTrue; });
+  apply_only([](auto& f) { f.isExpanded = SemanticsTristate::kTrue; });
+  apply_only([](auto& f) { f.isRequired = SemanticsTristate::kTrue; });
+  apply_only([](auto& f) { f.isFocused = SemanticsTristate::kTrue; });
+  apply_only([](auto& f) { f.isButton = true; });
+  apply_only([](auto& f) { f.isTextField = true; });
+  apply_only([](auto& f) { f.isInMutuallyExclusiveGroup = true; });
+  apply_only([](auto& f) { f.isHeader = true; });
+  apply_only([](auto& f) { f.isObscured = true; });
+  apply_only([](auto& f) { f.scopesRoute = true; });
+  apply_only([](auto& f) { f.namesRoute = true; });
+  apply_only([](auto& f) { f.isHidden = true; });
+  apply_only([](auto& f) { f.isImage = true; });
+  apply_only([](auto& f) { f.isLiveRegion = true; });
+  apply_only([](auto& f) { f.hasImplicitScrolling = true; });
+  apply_only([](auto& f) { f.isMultiline = true; });
+  apply_only([](auto& f) { f.isReadOnly = true; });
+  apply_only([](auto& f) { f.isLink = true; });
+  apply_only([](auto& f) { f.isSlider = true; });
+  apply_only([](auto& f) { f.isKeyboardKey = true; });
+  apply_only([](auto& f) { f.isAccessibilityFocusBlocked = true; });
 }
 
 TEST_F(SemanticsNodeTest, UpdateWithNodeSetsActions) {
@@ -2190,6 +2274,106 @@ TEST_F(SemanticsNodeTest, IsScrollableForEachSingleScrollAction) {
     EXPECT_TRUE(node.IsScrollable());
   }
   EXPECT_FALSE(node_.IsScrollable());
+}
+
+TEST_F(SemanticsNodeTest, UpdateSelfRecursivelyScrollIndexOutOfBounds) {
+  SemanticsNodeExtend child;
+  child.id = 2;
+  child.isExist = true;
+  node_.id = 1;
+  node_.childrenInTraversalOrderList.push_back(&child);
+  node_.scrollChildren = 1;
+  node_.scrollIndex = 2;
+
+  std::unordered_set<int32_t> visitor_ids;
+  std::vector<int32_t> visitor_order;
+  SkM44 identity;
+  node_.UpdateSelfRecursively(visitor_ids, visitor_order, identity, false);
+
+  EXPECT_EQ(node_.scrollEndIndex, 2);
+  EXPECT_EQ(node_.scrollVisibleNum, 1);
+  EXPECT_TRUE(node_.scrollChanged);
+}
+
+TEST_F(SemanticsNodeTest, FillElementInfoNullInfoReturns) {
+  node_.id = 1;
+  EXPECT_NO_FATAL_FAILURE(node_.FillElementInfo(nullptr, true));
+}
+
+TEST_F(SemanticsNodeTest, UpdateSelfRecursivelyRelinksWrongParent) {
+  SemanticsNodeExtend child;
+  child.id = 2;
+  child.isExist = true;
+  SemanticsNodeExtend other_parent;
+  other_parent.id = 9;
+  child.parentNode = &other_parent;
+  child.parentId = 9;
+  node_.id = 1;
+  node_.childrenInTraversalOrderList.push_back(&child);
+
+  std::unordered_set<int32_t> visitor_ids;
+  std::vector<int32_t> visitor_order;
+  SkM44 identity;
+  node_.UpdateSelfRecursively(visitor_ids, visitor_order, identity, false);
+  EXPECT_EQ(child.parentNode, &node_);
+  EXPECT_EQ(child.parentId, 1u);
+}
+
+TEST_F(SemanticsNodeTest, UpdateSelfRecursivelyScrollWithHitTestOrder) {
+  SemanticsNodeExtend child;
+  child.id = 2;
+  child.isExist = true;
+  node_.id = 1;
+  node_.childrenInTraversalOrderList.push_back(&child);
+  node_.scrollChildren = 1;
+  node_.scrollChanged = true;
+  node_.childrenInHitTestOrder = {2};
+
+  std::unordered_set<int32_t> visitor_ids;
+  std::vector<int32_t> visitor_order;
+  SkM44 identity;
+  node_.UpdateSelfRecursively(visitor_ids, visitor_order, identity, false);
+  EXPECT_TRUE(node_.scrollChanged);
+}
+
+TEST_F(SemanticsNodeTest, UpdateSelfRecursivelySkipsUnchangedScroll) {
+  SemanticsNodeExtend child;
+  child.id = 2;
+  child.isExist = true;
+  node_.id = 1;
+  node_.childrenInTraversalOrderList.push_back(&child);
+  node_.scrollChildren = 1;
+  node_.scrollIndex = 0;
+  node_.scrollEndIndex = 0;
+  node_.scrollChanged = false;
+  node_.childrenInHitTestOrder = {2};
+
+  std::unordered_set<int32_t> visitor_ids;
+  std::vector<int32_t> visitor_order;
+  SkM44 identity;
+  node_.UpdateSelfRecursively(visitor_ids, visitor_order, identity, false);
+  EXPECT_FALSE(node_.scrollChanged);
+}
+
+TEST_F(SemanticsNodeTest, UpdateSelfRecursivelyScrollChildrenWithoutList) {
+  node_.id = 1;
+  node_.scrollChildren = 1;
+
+  std::unordered_set<int32_t> visitor_ids;
+  std::vector<int32_t> visitor_order;
+  SkM44 identity;
+  node_.UpdateSelfRecursively(visitor_ids, visitor_order, identity, false);
+
+  EXPECT_TRUE(node_.scrollChanged);
+  EXPECT_EQ(node_.scrollEndIndex, -1);
+}
+
+TEST_F(SemanticsNodeTest, DestructorSkipsNullElementInfo) {
+  SemanticsNodeExtend node;
+  ASSERT_NE(node.elementInfoOHOS, nullptr);
+  OH_ArkUI_DestoryAccessibilityElementInfo(node.elementInfoOHOS);
+  node.elementInfoOHOS = nullptr;
+  EXPECT_NO_FATAL_FAILURE((void)node.IsVisible());
 }
 
 }  // namespace testing

@@ -82,6 +82,8 @@ struct FakeEGLState {
   EGLBoolean choose_config_result = EGL_TRUE;
   EGLint choose_config_count = 1;
   bool choose_config_write_null = false;
+  int fail_choose_config_on_nth = 0;
+  int choose_config_calls = 0;
 
   int fail_create_context_on_nth = 0;
   int create_context_calls = 0;
@@ -148,6 +150,14 @@ namespace {
 class QuietLogs {
  public:
   QuietLogs() : scoped_(fml::LogSettings{fml::kLogFatal}) {}
+
+ private:
+  fml::ScopedSetLogSettings scoped_;
+};
+
+class LoudLogs {
+ public:
+  LoudLogs() : scoped_(fml::LogSettings{fml::kLogInfo}) {}
 
  private:
   fml::ScopedSetLogSettings scoped_;
@@ -405,7 +415,7 @@ TEST_F(OhosContextGLSkiaTest, DestructorSkipsReleaseWhenMakeCurrentFails) {
   EXPECT_EQ(CountEvents("DestroyContext"), 2u);
 }
 
-TEST_F(OhosContextGLSkiaTest, QuietSeverityOnFailingConstructors) {
+TEST_F(OhosContextGLSkiaTest, FailingConstructorsDoNotCrash) {
   QuietLogs quiet;
   {
     g_egl.get_display_result = EGL_NO_DISPLAY;
@@ -450,7 +460,27 @@ TEST_F(OhosContextGLSkiaTest, QuietSeverityOnFailingConstructors) {
   }
 }
 
-TEST_F(OhosContextGLSkiaTest, QuietSeverityOnSuccessAndSurfaceCreation) {
+TEST_F(OhosContextGLSkiaTest, EmitsInfoOnSuccessAndSurfaces) {
+  LoudLogs loud;
+  auto context = MakeContext();
+  ASSERT_TRUE(context.IsValid());
+
+  auto window = fml::MakeRefCounted<OHOSNativeWindow>(kFakeNativeWindow);
+  auto onscreen = context.CreateOnscreenSurface(window);
+  ASSERT_TRUE(onscreen->IsValid());
+  EXPECT_EQ(CountEvents("CreateWindowSurface:" + HexPtr(kFakeNativeWindow)),
+            1u);
+
+  auto offscreen = context.CreateOffscreenSurface();
+  ASSERT_TRUE(offscreen->IsValid());
+  EXPECT_EQ(offscreen->context_, context.resource_context_);
+
+  auto pbuffer = context.CreatePbufferSurface(4, 5);
+  ASSERT_TRUE(pbuffer->IsValid());
+  EXPECT_EQ(CountEvents("CreatePbufferSurface:4x5"), 1u);
+}
+
+TEST_F(OhosContextGLSkiaTest, SuccessAndSurfaceCreationDoNotCrash) {
   QuietLogs quiet;
   auto context = MakeContext();
   ASSERT_TRUE(context.IsValid());
@@ -477,7 +507,7 @@ TEST_F(OhosContextGLSkiaTest, QuietSeverityOnSuccessAndSurfaceCreation) {
   EXPECT_EQ(CountEvents("CreatePbufferSurface:8x9"), 1u);
 }
 
-TEST_F(OhosContextGLSkiaTest, QuietSeverityOnTeardownAndClearFailure) {
+TEST_F(OhosContextGLSkiaTest, TeardownAndClearFailureDoNotCrash) {
   QuietLogs quiet;
   g_egl.destroy_context_result = EGL_FALSE;
   {

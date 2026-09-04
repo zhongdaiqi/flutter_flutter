@@ -24,6 +24,7 @@ struct Index {
   @State profrawSize: number = 0;
   @State gtestFilter: string = '';
   private loadingTimer: number = -1;
+  private liveTimer: number = -1;
   private scroller: Scroller = new Scroller();
 
   build() {
@@ -161,6 +162,10 @@ struct Index {
     }, 500);
   }
 
+  aboutToDisappear() {
+    this.stopLiveOutput();
+  }
+
   // 将测试输出分批写入 hilog（单行超 900 字符先切片再攒批，避免被 hilog
   // 单条消息上限截断——最长的失败详情行恰是最有诊断价值的）
   private dumpOutputToHilog(text: string) {
@@ -201,11 +206,30 @@ struct Index {
     this.profrawPath = '';
     this.profrawSize = 0;
     this.startLoadingAnimation();
+    this.startLiveOutput();
 
     // 延迟执行，让 UI 先渲染 isRunning=true 的状态（按钮文字变为"测试中..."）
     setTimeout(() => {
       this.doRunTests();
     }, 50);
+  }
+
+  private startLiveOutput() {
+    this.stopLiveOutput();
+    this.liveTimer = setInterval(() => {
+      const live: string = testNapi.getLiveOutput();
+      if (live.length > 0) {
+        this.outputText = live;
+        this.scrollToBottom();
+      }
+    }, 250);
+  }
+
+  private stopLiveOutput() {
+    if (this.liveTimer !== -1) {
+      clearInterval(this.liveTimer);
+      this.liveTimer = -1;
+    }
   }
 
   private async doRunTests() {
@@ -254,6 +278,7 @@ struct Index {
       hilog.error(DOMAIN, TAG, 'Run failed: %{public}s', JSON.stringify(err));
       this.scrollToBottom();
     } finally {
+      this.stopLiveOutput();
       this.stopLoadingAnimation();
       this.isRunning = false;
     }
