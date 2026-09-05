@@ -112,6 +112,13 @@ export struct FlutterPage {
    */
   @Prop enableFrameCacheForSmooth: boolean = true;
 
+  @Prop shouldPauseWhenInvisible: boolean = true;
+
+  private modifier: StackModifier = new StackModifier(
+    this.shouldPauseWhenInvisible,
+    this.flutterView
+  )
+
   /**
    * Empty builder function used as default.
    */
@@ -186,6 +193,7 @@ export struct FlutterPage {
       });
       Log.d(TAG, "onDrop");
     })
+    .attributeModifier(this.modifier)
   }
 
   /**
@@ -264,6 +272,7 @@ export struct FlutterPage {
           this.flutterView?.onMouseWheel("actionEnd", event);
         })
     )
+    .attributeModifier(this.modifier)
   }
 
   /** Whether to show the splash screen. */
@@ -339,6 +348,11 @@ export struct FlutterPage {
     this.flutterView?.enableFrameCache(this.enableFrameCacheForSmooth);
 
     this.rootDvModel = this.flutterView!!.getDVModel()?.children;
+
+    this.modifier = new StackModifier(
+      this.shouldPauseWhenInvisible,
+      this.flutterView
+    );
   }
 
   /**
@@ -382,6 +396,36 @@ export struct FlutterPage {
       this.mouseWheelPage();
     } else {
       this.defaultPage();
+    }
+  }
+}
+
+class StackModifier implements AttributeModifier<StackAttribute> {
+  private shouldPauseWhenInvisible: boolean;
+  private flutterView?: FlutterView | null;
+
+  constructor (
+    shouldPauseWhenInvisible: boolean,
+    flutterView?: FlutterView | null
+  ) {
+    this.shouldPauseWhenInvisible = shouldPauseWhenInvisible;
+    this.flutterView = flutterView;
+  }
+
+  applyNormalAttribute(instance: StackAttribute): void {
+    if (this.shouldPauseWhenInvisible && deviceInfo.sdkApiVersion >= 20) {
+      instance.onVisibleAreaChange(
+        [0.0],
+        (isExpanding: boolean, currentRatio: number) => {
+          if (isExpanding && currentRatio > 0.0) { 
+            // partially visible
+            this.flutterView?.onVisibleAreaChanged(true);
+          } else if (!isExpanding && currentRatio <= 0.0){ 
+            // completely invisible
+            this.flutterView?.onVisibleAreaChanged(false);
+          }
+        }
+      )
     }
   }
 }

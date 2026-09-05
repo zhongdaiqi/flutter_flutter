@@ -326,6 +326,7 @@ void main() {
         platform: platform,
       );
       FlutterInformation.instance = flutterInformation;
+      // ignore: prefer_final_locals
       MockSnippetGenerator mockSnippetGenerator = MockSnippetGenerator();
       snippets_main.snippetGenerator = mockSnippetGenerator;
       String errorMessage = '';

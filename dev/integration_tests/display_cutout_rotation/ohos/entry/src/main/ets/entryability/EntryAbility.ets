@@ -11,7 +11,7 @@ import window from '@ohos.window';
 export default class EntryAbility extends FlutterAbility {
   configureFlutterEngine(flutterEngine: FlutterEngine) {
     super.configureFlutterEngine(flutterEngine)
-    GeneratedPluginRegistrant.registerWith(flutterEngine) 
+    GeneratedPluginRegistrant.registerWith(flutterEngine)
   }
 
   onWindowStageCreate(windowStage: window.WindowStage) {

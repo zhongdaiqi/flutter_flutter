@@ -32,6 +32,7 @@ export 'src/widgets/autofill.dart';
 export 'src/widgets/automatic_keep_alive.dart';
 export 'src/widgets/banner.dart';
 export 'src/widgets/basic.dart';
+// ignore: invalid_export_of_internal_element
 export 'src/widgets/binding.dart';
 export 'src/widgets/bottom_navigation_bar_item.dart';
 export 'src/widgets/color_filter.dart';
@@ -180,4 +181,3 @@ export 'src/widgets/widget_inspector.dart';
 export 'src/widgets/widget_span.dart';
 export 'src/widgets/widget_state.dart';
 export 'src/widgets/will_pop_scope.dart';
-export 'src/widgets/statusBar.dart';

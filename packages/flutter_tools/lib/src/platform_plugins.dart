@@ -694,12 +694,9 @@ class OhosPlugin extends PluginPlatform implements NativeOrDartPlugin {
     this.dartPluginClass,
     bool? ffiPlugin,
     this.defaultPackage,
-    required FileSystem fileSystem,
-  })  : _fileSystem = fileSystem,
-        ffiPlugin = ffiPlugin ?? false;
+  }) : ffiPlugin = ffiPlugin ?? false;
 
-  factory OhosPlugin.fromYaml(
-      String name, YamlMap yaml, String pluginPath, FileSystem fileSystem) {
+  factory OhosPlugin.fromYaml(String name, YamlMap yaml, String pluginPath) {
     assert(validate(yaml));
     return OhosPlugin(
       name: name,
@@ -709,11 +706,8 @@ class OhosPlugin extends PluginPlatform implements NativeOrDartPlugin {
       ffiPlugin: yaml[kFfiPlugin] as bool?,
       defaultPackage: yaml[kDefaultPackage] as String?,
       pluginPath: pluginPath,
-      fileSystem: fileSystem,
     );
   }
-
-  final FileSystem _fileSystem;
 
   @override
   bool hasMethodChannel() => pluginClass != null;
@@ -725,16 +719,13 @@ class OhosPlugin extends PluginPlatform implements NativeOrDartPlugin {
   bool hasDart() => dartPluginClass != null;
 
   static bool validate(YamlMap yaml) {
-    if (yaml == null) {
-      return false;
-    }
     return yaml[kPluginClass] is String ||
         yaml[kDartPluginClass] is String ||
         yaml[kFfiPlugin] == true ||
         yaml[kDefaultPackage] is String;
   }
 
-  static const String kConfigKey = 'ohos';
+  static const kConfigKey = 'ohos';
 
   /// The plugin name defined in pubspec.yaml.
   final String name;
@@ -757,7 +748,7 @@ class OhosPlugin extends PluginPlatform implements NativeOrDartPlugin {
   /// The absolute path to the plugin in the pub cache.
   final String pluginPath;
 
- @override
+  @override
   Map<String, dynamic> toMap() {
     return <String, dynamic>{
       'name': name,

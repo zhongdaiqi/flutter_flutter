@@ -208,7 +208,14 @@ class TextInputMethodHandlerImpl implements TextInputMethodHandler {
   ): LatinFinishPreviewRange {
     const imcW = imcEnd - imcStart;
     const previewLen = previewText.length;
-    if (previewLen > 0 && leftIdx === imcW && leftIdx < rightIdx && imcStart >= 0 && imcEnd > imcStart && imcW > 0) {
+    if (previewLen > 0 &&
+        leftIdx === imcW &&
+        leftIdx < rightIdx &&
+        imcStart >= 0 &&
+        imcEnd > imcStart &&
+        imcW > 0 &&
+        cache.startsWith(previewText)
+    ) {
       const rangeEnd = Math.min(cache.length, Math.max(rightIdx, imcW));
       const out: LatinFinishPreviewRange = { rangeStart: 0, rangeEnd: rangeEnd, mode: 'stacked' };
       return out;
@@ -291,6 +298,8 @@ class TextInputMethodHandlerImpl implements TextInputMethodHandler {
   // Record the type of soft keyboard that was triggered last time
   private lastInputType?: inputMethod.TextInputType;
   private isInputMethodAttached: boolean = false;
+  private currentImeName: string;
+  private previousInputType?: inputMethod.TextInputType;
   /**
    * After finishTextPreview commits Latin preview using document [leftIdx, rightIdx), OHOS may still deliver insertText(same).
    * One matching insertText is skipped to avoid duplicate words (e.g. "This This").
@@ -360,6 +369,7 @@ class TextInputMethodHandlerImpl implements TextInputMethodHandler {
     this.inputTarget = new InputTarget(Type.NO_TARGET, 0);
     this.focusViewId = viewId;
     this.flutterViewContext = flutterViewContext;
+    this.currentImeName = inputMethod.getCurrentInputMethod().name;
   }
 
   setFlutterViewContext(flutterViewContext: UIContext): void {
@@ -391,7 +401,8 @@ class TextInputMethodHandlerImpl implements TextInputMethodHandler {
   private evaluateAutofillRequest(): 'reject' | 'wait-rect' | 'wait-ime' | 'proceed' {
     if (deviceInfo.sdkApiVersion < AUTOFILL_SUPPORT_API ||
       !this.needsAutofill() ||
-      this.configuration?.autofill === undefined) {
+      this.configuration?.autofill === undefined ||
+      this.inputTarget.type !== Type.FRAMEWORK_CLIENT) {
       return 'reject';
     }
     if (this.inputTarget.id === this.autofillSuppressedClientId) {
@@ -425,7 +436,12 @@ class TextInputMethodHandlerImpl implements TextInputMethodHandler {
       return;
     }
     if (!shouldSave) {
+      this.autofillFieldTexts.clear();
+      this.clearAutofillContext();
       this.notifyViewExited();
+      return;
+    }
+    if (this.autoSaveInFlight) {
       return;
     }
     if (this.flutterViewContext === undefined) {
@@ -460,6 +476,7 @@ class TextInputMethodHandlerImpl implements TextInputMethodHandler {
           this.autofillFieldTexts.delete(key);
         });
         this.resetAutofillRequestTracking();
+        this.clearAutofillContext();
         this.notifyViewExited();
       },
       onFailure: (): void => {
@@ -468,6 +485,7 @@ class TextInputMethodHandlerImpl implements TextInputMethodHandler {
           this.autofillFieldTexts.delete(key);
         });
         this.resetAutofillRequestTracking();
+        this.clearAutofillContext();
         this.notifyViewExited();
       },
     };
@@ -476,6 +494,8 @@ class TextInputMethodHandlerImpl implements TextInputMethodHandler {
         this.autoSaveInFlight = false;
         this.pendingSaveUserCallback = undefined;
         this.resetAutofillRequestTracking();
+        this.autofillFieldTexts.clear();
+        this.clearAutofillContext();
         return;
       }
       const mergedFieldConfigs = TextInputMethodHandlerImpl.mergeAutofillFieldConfigs(
@@ -511,6 +531,8 @@ class TextInputMethodHandlerImpl implements TextInputMethodHandler {
       this.autoSaveInFlight = false;
       this.pendingSaveUserCallback = undefined;
       this.resetAutofillRequestTracking();
+      this.autofillFieldTexts.clear();
+      this.clearAutofillContext();
     });
   }
 
@@ -741,6 +763,20 @@ class TextInputMethodHandlerImpl implements TextInputMethodHandler {
 
     // Preview staging: handle taps inside [leftIdx, rightIdx), strictly before leftIdx, or strictly after rightIdx without falling through to raw Flutter apply.
     if (isPreviewTextSupported() && this.mEditable.isPreviewStagingActive()) {
+      const displayNow = PreviewTextCoordinator.composeDisplayState(this.mEditable);
+      if (displayNow.text !== editingState.text) {
+        this.mEditable.discardPreviewStagingMetadata();
+        this.mEditable.updateTextInputState(editingState);
+        this.mLastOutgoingFrameworkState = PreviewTextCoordinator.safeTextEditStateForNativeDocument(
+          editingState.text,
+          editingState.selectionStart,
+          editingState.selectionEnd,
+          editingState.composingStart,
+          editingState.composingEnd
+        )
+        this.notifySelectionToFramework(editingState.text, editingState.selectionStart, editingState.selectionEnd);
+        return;
+      }
       const leftIdx = this.mEditable.getLeftIdxOfPreviewTextRange();
       const rightIdx = this.mEditable.getRightIdxOfPreviewTextRange();
       const selStart = editingState.selectionStart;
@@ -983,8 +1019,8 @@ class TextInputMethodHandlerImpl implements TextInputMethodHandler {
       this.lastKind = this.configuration.deviceKind;
     }
     if (this.keyboardStatus == inputMethod.KeyboardStatus.SHOW) {
-      // When keyboard is already SHOW, still call attach; false means attach does not show the keyboard again.
-      await this.attach(false);
+      // When the state is Show and the keyboard has been dismissed, it can cause the keyboard to not come up again.
+      await this.attach(true);
       if (this.lastKind != this.configuration?.deviceKind ||
         this.hasSecureKeyboardInSwitch()) {
         if (deviceInfo.sdkApiVersion >= INPUT_SUPPORT_API) {
@@ -1463,11 +1499,19 @@ class TextInputMethodHandlerImpl implements TextInputMethodHandler {
 
   private applyKeyboardStatus(state: inputMethod.KeyboardStatus): void {
     const isAutofillActive = this.autoFillSessionActive || this.autoFillRequestInFlight || this.autoSaveInFlight;
+    const currentIme: inputMethod.InputMethodProperty = inputMethod.getCurrentInputMethod();
     this.keyboardStatus = state;
     if (state === inputMethod.KeyboardStatus.HIDE) {
       if (isAutofillActive) {
         return;
       }
+      // Switch the input method app or switch the password input box
+      if (this.currentImeName !== currentIme.name || this.configuration?.inputType?.type !== this.previousInputType) {
+        this.currentImeName = currentIme.name;
+        this.previousInputType = this.configuration?.inputType?.type;
+        return;
+      }
+      
       const closedClientId =
         this.pendingTeardownPlatformViewClientId != -1
           ? this.pendingTeardownPlatformViewClientId
@@ -1475,6 +1519,8 @@ class TextInputMethodHandlerImpl implements TextInputMethodHandler {
       this.plugin.textInputChannel.onConnectionClosed(closedClientId);
       this.pendingTeardownPlatformViewClientId = -1;
     }
+    this.currentImeName = currentIme.name;
+ 	  this.previousInputType = this.configuration?.inputType?.type;
   }
 
   private sendKeyboardStatusCallback = (state: inputMethod.KeyboardStatus) => {
@@ -1569,23 +1615,45 @@ class TextInputMethodHandlerImpl implements TextInputMethodHandler {
       this.notifyViewExited();
     }
     this.mEditable.removeEditingStateListener(this.plugin);
-    this.configuration = null;
-    this.autofillConfiguration = null;
-    this.nodeIdMap = new Map();
-    this.lastClientRect = null;
-    this.lastPageRect = null;
+    // PC: clearClient arrives BEFORE finishAutofillContext(true). If we null configuration here,
+    // the later save can't find the autofill config and skips (no popup). Defer clearing the
+    // autofill context when an autofill session is pending so finishAutofillContext can still
+    // build the save ViewData. Cleared later by the save callback or the next setTextInputClient.
+    const deferAutofillClear = this.autoSaveInFlight || this.autofillConfiguration !== null;
+    if (!deferAutofillClear) {
+      this.configuration = null;
+      this.autofillConfiguration = null;
+      this.nodeIdMap = new Map();
+      this.lastClientRect = null;
+      this.lastPageRect = null;
+    }
     this.fieldRects.clear();
     this.pendingAutofillRequest = false;
     if (!this.autoSaveInFlight) {
       this.autoFillSessionActive = false;
       this.resetAutofillRequestTracking();
-      this.autofillFieldTexts.clear();
+      if (!deferAutofillClear) {
+        this.autofillFieldTexts.clear();
+      }
     }
     this.autofillSuppressedClientId = -1;
     this.inputTarget = new InputTarget(Type.NO_TARGET, 0);
     this.mLastOutgoingFrameworkState = null;
     this.suppressNextHideForPhysicalPlatformView = false;
     this.pendingTeardownPlatformViewClientId = -1;
+  }
+
+  // Centralized autofill context teardown. Called from the save callback end-points and the
+  // cancel branch of finishAutofillContext, so the configuration deferred by clearTextInputClient
+  // is released once the save flow is actually done (rather than being cleared too early on PC,
+  // where clearClient races ahead of finishAutofillContext(true)).
+  private clearAutofillContext(): void {
+    this.configuration = null;
+    this.autofillConfiguration = null;
+    this.nodeIdMap = new Map();
+    this.lastClientRect = null;
+    this.lastPageRect = null;
+    this.fieldRects.clear();
   }
 
   /**

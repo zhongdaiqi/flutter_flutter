@@ -1,11 +1,63 @@
 # Changelog
-##  3.35.7-ohos-1.0.3
+
+<a id="version20260808"></a>
+
+## 3.35.7-ohos-1.0.4 - `2026-08-17`
+
+### Added
+
+- 支持密码保险箱功能 [!1408](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/1408) [!1615](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/1615)
+- feature: flutter page pause when invisible [!1563](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/1563)
+- [OHOS] Add DMA zero-copy image decode path with P3 support [!1320](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/1320)
+- flutter项目Web页面，支持鼠标拖拽调整尺寸 [!1281](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/1281)
+- [OHOS] Add async APIs for FlutterEngine spawn/destroy to prevent ANR [!1133](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/1133)
+
+### Changed
+
+- LTPO feature is enabled by default [!1597](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/1597)
+
+### Fixed
+
+- fix: Fix window decoration state not correctly restored after exiting immersive fullscreen on PC [!1738](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/1738)
+- Flutter 鼠标跨区域拖动 pointerup 丢失修复 [!1725](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/1725)
+- 【3.35】候选词位置为光标的右下角 [!1734](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/1734)
+- 同步三方库代码，解决字体内存泄漏问题 [!1718](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/1718)
+- 手势取消清除遗留finger [!1716](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/1716)
+- fix(Scaffold): move status bar tap subscription init to initState to prevent leak on ohos [!1701](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/1701)
+- 调整isActive的判断时机,修复前后台切换ets中的状态更新不及时的问题 [!1683](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/1683)
+- fix: DT CPP [!1681](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/1681)
+- 修改分栏功能获取应用图标的方式，从硬编码图片名改为通过资源id获取，避免在自定义图标文件名时失败的问题 [!1680](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/1680)
+- Fixed: flutter drive execution failure [!1660](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/1660)
+- fix: prevent incorrect backspace during pre-edit multi-select [!1659](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/1659)
+- 同步三方库代码，解决鸿蒙化flutter框架编译执行其他平台产物crash的问题 [!1652](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/1652)
+- fix(Impeller): add missing kB10G10R10A2UNorm Metal pixel format mapping [!1639](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/1639)
+- 提高分栏功能中，弹窗消失时，主动恢复焦点的逻辑健壮性，解决当弹窗前焦点未聚焦到页面某个组件时，恢复行为异常导致卡死的问题 [!1638](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/1638)
+- 修改EmbeddingNodeController.ets中可能出现的空指针问题 [!1593](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/1593)
+- Fixes crash when adding and removing multiple page-based route (#177338) [!1584](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/1584)
+- Fixed the issue with input status when switching input methods [!1579](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/1579)
+- Fix the issue where entering Chinese first and then English causes the English to be duplicate [!1554](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/1554)
+- Fixed the issue where typing English first and then Chinese would get overwritten [!1541](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/1541)
+- 修复折叠机下避让区域计算错误问题 [!1532](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/1532)
+- Fixed the issue where deleting numbers to the left would remove two at a time [!1530](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/1530)
+- 预加载操作执行后,将标记重置为false,避免RecreateSwapchain复用context时仍然走到预加载的判断逻辑中 [!1525](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/1525)
+- fix adding the webview to the rotating component makes it unclickable and unscrollable [!1465](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/1465)
+- [OHOS] Fix PixelMap ReadPixels temp buffer cleanup [!1395](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/1395)
+- Fix the template syntax error problem [!1372](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/1372)
+
+### Performance
+
+- Enable static snapshot linking for OHOS debug mode [!1365](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/1365)
+- ohos开启指针压缩 [!1341](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/1341)
+- 发送低内存警告，触发图像缓存清理 [!1310](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/1310)
+
+##  3.35.7-ohos-1.0.4-beta
 
 - 分栏功能中，当栈顶是弹窗时，不要拦截pop函数,([4cbb3580a1f](https://gitcode.com/CPF-Flutter/flutter_flutter/commit/4cbb3580a1f98b0b2af6ab88b0a25b8e8c249b6e))
 - 修改FlutterView.ets中鸿蒙原生事件调用逻辑,增加isActive状态判断,([6398da76cb8](https://gitcode.com/CPF-Flutter/flutter_flutter/commit/6398da76cb8e8c8b108cccea714799258119e2a3))
 - Fix OHOS platform view active touch cancellation,([3b5c89e3579](https://gitcode.com/CPF-Flutter/flutter_flutter/commit/3b5c89e3579d606ea69d9f07b3d74c5163bc39a6))
 - 修改静态检查失败的问题,补充版权信息,([3a1dec449af](https://gitcode.com/CPF-Flutter/flutter_flutter/commit/3a1dec449af4f34327e323bea457b7b112007507))
 - Fix the issue where Shift + left arrow can only select one character,([6fe60ad2a0b](https://gitcode.com/CPF-Flutter/flutter_flutter/commit/6fe60ad2a0b6df6376ed321dce071442a1e53be0))
+- 手机端支持密码保险箱功能,([dc411d6ae69](https://gitcode.com/CPF-Flutter/flutter_flutter/commit/dc411d6ae696edafc23bc98f0df71c237bb11e8c))
 - Add ohos in platform_channels_benchmarks,([b4eb510d894](https://gitcode.com/CPF-Flutter/flutter_flutter/commit/b4eb510d89439eef1caafea86a614a261fbfc776))
 - Frame Buffer PTS Optimization for Delayed Frame Presentation,([b352bf7e029](https://gitcode.com/CPF-Flutter/flutter_flutter/commit/b352bf7e029688ec36786ea0430b1696611bbef0))
 - LTPO Performance Optimization,([db468f6b073](https://gitcode.com/CPF-Flutter/flutter_flutter/commit/db468f6b0738365111abf7a5a96528fc54e2d6fe))
@@ -13,12 +65,21 @@
 - fix NavigationChannel crash,([123ec7f1b4c](https://gitcode.com/CPF-Flutter/flutter_flutter/commit/123ec7f1b4cabd1ba5c2e0a5b373bf6ff78b99d3))
 - 切换分栏实现方案，支持router路由方式下的分栏,([77ccfc09364](https://gitcode.com/CPF-Flutter/flutter_flutter/commit/77ccfc09364129bf14b49208b562982e9e45350c))
 - fix White screen issue when restoring after minimizing the window,([2cff64a928a](https://gitcode.com/CPF-Flutter/flutter_flutter/commit/2cff64a928aafbbd98bd1cd4e06a1fdb55481b4c))
+- [OHOS] Fix PixelMap ReadPixels temp buffer cleanup,([f76e5b91ad7](https://gitcode.com/CPF-Flutter/flutter_flutter/commit/f76e5b91ad7609a1a1a71f4ef9db6012b2f9cf23))
+- [OHOS] Restore PixelMap ReadPixels tight-row semantics,([194f88db225](https://gitcode.com/CPF-Flutter/flutter_flutter/commit/194f88db225f1f866204bcbc431e8244ffc82277))
 - fix：修复性能雷达滑动丢帧上报字段值问题,([71b4231d67f](https://gitcode.com/CPF-Flutter/flutter_flutter/commit/71b4231d67f8009547d58dd0515f2a148522cfc6))
 - chore: Full release supports compiling the Web SDK.,([c753f6eb759](https://gitcode.com/CPF-Flutter/flutter_flutter/commit/c753f6eb75951c385413298132ec660f6f5a74a5))
+- Enable static snapshot linking for OHOS debug mode,([cacded20f4a](https://gitcode.com/CPF-Flutter/flutter_flutter/commit/cacded20f4aefa3290974eedfc891d7c25caba37))
+- ohos开启指针压缩,([d89c70001c5](https://gitcode.com/CPF-Flutter/flutter_flutter/commit/d89c70001c5317d29ef7f7d39f32fcc13ee56f04))
 - Fixed the issue of small mouse scroll step value,([b6fe871a958](https://gitcode.com/CPF-Flutter/flutter_flutter/commit/b6fe871a9589bdc3096c5105f2a0c4134db7cbdd))
 - Fix the issue of DPI repeatedly redirecting to the same page,([3c5fac164cb](https://gitcode.com/CPF-Flutter/flutter_flutter/commit/3c5fac164cbb554d32c587ce514fef45065c25cd))
 - 开启指针压缩,([0a5c1379f60](https://gitcode.com/CPF-Flutter/flutter_flutter/commit/0a5c1379f60e1692d1ea333575bf0698278bc74a))
+- add targetSize,([2008433e755](https://gitcode.com/CPF-Flutter/flutter_flutter/commit/2008433e7555e7baf0b4b49b4f95bb56c7eb908b))
 - 修复一定深度的主页调用popuntil问题+模态弹窗无法关闭问题,([4ea25af5030](https://gitcode.com/CPF-Flutter/flutter_flutter/commit/4ea25af50308aa03080bce376a4a9948b8612e99))
+- [OHOS] Refine DMA image decode checks,([330360eaa04](https://gitcode.com/CPF-Flutter/flutter_flutter/commit/330360eaa04c4c255609fe6202a648fb8d882137))
+- 发送低内存警告，触发图像缓存清理,([8d1f4bc8162](https://gitcode.com/CPF-Flutter/flutter_flutter/commit/8d1f4bc8162a814668871115f280cc0fd757bad8))
+- [OHOS] Add DMA zero-copy image decode path with P3 support,([b215d189943](https://gitcode.com/CPF-Flutter/flutter_flutter/commit/b215d18994358ae90ec1885c4ae5fbb5cc4f6f04))
+- [OHOS] Add DMA zero-copy image decode path,([087437f2055](https://gitcode.com/CPF-Flutter/flutter_flutter/commit/087437f2055b0711275dcb1e40a666e1e5670555))
 - fix:Fix safe area avoidance in tri-fold freeform multi-window mode,([40cbc77ce39](https://gitcode.com/CPF-Flutter/flutter_flutter/commit/40cbc77ce39d6ba1b18b1e941ae2f03454d38f90))
 - 修复弹窗问题+优化读取配置文件,([470193ff508](https://gitcode.com/CPF-Flutter/flutter_flutter/commit/470193ff5089804179d944273362d0118c7979fb))
 - fix TextField accessibility read content,([3637d438c7f](https://gitcode.com/CPF-Flutter/flutter_flutter/commit/3637d438c7f8e7c4f157b80b6d5f89726e7ec7ac))
@@ -30,6 +91,7 @@
 - 添加supportLandscapeFullscreen配置项，支持横屏全屏模式,([fbd5e0c0c0a](https://gitcode.com/CPF-Flutter/flutter_flutter/commit/fbd5e0c0c0af55b6c4728b4ceeb5591a929ecae2))
 - 添加对配置项enableReducedContainerSize的处理，当设置为true时，MediaQueryData.size宽度值改为一半,([08f97b83eeb](https://gitcode.com/CPF-Flutter/flutter_flutter/commit/08f97b83eeb2ba54f9b7e1a104c70bd5bf405634))
 - 添加分栏功能,([74a0122d318](https://gitcode.com/CPF-Flutter/flutter_flutter/commit/74a0122d31866cac5f13a677f63aad009a6913d9))
+- flutter项目Web页面，支持鼠标拖拽调整尺寸,([3da64a6e572](https://gitcode.com/CPF-Flutter/flutter_flutter/commit/3da64a6e5722c8d9bde59d6f1ee655e19da189e6))
 - fix bots ut,([79abaf10b08](https://gitcode.com/CPF-Flutter/flutter_flutter/commit/79abaf10b088dbe6a6700e76c341929c4b560adc))
 - fix flutter_tools ut,([81a822eb386](https://gitcode.com/CPF-Flutter/flutter_flutter/commit/81a822eb386f18f2f67b10b17d71ef58341718d4))
 - fix dev/devicelab&dev/tools ut,([653736d810a](https://gitcode.com/CPF-Flutter/flutter_flutter/commit/653736d810aa6d581130dfb65e214f48897d01b3))
@@ -48,40 +110,7 @@
 - fix lookupCallbackInformation error,([9fa95485c53](https://gitcode.com/CPF-Flutter/flutter_flutter/commit/9fa95485c53d15f82ab0b8fad6efced2100cb919))
 - PlatformViewController解耦FlutterView,([8a72888bab1](https://gitcode.com/CPF-Flutter/flutter_flutter/commit/8a72888bab1e1df799771777f78bd39197177998))
 
-## 3.35.7-ohos-1.0.1
-
-- fix: clamp text selection range to prevent RangeError in IME operations,([540bdeb97ff](https://gitcode.com/openharmony-tpc/flutter_flutter/commit/540bdeb97ffbdb1e2e08e6af04489321da46285f))
-- 修复鼠标左右键按键异常,([251e3c119f5](https://gitcode.com/openharmony-tpc/flutter_flutter/commit/251e3c119f51d626937a17adda4fc971125328ac))
-- 解决旋转屏幕问题,([f044444e161](https://gitcode.com/openharmony-tpc/flutter_flutter/commit/f044444e1616838dddaa647b0f91fa5cbc7d715a))
-- [OHOS] Fix physical PlatformView text-input handoff,([78eedfdf923](https://gitcode.com/openharmony-tpc/flutter_flutter/commit/78eedfdf92391230ca44018d2f76f92e0a5b8e6a))
-- [OHOS] Avoid throwing from detached PlatformView render,([bbabff3c352](https://gitcode.com/openharmony-tpc/flutter_flutter/commit/bbabff3c352d82ac989fe284d4d159cf41e8d6f3))
-- 解决windowstage可能已经销毁的崩溃,([d531b5808c4](https://gitcode.com/openharmony-tpc/flutter_flutter/commit/d531b5808c427999796d9ccb925070c6b323517d))
-- [OHOS] Fix PlatformView detach lifecycle,([b9c5187c149](https://gitcode.com/openharmony-tpc/flutter_flutter/commit/b9c5187c1495dfa13b138a8d5251162912f83edf))
-- Fixed the issue where EventChannel.endOfStream() method did not trigger the onDone event in Dart,([920a1ae8f11](https://gitcode.com/openharmony-tpc/flutter_flutter/commit/920a1ae8f1109900679794376ca0eeb79f8214b5))
-- [ohos] Align debug assemble failure fix with 0fd346da7eab,([d926bcabff7](https://gitcode.com/openharmony-tpc/flutter_flutter/commit/d926bcabff7cfa2a1861ff26c98af2014e6012f0))
-- [ohos] Stop debug packaging after flutter assemble failure,([1228d7e8fdd](https://gitcode.com/openharmony-tpc/flutter_flutter/commit/1228d7e8fdd4a94e10dd8fe1fb37fc0b9a0b9497))
-- fix ReleaseNativeWindowBuffer crash,([a23e89fc42f](https://gitcode.com/openharmony-tpc/flutter_flutter/commit/a23e89fc42f89939ed2eb9cf9fa09100830595ad))
-- Fix OHOS platform view direction binding,([b8bb9512dac](https://gitcode.com/openharmony-tpc/flutter_flutter/commit/b8bb9512dac017a604fc66504f550adb8bcadff5))
-- Fixed the issue where navigator steals/grabs focus.,([bb76220440e](https://gitcode.com/openharmony-tpc/flutter_flutter/commit/bb76220440ede4b3ebb64631e70dd5ff297738df))
-- update DartCallback export,([f590563c092](https://gitcode.com/openharmony-tpc/flutter_flutter/commit/f590563c0925605bc1ef0bbd0edb9e903819486e))
-- 简化 PiPVisibilityBridge 为单一全局状态 , 修复空 catch / 线程安全注释等问题,([c989cbde72b](https://gitcode.com/openharmony-tpc/flutter_flutter/commit/c989cbde72bb2966db2dcc687878d0871b893c51))
-- 增加画中画窗口轮询策略，延迟退后台dma清理,([c58208860d0](https://gitcode.com/openharmony-tpc/flutter_flutter/commit/c58208860d087d32c56c9daf6b80f0346be2aecf))
-- 无条件设置false，重置cached_native_window_为空,([76a2793be2e](https://gitcode.com/openharmony-tpc/flutter_flutter/commit/76a2793be2e3b5eb5f3b5cb496df6b165ba302ee))
-- [OHOS] Refine SearchAnchor overflow scheduling,([d8d2ee96c1a](https://gitcode.com/openharmony-tpc/flutter_flutter/commit/d8d2ee96c1ab337ab5186e17434477a633cd802c))
-- [OHOS] Avoid transient release overflow in SearchAnchor,([fce36165705](https://gitcode.com/openharmony-tpc/flutter_flutter/commit/fce361657053678b2f3ba25c18efc73dcaad6bd3))
-- 无条件设置false，重置cached_native_window_,([69262a219aa](https://gitcode.com/openharmony-tpc/flutter_flutter/commit/69262a219aaa498316aa5afbf3430abeb4b71074))
-- [OHOS] Avoid deleting selected text when finishing preview,([f832aa759a5](https://gitcode.com/openharmony-tpc/flutter_flutter/commit/f832aa759a5ff7ecdaff68c73b108b1ce3789731))
-- Fixed incorrect tiltX and tiltY parameter passing in external texture scenarios,([df03d117948](https://gitcode.com/openharmony-tpc/flutter_flutter/commit/df03d11794820ea36c54c8526117d64aa068f5b6))
-- 修复onsurfacecreate的错误判断,([557945457d3](https://gitcode.com/openharmony-tpc/flutter_flutter/commit/557945457d3d76e6ae3dc6d0c870a134856c6c31))
-- Add simple occlusion culling for impeller,([f0ea2dab1bf](https://gitcode.com/openharmony-tpc/flutter_flutter/commit/f0ea2dab1bf0e0e600d42bdb62d98af565fdfe76))
-- feat:Window three-button, window menu bar supports safe area avoidance.,([6fc883ed0f7](https://gitcode.com/openharmony-tpc/flutter_flutter/commit/6fc883ed0f70a17081d5fab57b6d5e7a66a5fdc3))
-- feat:Adapt the setSpecificSystemBarEnabled interface in ArkUI,([356e9b78220](https://gitcode.com/openharmony-tpc/flutter_flutter/commit/356e9b782206c067108ddb86b232f4c790e7430f))
-- Fix the issue where the PlatformView page does not refresh when switching to dark mode,([41b50f447d0](https://gitcode.com/openharmony-tpc/flutter_flutter/commit/41b50f447d081f2520001b6fd5527f2886888983))
-- fix: dpi setting when navi is not working,([15bfda7c816](https://gitcode.com/openharmony-tpc/flutter_flutter/commit/15bfda7c81677ecf7da90e9c5d61eef5cae1cd58))
-- Fixed the bug of incorrect rate reporting for LTPO components, and added new debugging methods for LTPO,([e54a24df6a7](https://gitcode.com/openharmony-tpc/flutter_flutter/commit/e54a24df6a700e58ed100f2d321da570b2f7cc88))
-- Fix the issue where the keyboard collapses when the subwindow pops up,([866bfc760ef](https://gitcode.com/openharmony-tpc/flutter_flutter/commit/866bfc760ef8ef2c51da91fef15c103a13410752))
-- Reduce memory usage during the preloading phase.,([decca6943ce](https://gitcode.com/openharmony-tpc/flutter_flutter/commit/decca6943ce95fb3d88dafa3a6301e4a00bb0d8d))
-## 3.35.7-ohos-1.0.0
+## 3.35.7-ohos-0.0.3
 - Addressed the issue where cropping with original dimensions in a transformed coordinate system resulted in a size mismatch.,([2c887c51c4](https://gitcode.com/openharmony-tpc/flutter_flutter/commit/2c887c51c4367b1afd531c5cf91de0e31c306c84))
 - pick pr1239修复软键盘直接弹起到界面上问题,([a3d23abde7](https://gitcode.com/openharmony-tpc/flutter_flutter/commit/a3d23abde73a0b62b4078676510856634c991086))
 - fix: keyboard home key is not consistent,([12f85cb29b](https://gitcode.com/openharmony-tpc/flutter_flutter/commit/12f85cb29b51f31a511e8b20fc0036751161c47b))
@@ -125,3 +154,7 @@
 - 解决在剪切操作后无法进行粘贴的问题[d3ddc4e0](https://gitcode.com/openharmony-tpc/flutter_flutter/commit/d3ddc4e0e361c9294ab4d2fd3a43768ea58dae8a?ref=fix_pasting&prId=803)
 - 修复ohos平台运行build命令，无法生成指定的文件夹[31d92a8c](https://gitcode.com/openharmony-tpc/flutter_flutter/commit/31d92a8c25389ad554c9f01b6f3176032b68b8d9?ref=oh-3.35.7-dev&prId=797)
 - 解决了在AndroidStudio 上某些断点无法断住的问题[c4ae8eff](https://gitcode.com/openharmony-tpc/flutter_flutter/commit/c4ae8eff5d0b41b9ccd6a81ccf026bd02c9c107d?ref=start_paused&prId=820)
+
+<!-- ===== 版本对比链接区 ===== -->
+[Unreleased]: https://gitcode.com/CPF-Flutter/flutter_flutter/compare/3.35.8-ohos-1.0.4...HEAD
+[3.35.7-ohos-1.0.4]: https://gitcode.com/CPF-Flutter/flutter_flutter/compare/3.35.8-ohos-1.0.3...3.35.8-ohos-1.0.4

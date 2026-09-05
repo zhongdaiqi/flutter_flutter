@@ -413,13 +413,9 @@ class AndroidBuildInfo {
 class OhosBuildInfo {
   const OhosBuildInfo(
     this.buildInfo, {
-    this.targetArchs = const <OhosArch>[
-      OhosArch.armeabi_v7a,
-      OhosArch.arm64_v8a,
-      OhosArch.x86_64,
-    ],
+    this.targetArchs = const <OhosArch>[OhosArch.armeabi_v7a, OhosArch.arm64_v8a, OhosArch.x86_64],
     this.enableImpellerFlag,
-    this.shouldCodesign
+    this.shouldCodesign,
   });
 
   // The build info containing the mode and flavor.
@@ -434,7 +430,6 @@ class OhosBuildInfo {
   // Whether check codesign while build hap, default is true
   final bool? shouldCodesign;
 }
-
 
 /// A summary of the compilation strategy used for Dart.
 enum BuildMode {
@@ -551,7 +546,7 @@ String? validatedBuildNumberForPlatform(
       targetPlatform == TargetPlatform.ohos_arm ||
       targetPlatform == TargetPlatform.ohos_arm64 ||
       targetPlatform == TargetPlatform.ohos_x64) {
-    final RegExp disallowed = RegExp(r'[^\d]');
+    final disallowed = RegExp(r'[^\d]');
     String tmpBuildNumberStr = buildNumber.replaceAll(disallowed, '');
     int tmpBuildNumberInt = int.tryParse(tmpBuildNumberStr) ?? 0;
     if (tmpBuildNumberInt < 1) {
@@ -560,8 +555,9 @@ String? validatedBuildNumberForPlatform(
     tmpBuildNumberStr = tmpBuildNumberInt.toString();
     if (tmpBuildNumberStr != buildNumber) {
       logger.printTrace(
-          'Invalid build-number: $buildNumber for Ohos, overridden by $tmpBuildNumberStr.\n'
-          'See versionCode at https://developer.huawei.com/consumer/cn/doc/harmonyos-guides-V5/app-configuration-file-V5');
+        'Invalid build-number: $buildNumber for Ohos, overridden by $tmpBuildNumberStr.\n'
+        'See versionCode at https://developer.huawei.com/consumer/cn/doc/harmonyos-guides-V5/app-configuration-file-V5',
+      );
     }
     return tmpBuildNumberStr;
   }
@@ -610,7 +606,7 @@ String? validatedBuildNameForPlatform(
       targetPlatform == TargetPlatform.ohos_arm ||
       targetPlatform == TargetPlatform.ohos_arm64 ||
       targetPlatform == TargetPlatform.ohos_x64) {
-    final RegExp disallowed = RegExp(r'[^\d\.]');
+    final disallowed = RegExp(r'[^\d\.]');
     String tmpBuildName = buildName.replaceAll(disallowed, '');
     if (tmpBuildName.isEmpty) {
       return null;
@@ -624,8 +620,10 @@ String? validatedBuildNameForPlatform(
     }
     tmpBuildName = segments.join('.');
     if (tmpBuildName != buildName) {
-      logger.printTrace('Invalid build-name: $buildName for Ohos, overridden by $tmpBuildName.\n'
-          'See versionName at https://developer.huawei.com/consumer/cn/doc/harmonyos-guides-V5/app-configuration-file-V5');
+      logger.printTrace(
+        'Invalid build-name: $buildName for Ohos, overridden by $tmpBuildName.\n'
+        'See versionName at https://developer.huawei.com/consumer/cn/doc/harmonyos-guides-V5/app-configuration-file-V5',
+      );
     }
     return tmpBuildName;
   }
@@ -778,11 +776,7 @@ enum AndroidArch {
   };
 }
 
-enum OhosArch {
-  armeabi_v7a,
-  arm64_v8a,
-  x86_64,
-}
+enum OhosArch { armeabi_v7a, arm64_v8a, x86_64 }
 
 bool isOhosPlatform(TargetPlatform? targetPlatform) {
   if (targetPlatform == TargetPlatform.ohos ||
@@ -1031,7 +1025,7 @@ String getWebBuildDirectory() {
 }
 
 /// Returns the ohos build output directory.
-String getOhosBuildDirectory(){
+String getOhosBuildDirectory() {
   return globals.fs.path.join(getBuildDirectory(), 'ohos');
 }
 
@@ -1126,7 +1120,7 @@ const kAndroidArchs = 'AndroidArchs';
 ///
 /// This is expected to be a space-delimited list of architectures. If not
 /// provided, defaults to arm64.
-const String kOhosArchs = 'OhosArchs';
+const kOhosArchs = 'OhosArchs';
 
 /// The define to control what min Android SDK version is built for.
 ///

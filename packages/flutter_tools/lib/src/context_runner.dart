@@ -121,14 +121,10 @@ Future<T> runInContext<T>(FutureOr<T> Function() runner, {Map<Type, Generator>? 
       OhosSdk: OhosSdk.localOhosSdk,
       HmosSdk: HmosSdk.localHmosSdk,
       HarmonySdk: HarmonySdk.locateHarmonySdk,
-      OhosBuilder:()=> OhosHvigorBuilder(
+      OhosBuilder: () => OhosHvigorBuilder(
         logger: globals.logger,
         processManager: globals.processManager,
         fileSystem: globals.fs,
-        artifacts: globals.artifacts!,
-        usage: globals.flutterUsage,
-        hvigorUtils: globals.hvigorUtils!,
-        platform: globals.platform,
       ),
       AndroidStudio: AndroidStudio.latestValid,
       AndroidValidator: () => AndroidValidator(
@@ -156,16 +152,12 @@ Future<T> runInContext<T>(FutureOr<T> Function() runner, {Map<Type, Generator>? 
         operatingSystemUtils: globals.os,
       ),
       OhosValidator: () => OhosValidator(
-          ohosSdk: globals.harmonySdk,
-          fileSystem: globals.fs,
-          logger: globals.logger,
-          platform: globals.platform,
-          processManager: globals.processManager,
-          userMessages: globals.userMessages),
-      OhosWorkflow: () => OhosWorkflow(
         ohosSdk: globals.harmonySdk,
-        featureFlags: featureFlags,
+        platform: globals.platform,
+        processManager: globals.processManager,
+        userMessages: globals.userMessages,
       ),
+      OhosWorkflow: () => OhosWorkflow(ohosSdk: globals.harmonySdk, featureFlags: featureFlags),
       AssetBundleFactory: () {
         return AssetBundleFactory.defaultInstance(
           logger: globals.logger,
@@ -269,7 +261,7 @@ Future<T> runInContext<T>(FutureOr<T> Function() runner, {Map<Type, Generator>? 
         platform: globals.platform,
         cache: globals.cache,
       ),
-      HvigorUtils:() => HvigorUtils(),
+      HvigorUtils: () => HvigorUtils(),
       HotRunnerConfig: () => HotRunnerConfig(),
       IOSSimulatorUtils: () => IOSSimulatorUtils(
         logger: globals.logger,
