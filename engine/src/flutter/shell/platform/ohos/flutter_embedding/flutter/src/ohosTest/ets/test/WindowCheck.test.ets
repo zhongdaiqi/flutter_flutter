@@ -53,6 +53,35 @@ class ImeTestSetup {
   }
 }
 
+/**
+ * Builds TextInput.setClient args with the configuration as an object map,
+ * matching what the real Flutter framework sends (the JSON codec serializes
+ * it to an object; passing a pre-encoded JSON string makes Configuration.fromJson
+ * throw and the whole setClient path silently no-op).
+ */
+function makeClientArgs(clientId: number, inputTypeName: string, autofillId?: string): Array<Object> {
+  const inputType = new Map<string, Object>();
+  inputType.set('name', inputTypeName);
+  inputType.set('signed', false);
+  inputType.set('decimal', false);
+  const config = new Map<string, Object>();
+  config.set('inputAction', 'TextInputAction.done');
+  config.set('inputType', inputType);
+  if (autofillId) {
+    const editingValue = new Map<string, Object>();
+    editingValue.set('text', '');
+    editingValue.set('selectionBase', 0);
+    editingValue.set('selectionExtent', 0);
+    editingValue.set('composingBase', -1);
+    editingValue.set('composingExtent', -1);
+    const autofill = new Map<string, Object>();
+    autofill.set('uniqueIdentifier', autofillId);
+    autofill.set('editingValue', editingValue);
+    config.set('autofill', autofill);
+  }
+  return [clientId, config];
+}
+
 function dispatchImeMethodCall(setup: ImeTestSetup, method: string, args: Object | null): void {
   const call = new MethodCall(method, args);
   const encoded = JSONMethodCodec.INSTANCE.encodeMethodCall(call);
@@ -122,16 +151,16 @@ export default function windowCheckTest() {
 
     it('TextInput.setClient via messageHandlers', Level.LEVEL0, async (done: Function) => {
       const setup = new ImeTestSetup();
-      const args = [1, '{"inputAction":"TextInputAction.done","inputType":{"name":"TextInputType.text","signed":false,"decimal":false}}'];
+      const args = makeClientArgs(1, 'TextInputType.text');
       dispatchImeMethodCall(setup, 'TextInput.setClient', args);
       await new Promise<void>((resolve: Function) => setTimeout(resolve, 500));
-      expect(setup.textInputPlugin.isFrameworkTextInputActive()).assertEqual(false);
+      expect(setup.textInputPlugin.isFrameworkTextInputActive()).assertEqual(true);
       done();
     });
 
     it('TextInput.setEditingState via messageHandlers', Level.LEVEL0, async (done: Function) => {
       const setup = new ImeTestSetup();
-      const clientArgs = [1, '{"inputAction":"TextInputAction.done","inputType":{"name":"TextInputType.text","signed":false,"decimal":false}}'];
+      const clientArgs = makeClientArgs(1, 'TextInputType.text');
       dispatchImeMethodCall(setup, 'TextInput.setClient', clientArgs);
       await new Promise<void>((resolve: Function) => setTimeout(resolve, 500));
       dispatchImeMethodCall(setup, 'TextInput.show', '');
@@ -144,13 +173,13 @@ export default function windowCheckTest() {
       stateArgs.set('composingExtent', -1);
       dispatchImeMethodCall(setup, 'TextInput.setEditingState', stateArgs);
       await new Promise<void>((resolve: Function) => setTimeout(resolve, 500));
-      expect(setup.textInputPlugin.isFrameworkTextInputActive()).assertEqual(false);
+      expect(setup.textInputPlugin.isFrameworkTextInputActive()).assertEqual(true);
       done();
     });
 
     it('TextInput.updateConfig via messageHandlers', Level.LEVEL0, async (done: Function) => {
       const setup = new ImeTestSetup();
-      const clientArgs = [1, '{"inputAction":"TextInputAction.done","inputType":{"name":"TextInputType.text","signed":false,"decimal":false}}'];
+      const clientArgs = makeClientArgs(1, 'TextInputType.text');
       dispatchImeMethodCall(setup, 'TextInput.setClient', clientArgs);
       await new Promise<void>((resolve: Function) => setTimeout(resolve, 500));
       dispatchImeMethodCall(setup, 'TextInput.show', '');
@@ -164,7 +193,7 @@ export default function windowCheckTest() {
       configMap.set('inputType', inputTypeMap);
       dispatchImeMethodCall(setup, 'TextInput.updateConfig', configMap);
       await new Promise<void>((resolve: Function) => setTimeout(resolve, 500));
-      expect(setup.textInputPlugin.isFrameworkTextInputActive()).assertEqual(false);
+      expect(setup.textInputPlugin.isFrameworkTextInputActive()).assertEqual(true);
       done();
     });
 
@@ -181,27 +210,27 @@ export default function windowCheckTest() {
 
     it('TextInput.requestAutofill via messageHandlers', Level.LEVEL0, async (done: Function) => {
       const setup = new ImeTestSetup();
-      const clientArgs = [1, '{"inputAction":"TextInputAction.done","inputType":{"name":"TextInputType.text","signed":false,"decimal":false},"autofill":{"uniqueIdentifier":"field1","editingValue":{"text":"","selectionBase":0,"selectionExtent":0,"composingBase":-1,"composingExtent":-1}}}'];
+      const clientArgs = makeClientArgs(1, 'TextInputType.text', 'field1');
       dispatchImeMethodCall(setup, 'TextInput.setClient', clientArgs);
       await new Promise<void>((resolve: Function) => setTimeout(resolve, 500));
       dispatchImeMethodCall(setup, 'TextInput.show', '');
       await new Promise<void>((resolve: Function) => setTimeout(resolve, 1000));
       dispatchImeMethodCall(setup, 'TextInput.requestAutofill', '');
       await new Promise<void>((resolve: Function) => setTimeout(resolve, 500));
-      expect(setup.textInputPlugin.isFrameworkTextInputActive()).assertEqual(false);
+      expect(setup.textInputPlugin.isFrameworkTextInputActive()).assertEqual(true);
       done();
     });
 
     it('TextInput.finishAutofillContext via messageHandlers', Level.LEVEL0, async (done: Function) => {
       const setup = new ImeTestSetup();
-      const clientArgs = [1, '{"inputAction":"TextInputAction.done","inputType":{"name":"TextInputType.text","signed":false,"decimal":false},"autofill":{"uniqueIdentifier":"field1","editingValue":{"text":"","selectionBase":0,"selectionExtent":0,"composingBase":-1,"composingExtent":-1}}}'];
+      const clientArgs = makeClientArgs(1, 'TextInputType.text', 'field1');
       dispatchImeMethodCall(setup, 'TextInput.setClient', clientArgs);
       await new Promise<void>((resolve: Function) => setTimeout(resolve, 500));
       dispatchImeMethodCall(setup, 'TextInput.show', '');
       await new Promise<void>((resolve: Function) => setTimeout(resolve, 1000));
       dispatchImeMethodCall(setup, 'TextInput.finishAutofillContext', true);
       await new Promise<void>((resolve: Function) => setTimeout(resolve, 500));
-      expect(setup.textInputPlugin.isFrameworkTextInputActive()).assertEqual(false);
+      expect(setup.textInputPlugin.isFrameworkTextInputActive()).assertEqual(true);
       done();
     });
 
@@ -246,7 +275,7 @@ export default function windowCheckTest() {
 
     it('full IME flow: setClient+show+setEditingState+hide+clearClient', Level.LEVEL0, async (done: Function) => {
       const setup = new ImeTestSetup();
-      const clientArgs = [1, '{"inputAction":"TextInputAction.done","inputType":{"name":"TextInputType.text","signed":false,"decimal":false}}'];
+      const clientArgs = makeClientArgs(1, 'TextInputType.text');
       dispatchImeMethodCall(setup, 'TextInput.setClient', clientArgs);
       await new Promise<void>((resolve: Function) => setTimeout(resolve, 500));
       dispatchImeMethodCall(setup, 'TextInput.show', '');
@@ -268,18 +297,18 @@ export default function windowCheckTest() {
 
     it('setClient with autofill config', Level.LEVEL0, async (done: Function) => {
       const setup = new ImeTestSetup();
-      const clientArgs = [1, '{"inputAction":"TextInputAction.done","inputType":{"name":"TextInputType.text","signed":false,"decimal":false},"autofill":{"uniqueIdentifier":"field1","editingValue":{"text":"","selectionBase":0,"selectionExtent":0,"composingBase":-1,"composingExtent":-1},"hints":["username"]}}'];
+      const clientArgs = makeClientArgs(1, 'TextInputType.text', 'field1');
       dispatchImeMethodCall(setup, 'TextInput.setClient', clientArgs);
       await new Promise<void>((resolve: Function) => setTimeout(resolve, 500));
       dispatchImeMethodCall(setup, 'TextInput.show', '');
       await new Promise<void>((resolve: Function) => setTimeout(resolve, 1500));
-      expect(setup.textInputPlugin.isFrameworkTextInputActive()).assertEqual(false);
+      expect(setup.textInputPlugin.isFrameworkTextInputActive()).assertEqual(true);
       done();
     });
 
     it('setClient with NONE input type', Level.LEVEL0, async (done: Function) => {
       const setup = new ImeTestSetup();
-      const clientArgs = [1, '{"inputAction":"TextInputAction.done","inputType":{"name":"TextInputType.none","signed":false,"decimal":false}}'];
+      const clientArgs = makeClientArgs(1, 'TextInputType.none');
       dispatchImeMethodCall(setup, 'TextInput.setClient', clientArgs);
       await new Promise<void>((resolve: Function) => setTimeout(resolve, 500));
       // NONE input type -> canShowTextInput() returns false -> NO_TARGET
@@ -289,30 +318,30 @@ export default function windowCheckTest() {
 
     it('setClient with visible password type', Level.LEVEL0, async (done: Function) => {
       const setup = new ImeTestSetup();
-      const clientArgs = [1, '{"inputAction":"TextInputAction.done","inputType":{"name":"TextInputType.visiblePassword","signed":false,"decimal":false}}'];
+      const clientArgs = makeClientArgs(1, 'TextInputType.visiblePassword');
       dispatchImeMethodCall(setup, 'TextInput.setClient', clientArgs);
       await new Promise<void>((resolve: Function) => setTimeout(resolve, 500));
       dispatchImeMethodCall(setup, 'TextInput.show', '');
       await new Promise<void>((resolve: Function) => setTimeout(resolve, 1500));
-      expect(setup.textInputPlugin.isFrameworkTextInputActive()).assertEqual(false);
+      expect(setup.textInputPlugin.isFrameworkTextInputActive()).assertEqual(true);
       done();
     });
 
     it('setClient twice with different autofill groups', Level.LEVEL0, async (done: Function) => {
       const setup = new ImeTestSetup();
-      const args1 = [1, '{"inputAction":"TextInputAction.done","inputType":{"name":"TextInputType.text","signed":false,"decimal":false},"autofill":{"uniqueIdentifier":"field1","editingValue":{"text":"","selectionBase":0,"selectionExtent":0,"composingBase":-1,"composingExtent":-1}}}'];
+      const args1 = makeClientArgs(1, 'TextInputType.text', 'field1');
       dispatchImeMethodCall(setup, 'TextInput.setClient', args1);
       await new Promise<void>((resolve: Function) => setTimeout(resolve, 500));
-      const args2 = [2, '{"inputAction":"TextInputAction.done","inputType":{"name":"TextInputType.text","signed":false,"decimal":false},"autofill":{"uniqueIdentifier":"field2","editingValue":{"text":"","selectionBase":0,"selectionExtent":0,"composingBase":-1,"composingExtent":-1}}}'];
+      const args2 = makeClientArgs(2, 'TextInputType.text', 'field2');
       dispatchImeMethodCall(setup, 'TextInput.setClient', args2);
       await new Promise<void>((resolve: Function) => setTimeout(resolve, 500));
-      expect(setup.textInputPlugin.isFrameworkTextInputActive()).assertEqual(false);
+      expect(setup.textInputPlugin.isFrameworkTextInputActive()).assertEqual(true);
       done();
     });
 
     it('setEditingState with composing region', Level.LEVEL0, async (done: Function) => {
       const setup = new ImeTestSetup();
-      const clientArgs = [1, '{"inputAction":"TextInputAction.done","inputType":{"name":"TextInputType.text","signed":false,"decimal":false}}'];
+      const clientArgs = makeClientArgs(1, 'TextInputType.text');
       dispatchImeMethodCall(setup, 'TextInput.setClient', clientArgs);
       await new Promise<void>((resolve: Function) => setTimeout(resolve, 500));
       dispatchImeMethodCall(setup, 'TextInput.show', '');
@@ -325,13 +354,13 @@ export default function windowCheckTest() {
       stateArgs.set('composingExtent', 3);
       dispatchImeMethodCall(setup, 'TextInput.setEditingState', stateArgs);
       await new Promise<void>((resolve: Function) => setTimeout(resolve, 500));
-      expect(setup.textInputPlugin.isFrameworkTextInputActive()).assertEqual(false);
+      expect(setup.textInputPlugin.isFrameworkTextInputActive()).assertEqual(true);
       done();
     });
 
     it('setEditingState with -1 selection', Level.LEVEL0, async (done: Function) => {
       const setup = new ImeTestSetup();
-      const clientArgs = [1, '{"inputAction":"TextInputAction.done","inputType":{"name":"TextInputType.text","signed":false,"decimal":false}}'];
+      const clientArgs = makeClientArgs(1, 'TextInputType.text');
       dispatchImeMethodCall(setup, 'TextInput.setClient', clientArgs);
       await new Promise<void>((resolve: Function) => setTimeout(resolve, 500));
       dispatchImeMethodCall(setup, 'TextInput.show', '');
@@ -344,13 +373,13 @@ export default function windowCheckTest() {
       stateArgs.set('composingExtent', -1);
       dispatchImeMethodCall(setup, 'TextInput.setEditingState', stateArgs);
       await new Promise<void>((resolve: Function) => setTimeout(resolve, 500));
-      expect(setup.textInputPlugin.isFrameworkTextInputActive()).assertEqual(false);
+      expect(setup.textInputPlugin.isFrameworkTextInputActive()).assertEqual(true);
       done();
     });
 
     it('setEditingState twice with different text', Level.LEVEL0, async (done: Function) => {
       const setup = new ImeTestSetup();
-      const clientArgs = [1, '{"inputAction":"TextInputAction.done","inputType":{"name":"TextInputType.text","signed":false,"decimal":false}}'];
+      const clientArgs = makeClientArgs(1, 'TextInputType.text');
       dispatchImeMethodCall(setup, 'TextInput.setClient', clientArgs);
       await new Promise<void>((resolve: Function) => setTimeout(resolve, 500));
       dispatchImeMethodCall(setup, 'TextInput.show', '');
@@ -371,13 +400,13 @@ export default function windowCheckTest() {
       state2.set('composingExtent', -1);
       dispatchImeMethodCall(setup, 'TextInput.setEditingState', state2);
       await new Promise<void>((resolve: Function) => setTimeout(resolve, 500));
-      expect(setup.textInputPlugin.isFrameworkTextInputActive()).assertEqual(false);
+      expect(setup.textInputPlugin.isFrameworkTextInputActive()).assertEqual(true);
       done();
     });
 
     it('updateConfig after setClient', Level.LEVEL0, async (done: Function) => {
       const setup = new ImeTestSetup();
-      const clientArgs = [1, '{"inputAction":"TextInputAction.done","inputType":{"name":"TextInputType.text","signed":false,"decimal":false}}'];
+      const clientArgs = makeClientArgs(1, 'TextInputType.text');
       dispatchImeMethodCall(setup, 'TextInput.setClient', clientArgs);
       await new Promise<void>((resolve: Function) => setTimeout(resolve, 500));
       dispatchImeMethodCall(setup, 'TextInput.show', '');
@@ -391,7 +420,7 @@ export default function windowCheckTest() {
       configMap.set('inputType', inputTypeMap);
       dispatchImeMethodCall(setup, 'TextInput.updateConfig', configMap);
       await new Promise<void>((resolve: Function) => setTimeout(resolve, 500));
-      expect(setup.textInputPlugin.isFrameworkTextInputActive()).assertEqual(false);
+      expect(setup.textInputPlugin.isFrameworkTextInputActive()).assertEqual(true);
       done();
     });
 
@@ -408,21 +437,21 @@ export default function windowCheckTest() {
 
     it('finishAutofillContext with false', Level.LEVEL0, async (done: Function) => {
       const setup = new ImeTestSetup();
-      const clientArgs = [1, '{"inputAction":"TextInputAction.done","inputType":{"name":"TextInputType.text","signed":false,"decimal":false},"autofill":{"uniqueIdentifier":"field1","editingValue":{"text":"","selectionBase":0,"selectionExtent":0,"composingBase":-1,"composingExtent":-1}}}'];
+      const clientArgs = makeClientArgs(1, 'TextInputType.text', 'field1');
       dispatchImeMethodCall(setup, 'TextInput.setClient', clientArgs);
       await new Promise<void>((resolve: Function) => setTimeout(resolve, 500));
       dispatchImeMethodCall(setup, 'TextInput.show', '');
       await new Promise<void>((resolve: Function) => setTimeout(resolve, 1500));
       dispatchImeMethodCall(setup, 'TextInput.finishAutofillContext', false);
       await new Promise<void>((resolve: Function) => setTimeout(resolve, 500));
-      expect(setup.textInputPlugin.isFrameworkTextInputActive()).assertEqual(false);
+      expect(setup.textInputPlugin.isFrameworkTextInputActive()).assertEqual(true);
       done();
     });
 
     it('multiple setClient+show+hide cycles', Level.LEVEL0, async (done: Function) => {
       const setup = new ImeTestSetup();
       for (let i = 0; i < 3; i++) {
-        const clientArgs = [i + 1, '{"inputAction":"TextInputAction.done","inputType":{"name":"TextInputType.text","signed":false,"decimal":false}}'];
+        const clientArgs = makeClientArgs(i + 1, 'TextInputType.text');
         dispatchImeMethodCall(setup, 'TextInput.setClient', clientArgs);
         await new Promise<void>((resolve: Function) => setTimeout(resolve, 300));
         dispatchImeMethodCall(setup, 'TextInput.show', '');
@@ -430,12 +459,8 @@ export default function windowCheckTest() {
         dispatchImeMethodCall(setup, 'TextInput.hide', '');
         await new Promise<void>((resolve: Function) => setTimeout(resolve, 300));
       }
-      // In the unit-test env, TextInputPluginDefault is constructed with
-      // FlutterView == undefined, so setClient/setEditingState calls cannot
-      // actually activate the framework client; isFrameworkTextInputActive()
-      // is therefore always false. This assertion only verifies that the
-      // setClient + show + hide cycles do not throw.
-      expect(setup.textInputPlugin.isFrameworkTextInputActive()).assertEqual(false);
+      // Last cycle ends with hide (not clearClient), so client is still active.
+      expect(setup.textInputPlugin.isFrameworkTextInputActive()).assertEqual(true);
       done();
     });
   });

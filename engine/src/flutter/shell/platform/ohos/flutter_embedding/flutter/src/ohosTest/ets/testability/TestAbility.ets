@@ -34,6 +34,7 @@ export default class TestAbility extends UIAbility {
 
   onDestroy() {
     hilog.info(0x0000, 'testTag', '%{public}s', 'TestAbility onDestroy');
+    FlutterManager.getInstance().popUIAbility(this);
     this.abilityDelegator.finishTest('TestAbility onDestroy unexpectedly!', ON_DESTROY_ERROR, () => {});
   }
 
@@ -52,6 +53,7 @@ export default class TestAbility extends UIAbility {
 
   onWindowStageDestroy() {
     hilog.info(0x0000, 'testTag', '%{public}s', 'TestAbility onWindowStageDestroy');
+    FlutterManager.getInstance().popWindowStage(this);
   }
 
   onForeground() {

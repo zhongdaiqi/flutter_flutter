@@ -84,6 +84,7 @@ import textInputPluginPrivatesTest from './plugin/editing/TextInputPluginPrivate
 import flutterTextFieldUiTest from './plugin/editing/FlutterTextFieldUiTest.test';
 import systemChannelTest from './embedding/engine/systemchannels/SystemChannelTest.test';
 import platformViewFactoryTest from './plugin/platform/PlatformViewFactoryTest.test';
+import PlatformPluginTest from './plugin/PlatformPlugin.test';
 import LocalizationPluginTest from './plugin/localization/LocalizationPlugin.test';
 import SendableStandardMessageCodecTest from './plugin/common/SendableStandardMessageCodec.test';
 import SendableStandardMethodCodecTest from './plugin/common/SendableStandardMethodCodec.test';
@@ -245,4 +246,5 @@ export default function testsuite() {
   flutterTextFieldUiTest();
   systemChannelTest();
   platformViewFactoryTest();
+  PlatformPluginTest();
 }

@@ -303,7 +303,7 @@ void _triggerTextInputIME() async {
   await Future.delayed(const Duration(milliseconds: 200));
   await SystemChannels.platform.invokeMethod(
     'SystemChrome.setEnabledSystemUIOverlays',
-    ['top', 'bottom'],
+    ['SystemUiOverlay.top', 'SystemUiOverlay.bottom'],
   );
   await Future.delayed(const Duration(milliseconds: 200));
   await SystemChannels.platform.invokeMethod(

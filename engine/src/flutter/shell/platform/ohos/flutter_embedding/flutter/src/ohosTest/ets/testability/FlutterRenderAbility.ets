@@ -37,7 +37,6 @@ export default class FlutterRenderAbility extends UIAbility {
       this.flutterEngine = group.createAndRunEngineByOptions(options);
       this.flutterView = FlutterManager.getInstance().createFlutterView(context);
       this.flutterView.attachToFlutterEngine(this.flutterEngine);
-      this.flutterView.onWindowCreated();
 
       AppStorage.setOrCreate('flutterRenderViewId', this.flutterView.getId());
       windowStage.loadContent('testability/pages/FlutterRenderPage', (err) => {
@@ -45,6 +44,10 @@ export default class FlutterRenderAbility extends UIAbility {
           hilog.error(0x0000, TAG, 'loadContent failed: %{public}s', JSON.stringify(err));
           return;
         }
+        // Match production FlutterAbility.onWindowStageCreate: onWindowCreated must
+        // run after loadContent completes, otherwise tryGetUIContext() returns
+        // undefined and system settings / UI observers are never wired up.
+        this.flutterView?.onWindowCreated();
         this.flutterView?.onSurfaceCreated();
       });
     } catch (e) {

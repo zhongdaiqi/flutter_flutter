@@ -15,7 +15,8 @@
 
 import { describe, expect, it } from '@ohos/hypium';
 import { FlutterMutatorView } from '../../../../../../main/ets/embedding/engine/mutatorsstack/FlutterMutatorView';
-import { DVModel } from '../../../../../../main/ets/view/DynamicView/dynamicView';
+import { FlutterMutatorsStack } from '../../../../../../main/ets/embedding/engine/mutatorsstack/FlutterMutatorsStack';
+import { DVModel, DVModelEvents, DVModelChildren, DVModelParameters } from '../../../../../../main/ets/view/DynamicView/dynamicView';
 import Any from '../../../../../../main/ets/plugin/common/Any';
 
 class DVModelParam {
@@ -67,6 +68,91 @@ export default function FlutterMutatorViewTest() {
       const p = new DVModelParam('row', [], {}, {});
       expect(p.compType).assertEqual('row');
       expect(p.children.length).assertEqual(0);
+    });
+  });
+
+  describe('FlutterMutatorView.readyToDisplay.branches', () => {
+    it('applies layout params and non-empty clip stacks', 0, () => {
+      const view = new FlutterMutatorView();
+      const stack = new FlutterMutatorsStack();
+      stack.pushClipRect(10, 20, 0);
+      stack.pushClipPath(30, 40, 'M0,0 L10,10');
+      view.readyToDisplay(stack, 1, 2, 30, 40);
+      const params = view.getDvModel()!.params as Record<string, Any>;
+      expect(params['marginLeft']).assertEqual(1);
+      expect(params['marginTop']).assertEqual(2);
+      expect(params['width']).assertEqual(30);
+      expect(params['rectWidth']).assertEqual(10);
+      expect(params['rectHeight']).assertEqual(20);
+      expect(params['pathWidth']).assertEqual(30);
+      expect(params['pathHeight']).assertEqual(40);
+      expect(params['matrix']).not().assertNull();
+    });
+
+    it('empty clip stack leaves path/rect params unset', 0, () => {
+      const view = new FlutterMutatorView();
+      view.readyToDisplay(new FlutterMutatorsStack(), 5, 6, 7, 8);
+      const params = view.getDvModel()!.params as Record<string, Any>;
+      expect(params['marginLeft']).assertEqual(5);
+      expect(params['pathWidth']).assertUndefined();
+      expect(params['rectWidth']).assertUndefined();
+      expect(params['matrix']).not().assertNull();
+    });
+
+    it('dealMutators returns early when stack is null', 0, () => {
+      const view = new FlutterMutatorView();
+      (view as Any).mutatorsStack = null;
+      let threw = false;
+      try {
+        (view as Any).dealMutators();
+      } catch (e) {
+        threw = true;
+      }
+      expect(threw).assertEqual(false);
+    });
+
+    it('setLayoutParams replaces null params with a fresh instance', 0, () => {
+      const view = new FlutterMutatorView();
+      (view as Any).model.params = null;
+      const parameters = new DVModelParameters() as Record<string, Any>;
+      parameters['marginLeft'] = 11;
+      parameters['marginTop'] = 22;
+      parameters['width'] = 33;
+      parameters['height'] = 44;
+      view.setLayoutParams(parameters as Any as DVModelParameters);
+      const params = view.getDvModel()!.params as Record<string, Any>;
+      expect(params['width']).assertEqual(33);
+    });
+  });
+
+  describe('FlutterMutatorView.onTouch.branches', () => {
+    it('Down/Move/Up touch types translate params without throwing', 0, () => {
+      const view = new FlutterMutatorView();
+      const parameters = new DVModelParameters() as Record<string, Any>;
+      parameters['marginLeft'] = 3;
+      parameters['marginTop'] = 4;
+      view.setLayoutParams(parameters as Any as DVModelParameters);
+      const onTouch = (view as Any).onTouch as Function;
+      let threw = false;
+      try {
+        onTouch({ type: TouchType.Down });
+        onTouch({ type: TouchType.Move });
+        onTouch({ type: TouchType.Up });
+        onTouch({ type: TouchType.Cancel });
+      } catch (e) {
+        threw = true;
+      }
+      expect(threw).assertEqual(false);
+      const params = view.getDvModel()!.params as Record<string, Any>;
+      expect(params['translateX']).assertEqual(3);
+    });
+
+    it('addDvModel appends a child model', 0, () => {
+      const view = new FlutterMutatorView();
+      const child = new DVModel('row', new DVModelParameters(), new DVModelEvents(), new DVModelChildren());
+      const before = view.getDvModel()!.children.length;
+      view.addDvModel(child);
+      expect(view.getDvModel()!.children.length).assertEqual(before + 1);
     });
   });
 }

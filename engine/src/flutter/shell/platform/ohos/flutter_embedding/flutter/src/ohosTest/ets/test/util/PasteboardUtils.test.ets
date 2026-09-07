@@ -6,6 +6,8 @@
 
 import { describe, it, expect, Level } from '@ohos/hypium';
 import { PasteboardUtils } from '../../../../main/ets/util/PasteboardUtils';
+import { pasteboard } from '@kit.BasicServicesKit';
+import Any from '../../../../main/ets/plugin/common/Any';
 
 export default function pasteboardUtilsTest() {
   describe('PasteboardUtils.setCopyData', () => {
@@ -48,6 +50,63 @@ export default function pasteboardUtilsTest() {
       } catch (e) {
         // tolerated: in unit-test env, permission request may fail
       }
+      done();
+    });
+  });
+
+  describe('PasteboardUtils.getTargetTypesData.branches', () => {
+    const mkRecord = (valid: string[], dataMap: Record<string, () => Promise<string>>): pasteboard.PasteDataRecord => {
+      const rec: Any = {
+        getValidTypes: (types: string[]) => valid,
+        getData: (mime: string) => {
+          const producer = dataMap[mime];
+          if (producer) {
+            return producer();
+          }
+          return Promise.reject(new Error('no data for ' + mime));
+        }
+      };
+      return rec as Any as pasteboard.PasteDataRecord;
+    };
+
+    it('returns plain text when plain mime has data', 0, async (done: Function) => {
+      const dataMap: Record<string, () => Promise<string>> = {};
+      dataMap[pasteboard.MIMETYPE_TEXT_PLAIN] = () => Promise.resolve('hello');
+      const rec = mkRecord([pasteboard.MIMETYPE_TEXT_PLAIN], dataMap);
+      const result = await PasteboardUtils.getTargetTypesData(rec);
+      expect(result).assertEqual('hello');
+      done();
+    });
+
+    it('returns empty string when no valid types', 0, async (done: Function) => {
+      const rec = mkRecord([], {});
+      const result = await PasteboardUtils.getTargetTypesData(rec);
+      expect(result).assertEqual('');
+      done();
+    });
+
+    it('returns empty string when getData rejects', 0, async (done: Function) => {
+      const rec = mkRecord([pasteboard.MIMETYPE_TEXT_PLAIN], {});
+      const result = await PasteboardUtils.getTargetTypesData(rec);
+      expect(result).assertEqual('');
+      done();
+    });
+
+    it('falls through to the next type when the first yields nothing', 0, async (done: Function) => {
+      const dataMap: Record<string, () => Promise<string>> = {};
+      dataMap[pasteboard.MIMETYPE_TEXT_PLAIN] = () => Promise.resolve('fallback');
+      const rec = mkRecord([pasteboard.MIMETYPE_TEXT_HTML, pasteboard.MIMETYPE_TEXT_PLAIN], dataMap);
+      const result = await PasteboardUtils.getTargetTypesData(rec);
+      expect(result).assertEqual('fallback');
+      done();
+    });
+
+    it('html mime produces a string (fromHtml success or catch)', 0, async (done: Function) => {
+      const dataMap: Record<string, () => Promise<string>> = {};
+      dataMap[pasteboard.MIMETYPE_TEXT_HTML] = () => Promise.resolve('<b>hi</b>');
+      const rec = mkRecord([pasteboard.MIMETYPE_TEXT_HTML], dataMap);
+      const result = await PasteboardUtils.getTargetTypesData(rec);
+      expect(typeof result).assertEqual('string');
       done();
     });
   });

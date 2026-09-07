@@ -136,6 +136,105 @@ export default function keyEmbedderResponderTest() {
   // synthesizeEvent calls this.messenger.send which triggers NAPI via KeyData.toBytes.
   // These methods need import mock for KeyEvent type and KeyData serialization.
   // Will be added after mock infrastructure is ready.
+
+describe('KeyEmbedderResponder.handleKeyEvent.behavior', () => {
+  const mkEvent = (keyCode: number, isDown: boolean): KeyEvent => {
+    const e: Any = {
+      keyCode: keyCode,
+      type: isDown ? KeyType.Down : KeyType.Up,
+      timestamp: 1234
+    };
+    return e as Any as KeyEvent;
+  };
+
+  it('keyCode 0 is rejected without sending', Level.LEVEL1, () => {
+    const messenger = new FakeMessenger();
+    const r = new KeyEmbedderResponder(messenger);
+    expect(r.handleKeyEvent(mkEvent(0, true))).assertEqual(false);
+    expect(messenger.sendCount).assertEqual(0);
+  });
+
+  it('down records the key and sends once', Level.LEVEL1, () => {
+    const messenger = new FakeMessenger();
+    const r = new KeyEmbedderResponder(messenger);
+    expect(r.handleKeyEvent(mkEvent(0x9999, true))).assertEqual(true);
+    expect(r.getPressedKeys().size).assertEqual(1);
+    expect(messenger.sendCount).assertEqual(1);
+    expect(messenger.sendChannel).assertEqual(KeyData.CHANNEL);
+  });
+
+  it('second down of the same key is a repeat that keeps one record', Level.LEVEL1, () => {
+    const messenger = new FakeMessenger();
+    const r = new KeyEmbedderResponder(messenger);
+    r.handleKeyEvent(mkEvent(0x9999, true));
+    expect(r.handleKeyEvent(mkEvent(0x9999, true))).assertEqual(true);
+    expect(r.getPressedKeys().size).assertEqual(1);
+    expect(messenger.sendCount).assertEqual(2);
+  });
+
+  it('abrupt up of a never-pressed key is ignored', Level.LEVEL1, () => {
+    const messenger = new FakeMessenger();
+    const r = new KeyEmbedderResponder(messenger);
+    expect(r.handleKeyEvent(mkEvent(0x9999, false))).assertEqual(false);
+    expect(messenger.sendCount).assertEqual(0);
+    expect(r.getPressedKeys().size).assertEqual(0);
+  });
+
+  it('up after down releases the record', Level.LEVEL1, () => {
+    const messenger = new FakeMessenger();
+    const r = new KeyEmbedderResponder(messenger);
+    r.handleKeyEvent(mkEvent(0x9999, true));
+    expect(r.handleKeyEvent(mkEvent(0x9999, false))).assertEqual(true);
+    expect(r.getPressedKeys().size).assertEqual(0);
+    expect(messenger.sendCount).assertEqual(2);
+  });
+
+  it('double-add and double-release keep the record consistent', Level.LEVEL1, () => {
+    const messenger = new FakeMessenger();
+    const r = new KeyEmbedderResponder(messenger);
+    r.updatePressingKeys(0x000700e0, 0x0200000100);
+    r.updatePressingKeys(0x000700e0, 0x0200000100);
+    expect(r.getPressedKeys().size).assertEqual(1);
+    r.updatePressingKeys(0x000700e0, null);
+    r.updatePressingKeys(0x000700e0, null);
+    expect(r.getPressedKeys().size).assertEqual(0);
+  });
+
+  it('modifier sync queues a synthetic release that fires on runTasks', Level.LEVEL1, () => {
+    const messenger = new FakeMessenger();
+    const r = new KeyEmbedderResponder(messenger);
+    const goal: ModifierGoal = KeyboardMap.modifierGoals[0];
+    const key: KeyPair = goal.keys[0];
+    let taskCount = 0;
+    const runner: Any = {
+      addTask: (t: () => void): void => { taskCount++; },
+      runTasks: (): void => {}
+    };
+    const event = mkEvent(0x9999, true);
+    (r as Any).synchronizeModifierKey(goal, false, key.logicalKey, key.physicalKey, event, runner);
+    // KDOWN with the modifier not truly pressed queues exactly one synthetic release.
+    expect(taskCount).assertEqual(1);
+    expect(messenger.sendCount).assertEqual(0);
+  });
+
+  it('synthesizeEvent with zero keys skips pressing-record updates', Level.LEVEL1, () => {
+    const messenger = new FakeMessenger();
+    const r = new KeyEmbedderResponder(messenger);
+    r.synthesizeEvent(true, 111, 0, 0);
+    expect(messenger.sendCount).assertEqual(1);
+    expect(r.getPressedKeys().size).assertEqual(0);
+  });
+
+  it('synthesizeEvent down/up pair maintains the record', Level.LEVEL1, () => {
+    const messenger = new FakeMessenger();
+    const r = new KeyEmbedderResponder(messenger);
+    r.synthesizeEvent(true, 111, 0x0200000100, 0x000700e0);
+    expect(r.getPressedKeys().size).assertEqual(1);
+    r.synthesizeEvent(false, 112, 0x0200000100, 0x000700e0);
+    expect(r.getPressedKeys().size).assertEqual(0);
+    expect(messenger.sendCount).assertEqual(2);
+  });
+});
 }
 
 class EventTaskRunnerImpl {
