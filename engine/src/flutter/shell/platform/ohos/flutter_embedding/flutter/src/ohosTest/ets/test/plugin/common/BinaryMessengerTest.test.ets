@@ -18,7 +18,8 @@ import {
   BinaryMessenger,
   BinaryReply,
   TaskQueue,
-  TaskQueueOptions
+  TaskQueueOptions,
+  TaskPriority
 } from '../../../../../main/ets/plugin/common/BinaryMessenger';
 
 export default function BinaryMessengerTest() {
@@ -29,6 +30,12 @@ export default function BinaryMessengerTest() {
     it('makeBackgroundTaskQueue', 0, async (done: Function) => {
       console.info("uitest: makeBackgroundTaskQueue begin");
       const options = new TaskQueueOptions();
+      options.setIsSerial(false);
+      options.setPriority(TaskPriority.HIGH);
+      options.setSingleThreadMode(true);
+      expect(options.getIsSerial()).assertEqual(false);
+      expect(options.getPriority()).assertEqual(TaskPriority.HIGH);
+      expect(options.isSingleThreadMode()).assertEqual(true);
       const taskQueue: TaskQueue = binaryMessenger.makeBackgroundTaskQueue(options);
       expect(taskQueue).not().assertNull();
       done();

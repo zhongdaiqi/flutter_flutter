@@ -1,6 +1,8 @@
 import { describe, it, expect, Level } from '@ohos/hypium';
-import { PreviewEditingState } from '../../../../../main/ets/plugin/editing/PreviewEditingState';
+import { PreviewEditingState, isPreviewTextSupported } from '../../../../../main/ets/plugin/editing/PreviewEditingState';
 import { ListenableEditingState } from '../../../../../main/ets/plugin/editing/ListenableEditingState';
+import Any from '../../../../../main/ets/plugin/common/Any';
+import inputMethod from '@ohos.inputMethod';
 interface Range {
   start: number,
   end: number
@@ -284,5 +286,78 @@ export default function previewEditingStateTest() {
       expect(state.selectionStart).assertEqual(3);
       expect(state.selectionEnd).assertEqual(3);
     });
+
+    it('sets composing range when preview staging is active', Level.LEVEL0, () => {
+      const editable = new ListenableEditingState(null, 0, undefined);
+      editable.setStringCache('helloXYZ');
+      editable.updatePreviewTextRange(5, 8);
+      editable.setPreviewText('XYZ');
+      editable.setSelectionStart(8);
+      editable.setSelectionEnd(8);
+      const state = PreviewEditingState.composeDisplayState(editable);
+      expect(state.text).assertEqual('helloXYZ');
+      if (isPreviewTextSupported()) {
+        expect(state.composingStart).assertEqual(5);
+        expect(state.composingEnd).assertEqual(8);
+      } else {
+        expect(state.composingStart).assertEqual(-1);
+        expect(state.composingEnd).assertEqual(-1);
+      }
+    });
+
+    it('composing stays inactive when preview text is empty', Level.LEVEL1, () => {
+      const editable = new ListenableEditingState(null, 0, undefined);
+      editable.setStringCache('hello');
+      editable.updatePreviewTextRange(1, 3);
+      editable.setPreviewText('');
+      const state = PreviewEditingState.composeDisplayState(editable);
+      expect(state.composingStart).assertEqual(-1);
+      expect(state.composingEnd).assertEqual(-1);
+    });
   });
+describe('ListenableEditingState.moveCursorWithoutKeySimulation', () => {
+  it('collapses selection to start when moving left', Level.LEVEL0, () => {
+    const editable = new ListenableEditingState(null, 0, undefined);
+    editable.setStringCache('abcd');
+    editable.setSelectionStart(1);
+    editable.setSelectionEnd(3);
+    const e: Any = editable;
+    e['moveCursorWithoutKeySimulation'](inputMethod.Direction.CURSOR_LEFT);
+    expect(editable.getSelectionStart()).assertEqual(1);
+    expect(editable.getSelectionEnd()).assertEqual(1);
+  });
+
+  it('collapses selection to end when moving right', Level.LEVEL0, () => {
+    const editable = new ListenableEditingState(null, 0, undefined);
+    editable.setStringCache('abcd');
+    editable.setSelectionStart(1);
+    editable.setSelectionEnd(3);
+    const e: Any = editable;
+    e['moveCursorWithoutKeySimulation'](inputMethod.Direction.CURSOR_RIGHT);
+    expect(editable.getSelectionStart()).assertEqual(3);
+    expect(editable.getSelectionEnd()).assertEqual(3);
+  });
+
+  it('stays put when already at the start boundary', Level.LEVEL0, () => {
+    const editable = new ListenableEditingState(null, 0, undefined);
+    editable.setStringCache('ab');
+    editable.setSelectionStart(0);
+    editable.setSelectionEnd(0);
+    const e: Any = editable;
+    e['moveCursorWithoutKeySimulation'](inputMethod.Direction.CURSOR_LEFT);
+    expect(editable.getSelectionStart()).assertEqual(0);
+    expect(editable.getStringCache()).assertEqual('ab');
+  });
+
+  it('moves right within the text', Level.LEVEL0, () => {
+    const editable = new ListenableEditingState(null, 0, undefined);
+    editable.setStringCache('ab');
+    editable.setSelectionStart(0);
+    editable.setSelectionEnd(0);
+    const e: Any = editable;
+    e['moveCursorWithoutKeySimulation'](inputMethod.Direction.CURSOR_RIGHT);
+    expect(editable.getSelectionStart()).assertEqual(1);
+    expect(editable.getSelectionEnd()).assertEqual(1);
+  });
+});
 }

@@ -135,6 +135,18 @@ export default function standardMethodCodecTest() {
       }
       expect(threw).assertEqual(true);
     });
+
+    it('encodes Error details using stack in withStacktrace', Level.LEVEL1, () => {
+      const err = new Error('stack-details');
+      const encoded = codec.encodeErrorEnvelopeWithStacktrace('E', 'm', err, 'trace');
+      let threw = false;
+      try {
+        codec.decodeEnvelope(encoded);
+      } catch (e) {
+        threw = true;
+      }
+      expect(threw).assertEqual(true);
+    });
   });
 
   describe('StandardMethodCodec.decodeEnvelope', () => {

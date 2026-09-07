@@ -17,6 +17,7 @@ import OhosTouchProcessor from '../../../../../main/ets/embedding/ohos/OhosTouch
 import { PlatformViewWrapper } from '../../../../../main/ets/plugin/platform/PlatformViewWrapper';
 import { DVModel, DVModelParameters, DVModelEvents, DVModelChildren } from '../../../../../main/ets/view/DynamicView/dynamicView';
 import Any from '../../../../../main/ets/plugin/common/Any';
+import PlatformView, { Params } from '../../../../../main/ets/plugin/platform/PlatformView';
 
 function sleep(time: number) {
   return new Promise<void>((resolve: Function) => setTimeout(resolve, time));
@@ -51,5 +52,21 @@ export default function PlatformViewWrapperTest() {
       expect(true).assertEqual(true);
       done();
     })
+
+    it('setView setSurfaceId setDirection getters round trip', 0, () => {
+      class StubView extends PlatformView {
+        getView(): WrappedBuilder<[Params]> {
+          throw new Error('not implemented');
+        }
+        dispose(): void {}
+      }
+      const wrapper: PlatformViewWrapper = new PlatformViewWrapper();
+      wrapper.setView(new StubView());
+      wrapper.setSurfaceId('surf-1');
+      wrapper.setDirection(1);
+      expect(wrapper.getSurfaceId()).assertEqual('surf-1');
+      expect(wrapper.getDirection()).assertEqual(1);
+      expect(wrapper.getView()).not().assertNull();
+    });
   })
 }

@@ -422,8 +422,31 @@ export default function FlutterEntryTest() {
       try { entry.detachFromFlutterEngine(); } catch (e) { threw = true; }
       expect(threw).assertEqual(false);
     });
-
   })
+
+  describe('FlutterEntry.lifecycleMethods', () => {
+    it('shouldDestroyEngineWithHost throws with null delegate and no cached engine', 0, () => {
+      const entry = new FlutterEntry(getContext());
+      const e: Any = entry;
+      e['delegate'] = null;
+      // getCachedEngineId is empty so the delegate non-null assertion throws
+      let threw = false;
+      try { entry.shouldDestroyEngineWithHost(); } catch (err) { threw = true; }
+      expect(threw).assertEqual(true);
+    });
+
+    it('shouldAttachEngineToAbility returns a boolean', 0, () => {
+      const entry = new FlutterEntry(getContext());
+      const r = entry.shouldAttachEngineToAbility();
+      expect(r === true || r === false).assertEqual(true);
+    });
+
+    it('shouldRestoreAndSaveState returns a boolean', 0, () => {
+      const entry = new FlutterEntry(getContext());
+      const r = entry.shouldRestoreAndSaveState();
+      expect(r === true || r === false).assertEqual(true);
+    });
+  });
 }
 
 class TestFlutterPlugin implements FlutterPlugin {

@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 import { describe, expect, it } from '@ohos/hypium';
+import Any from '../../../../../main/ets/plugin/common/Any';
 import { TouchEventId, TouchEventTracker } from '../../../../../main/ets/embedding/ohos/TouchEventTracker';
 import { TouchEvent } from '@ohos.multimodalInput.touchEvent';
 
@@ -48,4 +49,13 @@ export default function TouchEventTrackerTest() {
       done();
     })
   })
+describe('TouchEventTracker.pop', () => {
+  it('pop returns undefined for an untracked event id', 0, () => {
+    const tracker = TouchEventTracker.getInstance();
+    const e: Any = tracker;
+    const unknownId: number = 99999;
+    const result: Any = tracker.pop(new TouchEventId(99999));
+    expect(result === undefined || result === null).assertEqual(true);
+  });
+});
 }

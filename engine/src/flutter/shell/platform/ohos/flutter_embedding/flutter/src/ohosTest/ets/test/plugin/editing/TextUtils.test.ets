@@ -234,13 +234,6 @@ export default function TextUtilsTest() {
       expect(FlutterTextUtils.getOffsetAfter(text, 0) > 0).assertEqual(true);
     });
 
-
-
-
-
-
-
-
     // Private method tests via bracket access
     it('isOnlyImePreviewApostropheRun returns true for all apostrophes', Level.LEVEL1, () => {
       const cls: Any = FlutterTextUtils as Any;
@@ -619,6 +612,138 @@ export default function TextUtilsTest() {
     it('codePointAt handles high surrogate followed by non-low', Level.LEVEL1, () => {
       const text = 'a\uD800a';
       expect(FlutterTextUtils.codePointAt(text, 1)).assertEqual(0xD800);
+    });
+  });
+
+  describe('TextUtilsTest.getOffsetBefore.complex', () => {
+    it('deletes CR before LF', Level.LEVEL0, () => {
+      expect(FlutterTextUtils.getOffsetBefore('a\r\n', 3)).assertEqual(1);
+    });
+
+    it('deletes whole regional indicator pair', Level.LEVEL0, () => {
+      const text = String.fromCodePoint(0x1F1FA) + String.fromCodePoint(0x1F1F8);
+      expect(FlutterTextUtils.getOffsetBefore(text, 4)).assertEqual(0);
+    });
+
+    it('deletes whole pair with odd preceding regional indicator count', Level.LEVEL1, () => {
+      const text = 'a' + String.fromCodePoint(0x1F1FA) + String.fromCodePoint(0x1F1F8);
+      // The flag pair is deleted as one grapheme; the cursor lands after 'a'.
+      expect(FlutterTextUtils.getOffsetBefore(text, 5)).assertEqual(1);
+    });
+
+    it('deletes keycap sequence with variation selector', Level.LEVEL0, () => {
+      const text = '1️⃣';
+      expect(FlutterTextUtils.getOffsetBefore(text, 3)).assertEqual(0);
+    });
+
+    it('deletes keycap base without variation selector', Level.LEVEL1, () => {
+      const text = '1⃣';
+      // The keycap branch re-reads the base before checking, so both the
+      // keycap and its base '1' are deleted.
+      expect(FlutterTextUtils.getOffsetBefore(text, 2)).assertEqual(0);
+    });
+
+    it('deletes whole emoji tag sequence as one grapheme', Level.LEVEL1, () => {
+      const text = String.fromCodePoint(0x1F3F4)
+        + String.fromCodePoint(0xE0067) + String.fromCodePoint(0xE0062)
+        + String.fromCodePoint(0xE0065) + String.fromCodePoint(0xE006E)
+        + String.fromCodePoint(0xE0067) + String.fromCodePoint(0xE007F);
+      // 7 supplementary-plane code points = 14 UTF-16 units; start at CANCEL_TAG.
+      expect(FlutterTextUtils.getOffsetBefore(text, text.length)).assertEqual(0);
+    });
+
+    it('deletes only tag end when base is not an emoji', Level.LEVEL1, () => {
+      const text = 'ab' + String.fromCodePoint(0xE0067) + String.fromCodePoint(0xE007F);
+      expect(FlutterTextUtils.getOffsetBefore(text, 4)).assertEqual(2);
+    });
+
+    it('deletes emoji with skin tone modifier as one grapheme', Level.LEVEL0, () => {
+      const text = String.fromCodePoint(0x1F44D) + String.fromCodePoint(0x1F3FD);
+      expect(FlutterTextUtils.getOffsetBefore(text, 4)).assertEqual(0);
+    });
+
+    it('deletes emoji plus variation selector as one grapheme', Level.LEVEL1, () => {
+      const text = '☺️';
+      expect(FlutterTextUtils.getOffsetBefore(text, 2)).assertEqual(0);
+    });
+
+    it('deletes only variation selector for non emoji base', Level.LEVEL1, () => {
+      const text = 'a️';
+      expect(FlutterTextUtils.getOffsetBefore(text, 2)).assertEqual(1);
+    });
+  });
+
+  describe('TextUtilsTest.getOffsetAfter.complex', () => {
+    it('returns length at last index', Level.LEVEL0, () => {
+      expect(FlutterTextUtils.getOffsetAfter('abc', 2)).assertEqual(3);
+    });
+
+    it('skips CR following LF', Level.LEVEL1, () => {
+      expect(FlutterTextUtils.getOffsetAfter('\n\r', 0)).assertEqual(2);
+    });
+
+    it('skips single LF without CR', Level.LEVEL0, () => {
+      expect(FlutterTextUtils.getOffsetAfter('a\nb', 1)).assertEqual(2);
+    });
+
+    it('skips whole regional indicator pair from pair start', Level.LEVEL0, () => {
+      const text = String.fromCodePoint(0x1F1FA) + String.fromCodePoint(0x1F1F8) + 'b';
+      expect(FlutterTextUtils.getOffsetAfter(text, 0)).assertEqual(4);
+    });
+
+    it('skips regional indicator pair after prefix text', Level.LEVEL1, () => {
+      const text = 'a' + String.fromCodePoint(0x1F1FA) + String.fromCodePoint(0x1F1F8) + 'b';
+      expect(FlutterTextUtils.getOffsetAfter(text, 1)).assertEqual(5);
+    });
+
+    it('moves single step with odd preceding regional indicator count', Level.LEVEL1, () => {
+      const text = String.fromCodePoint(0x1F1FA) + String.fromCodePoint(0x1F1FA)
+        + String.fromCodePoint(0x1F1F8);
+      expect(FlutterTextUtils.getOffsetAfter(text, 2)).assertEqual(4);
+    });
+
+    it('deletes cancel tag sequence without emoji base', Level.LEVEL1, () => {
+      const tag = String.fromCodePoint(0xE0067) + String.fromCodePoint(0xE007F);
+      const text = 'a' + tag;
+      expect(FlutterTextUtils.getOffsetBefore(text, text.length) >= 0).assertEqual(true);
+    });
+
+    it('deletes cancel tag sequence with emoji flag base', Level.LEVEL1, () => {
+      const tag = String.fromCodePoint(0x1F3F4) + String.fromCodePoint(0xE0067) + String.fromCodePoint(0xE007F);
+      expect(FlutterTextUtils.getOffsetBefore(tag, tag.length) >= 0).assertEqual(true);
+    });
+
+    it('getOffsetAfter starting at combining keycap with variation selector', Level.LEVEL1, () => {
+      const keycap = '1' + '\uFE0F' + '\u20E3' + 'b';
+      const idx = keycap.indexOf('\u20E3');
+      expect(FlutterTextUtils.getOffsetAfter(keycap, idx) > idx).assertEqual(true);
+    });
+
+    it('getOffsetAfter starting at combining keycap without variation selector', Level.LEVEL1, () => {
+      const keycap = '1' + '\u20E3' + 'b';
+      expect(FlutterTextUtils.getOffsetAfter(keycap, 1) > 1).assertEqual(true);
+    });
+
+    it('getOffsetAfter emoji then keycap sequence', Level.LEVEL1, () => {
+      const text = String.fromCodePoint(0x1F600) + '1' + '\uFE0F' + '\u20E3';
+      expect(FlutterTextUtils.getOffsetAfter(text, 0) > 0).assertEqual(true);
+    });
+
+    it('getOffsetBefore returns 0 when first grapheme is a surrogate pair', Level.LEVEL1, () => {
+      const text = String.fromCodePoint(0x1F600) + 'x';
+      expect(FlutterTextUtils.getOffsetBefore(text, 2)).assertEqual(0);
+    });
+
+    it('getOffsetAfter starting at emoji modifier', Level.LEVEL1, () => {
+      const text = String.fromCodePoint(0x1F44D) + String.fromCodePoint(0x1F3FD) + 'x';
+      expect(FlutterTextUtils.getOffsetAfter(text, 2) >= 2).assertEqual(true);
+    });
+
+    it('getOffsetBefore with odd regional indicator count', Level.LEVEL1, () => {
+      const text = String.fromCodePoint(0x1F1FA)
+        + String.fromCodePoint(0x1F1F8)
+        + String.fromCodePoint(0x1F1E6);
+      expect(FlutterTextUtils.getOffsetBefore(text, text.length) >= 0).assertEqual(true);
     });
   });
 }

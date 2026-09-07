@@ -23,6 +23,8 @@ import JSONMethodCodec from '../../../../../../main/ets/plugin/common/JSONMethod
 import { DartMessenger } from '../../../../../../main/ets/embedding/engine/dart/DartMessenger';
 import { IncomingMethodCallHandler } from '../../../../../../main/ets/plugin/common/MethodChannel';
 import { BinaryReply } from '../../../../../../main/ets/plugin/common/BinaryMessenger';
+import { TextEditingDelta } from '../../../../../../main/ets/plugin/editing/TextEditingDelta';
+import ArrayList from '@ohos.util.ArrayList';
 
 class FakeTextInputHandler implements TextInputMethodHandler {
   showCalls: number = 0;
@@ -245,6 +247,22 @@ export default function textInputChannelTest() {
       }
       expect(threw).assertEqual(false);
     });
+
+    it('parses fields and contentCommitMimeTypes', Level.LEVEL1, () => {
+      const inner: Any = {
+        inputAction: 'TextInputAction.done',
+        inputType: makeInputTypeJson('TextInputType.text'),
+      };
+      const m: Map<string, Any> = new Map();
+      m.set('inputAction', 'TextInputAction.done');
+      m.set('inputType', makeInputTypeJson('TextInputType.text'));
+      m.set('fields', new Array<Any>(inner));
+      const mime: Array<string> = new Array<string>('image/png', 'text/plain');
+      m.set('contentCommitMimeTypes', mime);
+      const cfg = Configuration.fromMap(m);
+      expect(cfg.fields.length).assertEqual(1);
+      expect(cfg.contentCommitMimeTypes.length).assertEqual(2);
+    });
   });
 
   describe('InputType.fromJson', () => {
@@ -308,6 +326,38 @@ export default function textInputChannelTest() {
       const state = TextEditState.fromJson(json);
       expect(state.text).assertEqual('');
       expect(state.selectionStart).assertEqual(-1);
+    });
+  });
+
+  describe('TextEditState.constructor.validation', () => {
+    it('throws for partial negative selection', Level.LEVEL1, () => {
+      let threw = false;
+      try { new TextEditState('ab', -1, 0, -1, -1); } catch (e) { threw = true; }
+      expect(threw).assertEqual(true);
+    });
+
+    it('throws for invalid composing range', Level.LEVEL1, () => {
+      let threw = false;
+      try { new TextEditState('ab', 0, 0, -1, 0); } catch (e) { threw = true; }
+      expect(threw).assertEqual(true);
+    });
+
+    it('throws when composingEnd exceeds text', Level.LEVEL1, () => {
+      let threw = false;
+      try { new TextEditState('ab', 0, 0, 0, 9); } catch (e) { threw = true; }
+      expect(threw).assertEqual(true);
+    });
+
+    it('throws when selectionStart exceeds text', Level.LEVEL1, () => {
+      let threw = false;
+      try { new TextEditState('ab', 9, 1, -1, -1); } catch (e) { threw = true; }
+      expect(threw).assertEqual(true);
+    });
+
+    it('throws when selectionEnd exceeds text', Level.LEVEL1, () => {
+      let threw = false;
+      try { new TextEditState('ab', 0, 9, -1, -1); } catch (e) { threw = true; }
+      expect(threw).assertEqual(true);
     });
   });
 
@@ -675,6 +725,95 @@ export default function textInputChannelTest() {
       args.set('transform', transform);
       dispatchTicMethodCall(setup, 'TextInput.setEditableSizeAndTransform', args);
       expect(setup.channel).not().assertNull();
+    });
+  });
+
+  describe('TextInputChannel.dartClientMethods', () => {
+    it('requestExistingInputState does not throw', Level.LEVEL0, () => {
+      const channel = getTextInputChannel();
+      let threw = false;
+      try { channel.requestExistingInputState(); } catch (e) { threw = true; }
+      expect(threw).assertEqual(false);
+    });
+
+    it('createEditingDeltaJSON maps deltas', Level.LEVEL0, () => {
+      const channel = getTextInputChannel();
+      const deltas: ArrayList<TextEditingDelta> = new ArrayList();
+      deltas.add(new TextEditingDelta('old', 0, 1, -1, -1, 0, 1, 'n'));
+      const json: Any = channel.createEditingDeltaJSON(deltas);
+      expect(json != null).assertEqual(true);
+    });
+
+    it('updateEditingStateWithTag does not throw', Level.LEVEL0, () => {
+      const channel = getTextInputChannel();
+      const states: Map<string, TextEditState> = new Map();
+      states.set('field1', new TextEditState('hello', 0, 5, -1, -1));
+      let threw = false;
+      try { channel.updateEditingStateWithTag(1, states); } catch (e) { threw = true; }
+      expect(threw).assertEqual(false);
+    });
+
+    it('updateEditingStateWithDeltas skips empty list', Level.LEVEL0, () => {
+      const channel = getTextInputChannel();
+      const empty: ArrayList<TextEditingDelta> = new ArrayList();
+      let threw = false;
+      try { channel.updateEditingStateWithDeltas(1, empty); } catch (e) { threw = true; }
+      expect(threw).assertEqual(false);
+    });
+
+    it('updateEditingStateWithDeltas sends non-empty list', Level.LEVEL0, () => {
+      const channel = getTextInputChannel();
+      const deltas: ArrayList<TextEditingDelta> = new ArrayList();
+      deltas.add(new TextEditingDelta('old', 1, 1, -1, -1, 0, 1, 'x'));
+      let threw = false;
+      try { channel.updateEditingStateWithDeltas(2, deltas); } catch (e) { threw = true; }
+      expect(threw).assertEqual(false);
+    });
+
+    it('commitContent and performPrivateCommand do not throw', Level.LEVEL0, () => {
+      const channel = getTextInputChannel();
+      let threw = false;
+      try {
+        channel.commitContent(3);
+        channel.performPrivateCommand(3, 'action', null);
+      } catch (e) { threw = true; }
+      expect(threw).assertEqual(false);
+    });
+
+    it('getKeyboardFocusState without handler is undefined', Level.LEVEL0, () => {
+      const channel = getTextInputChannel();
+      const state: Any = channel.getKeyboardFocusState();
+      expect(state === undefined).assertEqual(true);
+    });
+
+    it('getKeyboardFocusState with handler returns boolean', Level.LEVEL0, () => {
+      const channel = getTextInputChannel();
+      const handler = new FakeTextInputHandler();
+      channel.setTextInputMethodHandler(handler);
+      expect(channel.getKeyboardFocusState()).assertEqual(true);
+      expect(handler.getKeyboardFocusStateCalls).assertEqual(1);
+    });
+
+    it('action helpers newline go search send done next previous unspecified onConnectionClosed', Level.LEVEL1, () => {
+      const channel = getTextInputChannel();
+      const handler = new FakeTextInputHandler();
+      channel.setTextInputMethodHandler(handler);
+      let threw = false;
+      try {
+        channel.newline(1);
+        channel.go(1);
+        channel.search(1);
+        channel.send(1);
+        channel.done(1);
+        channel.next(1);
+        channel.previous(1);
+        channel.unspecifiedAction(1);
+        channel.onConnectionClosed(1);
+        channel.updateEditingState(1, 't', 0, 1, -1, -1);
+        channel.setDevicePixelRatio(2.5);
+      } catch (e) { threw = true; }
+      expect(threw).assertEqual(false);
+      expect(handler.hideCalls).assertEqual(1);
     });
   });
 }

@@ -170,6 +170,39 @@ export default function jsonMethodCodecTest() {
       }
       expect(threw).assertEqual(true);
     });
+
+    it('throws Error for array envelope of length 2', Level.LEVEL1, () => {
+      const bad = StringUtils.stringToArrayBuffer('["a","b"]');
+      let threw = false;
+      try {
+        codec.decodeEnvelope(bad);
+      } catch (e) {
+        threw = true;
+      }
+      expect(threw).assertEqual(true);
+    });
+
+    it('throws for length-3 envelope with non-string code', Level.LEVEL1, () => {
+      const bad = StringUtils.stringToArrayBuffer('[1,"msg","details"]');
+      let threw = false;
+      try {
+        codec.decodeEnvelope(bad);
+      } catch (e) {
+        threw = true;
+      }
+      expect(threw).assertEqual(true);
+    });
+
+    it('throws for decodeMethodCall of a JSON array', Level.LEVEL1, () => {
+      const bad = StringUtils.stringToArrayBuffer('[1,2]');
+      let threw = false;
+      try {
+        codec.decodeMethodCall(bad);
+      } catch (e) {
+        threw = true;
+      }
+      expect(threw).assertEqual(true);
+    });
   });
 }
 

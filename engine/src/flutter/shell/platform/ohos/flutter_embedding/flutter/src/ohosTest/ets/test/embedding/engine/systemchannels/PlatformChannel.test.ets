@@ -14,6 +14,8 @@ import JSONMethodCodec from '../../../../../../main/ets/plugin/common/JSONMethod
 import { DartMessenger } from '../../../../../../main/ets/embedding/engine/dart/DartMessenger';
 import { IncomingMethodCallHandler } from '../../../../../../main/ets/plugin/common/MethodChannel';
 import { BinaryReply } from '../../../../../../main/ets/plugin/common/BinaryMessenger';
+import window from '@ohos.window';
+import bundleManager from '@ohos.bundle.bundleManager';
 import PlatformChannel, {
   AppSwitcherDescription,
   Brightness,
@@ -130,6 +132,17 @@ function dispatchPlatformMethodCall(channel: PlatformChannel, method: string, ar
   }
 }
 
+function getPlatformCallback(channel: PlatformChannel): Any {
+  const napi = channel.flutterNapi;
+  const dm: DartMessenger = napi.platformMessageHandler as DartMessenger;
+  const handlerInfo = dm.messageHandlers.get('flutter/platform');
+  if (handlerInfo) {
+    const incoming = handlerInfo.handler as IncomingMethodCallHandler;
+    return (incoming as Any)['handler'];
+  }
+  return {} as Any;
+}
+
 export default function platformChannelTest() {
   describe('PlatformChannel.decodeOrientations', () => {
     it('returns a number for single PORTRAIT_UP', Level.LEVEL1, () => {
@@ -175,6 +188,25 @@ export default function platformChannelTest() {
         threw = true;
       }
       expect(threw).assertEqual(true);
+    });
+
+    it('covers remaining orientation bitmasks', Level.LEVEL1, () => {
+      const channel = getPlatformChannel();
+      const up = DeviceOrientation.PORTRAIT_UP;
+      const down = DeviceOrientation.PORTRAIT_DOWN;
+      const left = DeviceOrientation.LANDSCAPE_LEFT;
+      const right = DeviceOrientation.LANDSCAPE_RIGHT;
+      expect(channel.decodeOrientations([])).assertEqual(window.Orientation.UNSPECIFIED);
+      expect(channel.decodeOrientations([up, right])).assertEqual(window.Orientation.PORTRAIT_INVERTED);
+      expect(channel.decodeOrientations([up, down])).assertEqual(window.Orientation.AUTO_ROTATION_PORTRAIT);
+      expect(channel.decodeOrientations([down, right])).assertEqual(window.Orientation.LANDSCAPE);
+      expect(channel.decodeOrientations([up, down, right])).assertEqual(window.Orientation.LANDSCAPE);
+      expect(channel.decodeOrientations([left, right])).assertEqual(window.Orientation.AUTO_ROTATION_LANDSCAPE);
+      expect(channel.decodeOrientations([up, left, right])).assertEqual(window.Orientation.AUTO_ROTATION_UNSPECIFIED);
+      expect(channel.decodeOrientations([down, left])).assertEqual(bundleManager.DisplayOrientation.PORTRAIT_INVERTED);
+      expect(channel.decodeOrientations([up, down, left])).assertEqual(bundleManager.DisplayOrientation.PORTRAIT);
+      expect(channel.decodeOrientations([right, down, left])).assertEqual(bundleManager.DisplayOrientation.LANDSCAPE_INVERTED);
+      expect(channel.decodeOrientations([up, down, left, right])).assertEqual(window.Orientation.AUTO_ROTATION_RESTRICTED);
     });
   });
 
@@ -567,6 +599,29 @@ export default function platformChannelTest() {
       channel.setPlatformMessageHandler(handler);
       dispatchPlatformMethodCall(channel, 'unknown.method', null);
       expect(channel).not().assertNull();
+    });
+
+    it('scroll END after tab switch clears scrollType', Level.LEVEL1, () => {
+      const channel = getPlatformChannel();
+      const handler = new FakeHandler();
+      channel.setPlatformMessageHandler(handler);
+      dispatchPlatformMethodCall(channel, 'Scroll.Activity', ScrollActivity.START);
+      const type = new Map<string, Object>();
+      type.set('type', '_PagePosition');
+      dispatchPlatformMethodCall(channel, 'Scroll.type', type);
+      expect(getPlatformCallback(channel)['scrollType']).assertEqual('_PagePosition');
+      dispatchPlatformMethodCall(channel, 'Scroll.Activity', ScrollActivity.END);
+      expect(getPlatformCallback(channel)['scrollType']).assertNull();
+    });
+
+    it('scroll type ignores non PagePosition', Level.LEVEL1, () => {
+      const channel = getPlatformChannel();
+      const handler = new FakeHandler();
+      channel.setPlatformMessageHandler(handler);
+      const type = new Map<string, Object>();
+      type.set('type', 'other');
+      dispatchPlatformMethodCall(channel, 'Scroll.type', type);
+      expect(getPlatformCallback(channel)['scrollType']).assertNull();
     });
   });
 }
