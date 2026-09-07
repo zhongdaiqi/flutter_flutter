@@ -340,7 +340,8 @@ export class FlutterView {
 
   private ltpoSwitchState: LTPOSwitchState = LTPOSwitchState.NOT_INIT;
 
-  private isAllCallbacksRegistered: boolean = false;
+  private isDefaultCallbacksRegistered: boolean = false;
+  private isUiCallbacksRegistered: boolean = false;
 
   /**
    * Constructs a new FlutterView instance.
@@ -365,6 +366,7 @@ export class FlutterView {
 
     this.mFirstFrameListeners = new ArrayList<FirstFrameListener>();
     this.mFirstPreloadFrameListeners = new ArrayList<FirstPreloadFrameListener>();
+    this.registerDefaultCallbacks();
   }
 
   onBackPressCallback = () => {
@@ -620,11 +622,10 @@ export class FlutterView {
     FlutterManager.getInstance().handleWindowDecorSafeArea(this.id, this.context);
   }
 
-  private registerAllCallbacks() {
-    if (this.isAllCallbacksRegistered) {
-      this.unRegisterAllCallbacks();
+  private registerDefaultCallbacks() {
+    if (this.isDefaultCallbacksRegistered) {
+      return;
     }
-
     try {
       this.mainWindow?.on('windowSizeChange', this.windowSizeChangeCallback);
       this.mainWindow?.on('avoidAreaChange', this.avoidAreaChangeCallback);
@@ -657,14 +658,6 @@ export class FlutterView {
       Log.e(TAG, "commonEventManager createSubscriber error: " + JSON.stringify(e));
     }
 
-    try {
-      // Listen to route navigation (Flutter navigating to HarmonyOS native), soft keyboard management
-      uiObserver.on('routerPageUpdate', this.uiContext as UIContext, this.routerPageUpdateCallback);
-      uiObserver.on('densityUpdate', this.uiContext as UIContext, this.densityUpdateCallback);
-    } catch (e) {
-      Log.e(TAG, "uiObserver on error: " + JSON.stringify(e));
-    }
-
     // Subscribes to display changes. Example: event that the display size is changed.
     try {
       display.on('foldStatusChange', this.foldStatusChangeCallback);
@@ -672,11 +665,11 @@ export class FlutterView {
     } catch (e) {
       Log.e(TAG, "displayInfo on error: " + JSON.stringify(e));
     }
-    this.isAllCallbacksRegistered = true;
+    this.isDefaultCallbacksRegistered = true;
   }
 
-  private unRegisterAllCallbacks() {
-    if (!this.isAllCallbacksRegistered) {
+  private unRegisterDefaultCallbacks() {
+    if (!this.isDefaultCallbacksRegistered) {
       return;
     }
 
@@ -719,19 +712,40 @@ export class FlutterView {
     }
 
     try {
-      uiObserver.off('routerPageUpdate', this.uiContext as UIContext, this.routerPageUpdateCallback);
-      uiObserver.off('densityUpdate', this.uiContext as UIContext, this.densityUpdateCallback);
-    } catch (e) {
-      Log.e(TAG, "uiObserver off error: " + JSON.stringify(e));
-    }
-
-    try {
       display.off('foldStatusChange', this.foldStatusChangeCallback);
       display.off("change", this.displayChangeCallback);
     } catch (e) {
       Log.e(TAG, "displayInfo off error: " + JSON.stringify(e));
     }
-    this.isAllCallbacksRegistered = false;
+    this.isDefaultCallbacksRegistered = false;
+  }
+
+  private registerUiCallbacks() {
+    if (this.isUiCallbacksRegistered) {
+      return;
+    }
+    try {
+      this.uiContext = this.mainWindow?.getUIContext();
+      // Listen to route navigation (Flutter navigating to HarmonyOS native), soft keyboard management
+      uiObserver.on('routerPageUpdate', this.uiContext as UIContext, this.routerPageUpdateCallback);
+      uiObserver.on('densityUpdate', this.uiContext as UIContext, this.densityUpdateCallback);
+    } catch (e) {
+      Log.e(TAG, "uiObserver on error: " + JSON.stringify(e));
+    }
+    this.isUiCallbacksRegistered = true;
+  }
+
+  private unRegisterUiCallbacks() {
+    if (!this.isUiCallbacksRegistered) {
+      return;
+    }
+    try {
+      uiObserver.off('routerPageUpdate', this.uiContext as UIContext, this.routerPageUpdateCallback);
+      uiObserver.off('densityUpdate', this.uiContext as UIContext, this.densityUpdateCallback);
+    } catch (e) {
+      Log.e(TAG, "uiObserver off error: " + JSON.stringify(e));
+    }
+    this.isUiCallbacksRegistered = false;
   }
 
   /**
@@ -858,7 +872,8 @@ export class FlutterView {
    * Cleans up all event listeners and resources.
    */
   onDestroy() {
-    this.unRegisterAllCallbacks();
+    this.unRegisterDefaultCallbacks();
+    this.unRegisterUiCallbacks();
     this.mainWindow = null;
     FlutterManager.getInstance().deleteFlutterView(this.id, this);
 
@@ -1026,9 +1041,8 @@ export class FlutterView {
    */
   onWindowCreated() {
     Log.d(TAG, "received onwindowCreated.");
-    this.uiContext = this.tryGetUIContext();
+    this.registerUiCallbacks();
     this.sendSettings();
-    this.registerAllCallbacks();
     if (this.uiContext !== undefined && this.autofillUiContext === undefined) {
       this.applyAutofillUiContext(this.uiContext);
     }
