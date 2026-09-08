@@ -6,11 +6,15 @@
 
 #include <gtest/gtest.h>
 #include <cstdint>
+#include <cstdio>
+#include <cstdlib>
 #include <functional>
 #include <memory>
 #include <mutex>
 #include <string>
 #include <vector>
+#include "flutter/fml/platform/ohos/hiappevent/ohos_hiappevent.h"
+#include "flutter/shell/platform/ohos/test_stubs/ace_graphic_ndk_stub.h"
 #include "flutter/shell/platform/ohos/test_stubs/ace_napi_stub.h"
 #include "flutter/shell/platform/ohos/test_stubs/libc_wrapper_stub.h"
 
@@ -19,12 +23,18 @@
 #include "flutter/shell/platform/ohos/napi/platform_view_ohos_napi.h"
 #include "flutter/shell/platform/ohos/ohos_vsync_voting_mgr.h"
 #include "flutter/shell/platform/ohos/ohos_xcomponent_adapter.h"
+#include "flutter/shell/platform/ohos/platform_view_ohos.h"
 #undef private
 
+#include "flutter/fml/log_settings.h"
+#include "flutter/fml/platform/ohos/dynamic_library_loader.h"
 #include "flutter/shell/platform/ohos/ohos_main.h"
 #include "flutter/shell/platform/ohos/ohos_shell_holder.h"
 
 namespace flutter {
+std::vector<std::string> StringArrayToVector(napi_env env,
+                                             napi_value arrayValue);
+
 namespace testing {
 
 class PlatformViewOHOSNapiTest : public ::testing::Test {
@@ -220,6 +230,21 @@ TEST_F(PlatformViewOHOSNapiTest, PlatformMessageCalloutsComplete) {
                nullptr));
     facade.FlutterViewHandlePlatformMessage(
         8, std::make_unique<PlatformMessage>("unittest/ch", nullptr));
+    StubNapiFailCreateStringUtf8(kStubFailure, 0);
+    facade.FlutterViewHandlePlatformMessage(
+        7, std::make_unique<PlatformMessage>(
+               "unittest/reach", fml::MallocMapping::Copy(payload, payload + 7),
+               nullptr));
+    StubNapiFailCreateStringUtf8(kStubFailure, 1);
+    facade.FlutterViewHandlePlatformMessage(
+        7, std::make_unique<PlatformMessage>(
+               "unittest/reach", fml::MallocMapping::Copy(payload, payload + 7),
+               nullptr));
+    StubNapiFailCreateInt64(kStubFailure);
+    facade.FlutterViewHandlePlatformMessage(
+        7, std::make_unique<PlatformMessage>(
+               "unittest/reach", fml::MallocMapping::Copy(payload, payload + 7),
+               nullptr));
     facade.FlutterViewOnFirstFrame(true);
     facade.FlutterViewOnFirstFrame(false);
     facade.FlutterViewOnPreEngineRestart();
@@ -254,6 +279,7 @@ TEST_F(PlatformViewOHOSNapiTest, CalloutsInvokeJsMethodFailureBranches) {
   const std::vector<std::function<void()>> callouts = {
       [&] { facade.FlutterViewOnFirstFrame(true); },
       [&] { facade.FlutterViewOnPreEngineRestart(); },
+      [&] {},
   };
   for (const auto& call : callouts) {
     StubNapiFailCallFunction(kStubFailure);
@@ -388,11 +414,36 @@ TEST_F(PlatformViewOHOSNapiTest, NativeDestroyAsync) {
             nullptr);
   EXPECT_EQ(PlatformViewOHOSNapi::nativeDestroyAsync(FakeNapiEnv(), nullptr),
             nullptr);
+  EXPECT_NO_FATAL_FAILURE(StubNapiRunLastAsyncWork());
+  StubNapiFailCbInfo(kStubFailure);
+  EXPECT_NO_FATAL_FAILURE(
+      PlatformViewOHOSNapi::nativeDestroyAsync(FakeNapiEnv(), nullptr));
+  StubNapiFailCbInfo(napi_ok);
+  StubNapiFailInt64OnCall(1);
+  EXPECT_NO_FATAL_FAILURE(
+      PlatformViewOHOSNapi::nativeDestroyAsync(FakeNapiEnv(), nullptr));
+  StubNapiFailInt64OnCall(0);
 }
 
 TEST_F(PlatformViewOHOSNapiTest, NativeCleanupMessageData) {
   EXPECT_EQ(PlatformViewOHOSNapi::nativeCleanupMessageData(nullptr, nullptr),
             nullptr);
+  EXPECT_EQ(
+      PlatformViewOHOSNapi::nativeCleanupMessageData(FakeNapiEnv(), nullptr),
+      nullptr);
+  StubNapiFailCbInfo(kStubFailure);
+  EXPECT_EQ(
+      PlatformViewOHOSNapi::nativeCleanupMessageData(FakeNapiEnv(), nullptr),
+      nullptr);
+  StubNapiFailCbInfo(napi_ok);
+  StubNapiFailInt64OnCall(1);
+  EXPECT_EQ(
+      PlatformViewOHOSNapi::nativeCleanupMessageData(FakeNapiEnv(), nullptr),
+      nullptr);
+  StubNapiFailInt64OnCall(0);
+  void* payload = malloc(8);
+  ASSERT_NE(payload, nullptr);
+  StubNapiSetInt64Value(reinterpret_cast<int64_t>(payload));
   EXPECT_EQ(
       PlatformViewOHOSNapi::nativeCleanupMessageData(FakeNapiEnv(), nullptr),
       nullptr);
@@ -403,7 +454,7 @@ TEST_F(PlatformViewOHOSNapiTest, NativeSetViewportMetricsNullEnv) {
             nullptr);
 }
 
-TEST_F(PlatformViewOHOSNapiTest, NativeUpdateRefreshRateFullPaths) {
+TEST_F(PlatformViewOHOSNapiTest, NativeUpdateRefreshRate) {
   napi_env env = FakeNapiEnv();
   StubNapiSetCbArgc(1);
 
@@ -436,7 +487,7 @@ TEST_F(PlatformViewOHOSNapiTest, NativeDisplayUpdatesNullEnv) {
             nullptr);
 }
 
-TEST_F(PlatformViewOHOSNapiTest, NativeRegisterTextureParseStages) {
+TEST_F(PlatformViewOHOSNapiTest, NativeRegisterTexture) {
   napi_env env = FakeNapiEnv();
   StubNapiSetCbArgc(2);
   StubNapiFailInt64OnCall(1);
@@ -446,7 +497,7 @@ TEST_F(PlatformViewOHOSNapiTest, NativeRegisterTextureParseStages) {
   StubNapiFailInt64OnCall(0);
 }
 
-TEST_F(PlatformViewOHOSNapiTest, NativeUnregisterTextureParseStages) {
+TEST_F(PlatformViewOHOSNapiTest, NativeUnregisterTexture) {
   napi_env env = FakeNapiEnv();
   StubNapiSetCbArgc(2);
   StubNapiFailInt64OnCall(1);
@@ -458,7 +509,7 @@ TEST_F(PlatformViewOHOSNapiTest, NativeUnregisterTextureParseStages) {
   StubNapiFailInt64OnCall(0);
 }
 
-TEST_F(PlatformViewOHOSNapiTest, NativeGetTextureWindowIdParseStages) {
+TEST_F(PlatformViewOHOSNapiTest, NativeGetTextureWindowId) {
   napi_env env = FakeNapiEnv();
   StubNapiSetCbArgc(2);
   StubNapiFailInt64OnCall(1);
@@ -470,7 +521,7 @@ TEST_F(PlatformViewOHOSNapiTest, NativeGetTextureWindowIdParseStages) {
   StubNapiFailInt64OnCall(0);
 }
 
-TEST_F(PlatformViewOHOSNapiTest, NativeGetTextureWindowPtrParseStages) {
+TEST_F(PlatformViewOHOSNapiTest, NativeGetTextureWindowPtr) {
   napi_env env = FakeNapiEnv();
   StubNapiSetCbArgc(2);
   StubNapiFailInt64OnCall(1);
@@ -482,7 +533,7 @@ TEST_F(PlatformViewOHOSNapiTest, NativeGetTextureWindowPtrParseStages) {
   StubNapiFailInt64OnCall(0);
 }
 
-TEST_F(PlatformViewOHOSNapiTest, NativeSetTextureBufferSizeParseStages) {
+TEST_F(PlatformViewOHOSNapiTest, NativeSetTextureBufferSize) {
   napi_env env = FakeNapiEnv();
   StubNapiSetCbArgc(4);
   StubNapiFailInt64OnCall(1);
@@ -501,7 +552,7 @@ TEST_F(PlatformViewOHOSNapiTest, NativeSetTextureBufferSizeParseStages) {
   StubNapiFailInt32OnCall(0);
 }
 
-TEST_F(PlatformViewOHOSNapiTest, NativeNotifyTextureResizingParseStages) {
+TEST_F(PlatformViewOHOSNapiTest, NativeNotifyTextureResizing) {
   napi_env env = FakeNapiEnv();
   StubNapiSetCbArgc(4);
   StubNapiFailInt64OnCall(1);
@@ -520,7 +571,7 @@ TEST_F(PlatformViewOHOSNapiTest, NativeNotifyTextureResizingParseStages) {
   StubNapiFailInt32OnCall(0);
 }
 
-TEST_F(PlatformViewOHOSNapiTest, NativeSetTextureBackGroundColorParseStages) {
+TEST_F(PlatformViewOHOSNapiTest, NativeSetTextureBackGroundColor) {
   napi_env env = FakeNapiEnv();
   StubNapiSetCbArgc(3);
   StubNapiFailInt64OnCall(1);
@@ -536,7 +587,7 @@ TEST_F(PlatformViewOHOSNapiTest, NativeSetTextureBackGroundColorParseStages) {
   StubNapiFailUint32OnCall(0);
 }
 
-TEST_F(PlatformViewOHOSNapiTest, NativeUpdateSizeFullPaths) {
+TEST_F(PlatformViewOHOSNapiTest, NativeUpdateSize) {
   napi_env env = FakeNapiEnv();
   StubNapiSetCbArgc(2);
   StubNapiSetInt64Value(1080);
@@ -552,7 +603,7 @@ TEST_F(PlatformViewOHOSNapiTest, NativeUpdateSizeFullPaths) {
   EXPECT_EQ(PlatformViewOHOSNapi::display_height, 1080);
 }
 
-TEST_F(PlatformViewOHOSNapiTest, NativeUpdateDensityFullPaths) {
+TEST_F(PlatformViewOHOSNapiTest, NativeUpdateDensity) {
   napi_env env = FakeNapiEnv();
   StubNapiSetCbArgc(1);
   StubNapiSetDoubleValue(2.75);
@@ -565,7 +616,7 @@ TEST_F(PlatformViewOHOSNapiTest, NativeUpdateDensityFullPaths) {
   EXPECT_DOUBLE_EQ(PlatformViewOHOSNapi::display_density_pixels, 2.75);
 }
 
-TEST_F(PlatformViewOHOSNapiTest, NativeCheckAndReloadFontParseStages) {
+TEST_F(PlatformViewOHOSNapiTest, NativeCheckAndReloadFont) {
   napi_env env = FakeNapiEnv();
   StubNapiSetCbArgc(1);
   StubNapiFailInt64OnCall(1);
@@ -574,7 +625,7 @@ TEST_F(PlatformViewOHOSNapiTest, NativeCheckAndReloadFontParseStages) {
   StubNapiFailInt64OnCall(0);
 }
 
-TEST_F(PlatformViewOHOSNapiTest, NativeTextUtilsIsEmojiFullPaths) {
+TEST_F(PlatformViewOHOSNapiTest, NativeTextUtilsIsEmoji) {
   napi_env env = FakeNapiEnv();
   StubNapiSetCbArgc(1);
 
@@ -594,7 +645,7 @@ TEST_F(PlatformViewOHOSNapiTest, NativeTextUtilsIsEmojiFullPaths) {
   StubNapiSetInt64Value(0);
 }
 
-TEST_F(PlatformViewOHOSNapiTest, NativeTextUtilsIsEmojiModifierFullPaths) {
+TEST_F(PlatformViewOHOSNapiTest, NativeTextUtilsIsEmojiModifier) {
   napi_env env = FakeNapiEnv();
   StubNapiSetCbArgc(1);
 
@@ -617,7 +668,7 @@ TEST_F(PlatformViewOHOSNapiTest, NativeTextUtilsIsEmojiModifierFullPaths) {
   StubNapiSetInt64Value(0);
 }
 
-TEST_F(PlatformViewOHOSNapiTest, NativeTextUtilsIsEmojiModifierBaseFullPaths) {
+TEST_F(PlatformViewOHOSNapiTest, NativeTextUtilsIsEmojiModifierBase) {
   napi_env env = FakeNapiEnv();
   StubNapiSetCbArgc(1);
 
@@ -640,7 +691,7 @@ TEST_F(PlatformViewOHOSNapiTest, NativeTextUtilsIsEmojiModifierBaseFullPaths) {
   StubNapiSetInt64Value(0);
 }
 
-TEST_F(PlatformViewOHOSNapiTest, NativeTextUtilsIsVariationSelectorFullPaths) {
+TEST_F(PlatformViewOHOSNapiTest, NativeTextUtilsIsVariationSelector) {
   napi_env env = FakeNapiEnv();
   StubNapiSetCbArgc(1);
 
@@ -663,7 +714,7 @@ TEST_F(PlatformViewOHOSNapiTest, NativeTextUtilsIsVariationSelectorFullPaths) {
   StubNapiSetInt64Value(0);
 }
 
-TEST_F(PlatformViewOHOSNapiTest, NativeTextUtilsIsRegionalIndicatorFullPaths) {
+TEST_F(PlatformViewOHOSNapiTest, NativeTextUtilsIsRegionalIndicator) {
   napi_env env = FakeNapiEnv();
   StubNapiSetCbArgc(1);
 
@@ -686,7 +737,7 @@ TEST_F(PlatformViewOHOSNapiTest, NativeTextUtilsIsRegionalIndicatorFullPaths) {
   StubNapiSetInt64Value(0);
 }
 
-TEST_F(PlatformViewOHOSNapiTest, NativeSetAccessibilityFeaturesParseStages) {
+TEST_F(PlatformViewOHOSNapiTest, NativeSetAccessibilityFeatures) {
   napi_env env = FakeNapiEnv();
   StubNapiSetCbArgc(2);
   StubNapiFailInt64OnCall(1);
@@ -698,7 +749,7 @@ TEST_F(PlatformViewOHOSNapiTest, NativeSetAccessibilityFeaturesParseStages) {
   StubNapiFailInt64OnCall(0);
 }
 
-TEST_F(PlatformViewOHOSNapiTest, NativeSetFontWeightScaleParseStages) {
+TEST_F(PlatformViewOHOSNapiTest, NativeSetFontWeightScale) {
   napi_env env = FakeNapiEnv();
   StubNapiSetCbArgc(2);
   StubNapiFailInt64OnCall(1);
@@ -721,13 +772,28 @@ TEST_F(PlatformViewOHOSNapiTest, NativePrefetchDefaultFontManagerRuns) {
 }
 
 // holder arms stay device-only. TODO(device).
-TEST_F(PlatformViewOHOSNapiTest, NativeAttachPreHolderLegs) {
+TEST_F(PlatformViewOHOSNapiTest, NativeAttachOnce) {
   StubNapiSetValuetype(napi_string);
   StubNapiSetString("--enable-checked-mode");
   StubNapiSetArrayLength(1);
   EXPECT_NO_FATAL_FAILURE(OhosMain::NativeInit(FakeNapiEnv(), nullptr));
   StubNapiReset();
   EXPECT_NO_FATAL_FAILURE(OhosMain::Get().GetSettings());
+#if FLUTTER_JIT_RUNTIME
+  static bool attached = false;
+  if (attached) {
+    GTEST_SKIP() << "nativeAttach is once-per-process";
+  }
+  attached = true;
+  EXPECT_NO_FATAL_FAILURE(
+      PlatformViewOHOSNapi::nativeAttach(FakeNapiEnv(), nullptr));
+  const int64_t shell = StubNapiLastCreatedInt64();
+  if (shell != 0) {
+    auto* holder = reinterpret_cast<OHOSShellHolder*>(shell);
+    EXPECT_TRUE(holder->IsValid());
+    delete holder;
+  }
+#endif
 }
 
 TEST_F(PlatformViewOHOSNapiTest, NativeSetViewportMetricsFullChain) {
@@ -758,12 +824,19 @@ TEST_F(PlatformViewOHOSNapiTest, NativeSetFlutterNavigationActionFullChain) {
   StubNapiFailBoolOnCall(0);
 }
 
-static char g_fake_holder_storage[4096];
+std::unique_ptr<OHOSShellHolder> MakeSoftwareHolder() {
+  Settings settings;
+  settings.ohos_rendering_api = OHOSRenderingAPI::kSoftware;
+  return std::make_unique<OHOSShellHolder>(
+      settings, std::make_shared<PlatformViewOHOSNapi>(nullptr), nullptr);
+}
 
-TEST_F(PlatformViewOHOSNapiTest, NativeEnableFrameCacheFullPaths) {
+TEST_F(PlatformViewOHOSNapiTest, NativeEnableFrameCache) {
   napi_env env = FakeNapiEnv();
+  auto holder = MakeSoftwareHolder();
+  ASSERT_TRUE(holder->IsValid());
   StubNapiSetCbArgc(2);
-  StubNapiSetInt64Value(reinterpret_cast<int64_t>(g_fake_holder_storage));
+  StubNapiSetInt64Value(reinterpret_cast<int64_t>(holder.get()));
   StubNapiFailInt64OnCall(1);
   EXPECT_EQ(PlatformViewOHOSNapi::nativeEnableFrameCache(env, nullptr),
             nullptr);
@@ -772,10 +845,12 @@ TEST_F(PlatformViewOHOSNapiTest, NativeEnableFrameCacheFullPaths) {
       PlatformViewOHOSNapi::nativeEnableFrameCache(env, nullptr));
 }
 
-TEST_F(PlatformViewOHOSNapiTest, NativeSetPipVisibleFullPaths) {
+TEST_F(PlatformViewOHOSNapiTest, NativeSetPipVisible) {
   napi_env env = FakeNapiEnv();
+  auto holder = MakeSoftwareHolder();
+  ASSERT_TRUE(holder->IsValid());
   StubNapiSetCbArgc(2);
-  StubNapiSetInt64Value(reinterpret_cast<int64_t>(g_fake_holder_storage));
+  StubNapiSetInt64Value(reinterpret_cast<int64_t>(holder.get()));
   StubNapiFailInt64OnCall(1);
   EXPECT_EQ(PlatformViewOHOSNapi::nativeSetPipVisible(env, nullptr), nullptr);
   StubNapiFailInt64OnCall(0);
@@ -792,7 +867,7 @@ TEST_F(PlatformViewOHOSNapiTest, NativeSetPipVisibleFullPaths) {
     clear_setup;                                              \
   } while (0)
 
-TEST_F(PlatformViewOHOSNapiTest, NativeA11yStateChangeBrakeTail) {
+TEST_F(PlatformViewOHOSNapiTest, NativeA11yStateChangeArgFailure) {
   napi_env env = FakeNapiEnv();
   StubNapiSetCbArgc(2);
   StubNapiFailInt64OnCall(1);
@@ -805,21 +880,21 @@ TEST_F(PlatformViewOHOSNapiTest, NativeA11yStateChangeBrakeTail) {
   StubNapiFailBoolOnCall(0);
 }
 
-TEST_F(PlatformViewOHOSNapiTest, NativeA11yOnTapBrakeTail) {
+TEST_F(PlatformViewOHOSNapiTest, NativeA11yOnTapArgFailure) {
   NAPO_BRAKE_TAIL2(PlatformViewOHOSNapi::nativeAccessibilityOnTap, 2,
                    StubNapiFailInt64OnCall(1), StubNapiFailInt64OnCall(0));
   NAPO_BRAKE_TAIL2(PlatformViewOHOSNapi::nativeAccessibilityOnTap, 2,
                    StubNapiFailInt32OnCall(1), StubNapiFailInt32OnCall(0));
 }
 
-TEST_F(PlatformViewOHOSNapiTest, NativeA11yOnLongPressBrakeTail) {
+TEST_F(PlatformViewOHOSNapiTest, NativeA11yOnLongPressArgFailure) {
   NAPO_BRAKE_TAIL2(PlatformViewOHOSNapi::nativeAccessibilityOnLongPress, 2,
                    StubNapiFailInt64OnCall(1), StubNapiFailInt64OnCall(0));
   NAPO_BRAKE_TAIL2(PlatformViewOHOSNapi::nativeAccessibilityOnLongPress, 2,
                    StubNapiFailInt32OnCall(1), StubNapiFailInt32OnCall(0));
 }
 
-TEST_F(PlatformViewOHOSNapiTest, NativeSetExternalNativeImageBrakeTail) {
+TEST_F(PlatformViewOHOSNapiTest, NativeSetExternalNativeImageArgFailure) {
   napi_env env = FakeNapiEnv();
   StubNapiSetCbArgc(3);
   StubNapiFailInt64OnCall(1);
@@ -831,7 +906,7 @@ TEST_F(PlatformViewOHOSNapiTest, NativeSetExternalNativeImageBrakeTail) {
   StubNapiFailInt64OnCall(0);
 }
 
-TEST_F(PlatformViewOHOSNapiTest, NativeSetQosOnLowMemoryParseStages) {
+TEST_F(PlatformViewOHOSNapiTest, NativeSetQosOnLowMemory) {
   napi_env env = FakeNapiEnv();
   StubNapiSetCbArgc(2);
   StubNapiFailInt64OnCall(1);
@@ -843,7 +918,7 @@ TEST_F(PlatformViewOHOSNapiTest, NativeSetQosOnLowMemoryParseStages) {
   StubNapiFailInt64OnCall(0);
 }
 
-TEST_F(PlatformViewOHOSNapiTest, NativeSetExternalNativeImagePtrStages) {
+TEST_F(PlatformViewOHOSNapiTest, NativeSetExternalNativeImagePtr) {
   napi_env env = FakeNapiEnv();
   StubNapiSetCbArgc(3);
   StubNapiFailInt64OnCall(1);
@@ -887,7 +962,7 @@ TEST_F(PlatformViewOHOSNapiTest, NativeMarkTextureFrameAvailableStages) {
   StubNapiFailInt64OnCall(0);
 }
 
-TEST_F(PlatformViewOHOSNapiTest, NativeAnimationVotingFullPaths) {
+TEST_F(PlatformViewOHOSNapiTest, NativeAnimationVoting) {
   napi_env env = FakeNapiEnv();
   StubNapiSetCbArgc(2);
   StubNapiSetDoubleValue(1.5);
@@ -907,7 +982,7 @@ TEST_F(PlatformViewOHOSNapiTest, NativeAnimationVotingFullPaths) {
   StubNapiSetDoubleValue(0);
 }
 
-TEST_F(PlatformViewOHOSNapiTest, NativeVideoVotingFullPaths) {
+TEST_F(PlatformViewOHOSNapiTest, NativeVideoVoting) {
   napi_env env = FakeNapiEnv();
   StubNapiSetCbArgc(2);
   StubNapiFailInt32OnCall(1);
@@ -918,7 +993,7 @@ TEST_F(PlatformViewOHOSNapiTest, NativeVideoVotingFullPaths) {
   EXPECT_EQ(PlatformViewOHOSNapi::nativeVideoVoting(env, nullptr), nullptr);
 }
 
-TEST_F(PlatformViewOHOSNapiTest, NativeLTPODispatchHighFrameRateFullPaths) {
+TEST_F(PlatformViewOHOSNapiTest, NativeLTPODispatchHighFrameRate) {
   napi_env env = FakeNapiEnv();
   StubNapiSetCbArgc(1);
   StubNapiFailInt64OnCall(1);
@@ -930,13 +1005,15 @@ TEST_F(PlatformViewOHOSNapiTest, NativeLTPODispatchHighFrameRateFullPaths) {
   EXPECT_EQ(PlatformViewOHOSNapi::nativeLTPODispatchHighFrameRate(env, nullptr),
             nullptr);
 
-  StubNapiSetInt64Value(reinterpret_cast<int64_t>(g_fake_holder_storage));
+  auto holder = MakeSoftwareHolder();
+  ASSERT_TRUE(holder->IsValid());
+  StubNapiSetInt64Value(reinterpret_cast<int64_t>(holder.get()));
   EXPECT_EQ(PlatformViewOHOSNapi::nativeLTPODispatchHighFrameRate(env, nullptr),
             nullptr);
   StubNapiSetInt64Value(0);
 }
 
-TEST_F(PlatformViewOHOSNapiTest, NativeSetSemanticsEnabledStages) {
+TEST_F(PlatformViewOHOSNapiTest, NativeSetSemanticsEnabled) {
   napi_env env = FakeNapiEnv();
   StubNapiSetCbArgc(2);
   StubNapiFailInt64OnCall(1);
@@ -960,6 +1037,21 @@ TEST_F(PlatformViewOHOSNapiTest, NativeSetAnimationStatusStages) {
   EXPECT_EQ(PlatformViewOHOSNapi::nativeSetAnimationStatus(env, nullptr),
             nullptr);
   StubNapiFailInt32OnCall(0);
+
+  auto holder = MakeSoftwareHolder();
+  ASSERT_TRUE(holder->IsValid());
+  StubNapiSetInt64Value(reinterpret_cast<int64_t>(holder.get()));
+  const int32_t types[] = {
+      static_cast<int32_t>(fml::hiappevent::ScrollingStatus::kScrollStart),
+      static_cast<int32_t>(fml::hiappevent::ScrollingStatus::kScrollEnd),
+      99,
+  };
+  for (int32_t type : types) {
+    StubNapiSetInt32Value(type);
+    EXPECT_EQ(PlatformViewOHOSNapi::nativeSetAnimationStatus(env, nullptr),
+              nullptr);
+  }
+  EXPECT_TRUE(holder->IsValid());
 }
 
 TEST_F(PlatformViewOHOSNapiTest, NativeInvokeResponseCallbackStages) {
@@ -981,7 +1073,7 @@ TEST_F(PlatformViewOHOSNapiTest, NativeInvokeResponseCallbackStages) {
   // with a null data pointer. TODO: fix IsArrayBuffer upstream, then add
 }
 
-TEST_F(PlatformViewOHOSNapiTest, NativeA11yAnnounceTooltipBrakeTails) {
+TEST_F(PlatformViewOHOSNapiTest, NativeA11yAnnounceTooltipArgFailure) {
   napi_env env = FakeNapiEnv();
   StubNapiSetCbArgc(2);
   StubNapiSetString("tip");
@@ -993,7 +1085,7 @@ TEST_F(PlatformViewOHOSNapiTest, NativeA11yAnnounceTooltipBrakeTails) {
   StubNapiFailInt64OnCall(0);
 }
 
-TEST_F(PlatformViewOHOSNapiTest, NativeUnicodePredicatesInt64FailLegs) {
+TEST_F(PlatformViewOHOSNapiTest, NativeUnicodePredicatesInt64Fail) {
   napi_env env = FakeNapiEnv();
   StubNapiSetCbArgc(1);
   StubNapiFailInt64OnCall(1);
@@ -1015,7 +1107,7 @@ TEST_F(PlatformViewOHOSNapiTest, NativeUnicodePredicatesInt64FailLegs) {
   StubNapiSetInt64Value(0);
 }
 
-TEST_F(PlatformViewOHOSNapiTest, NativeNotifyLowMemoryAndCleanupLegs) {
+TEST_F(PlatformViewOHOSNapiTest, NativeNotifyLowMemoryAndCleanup) {
   napi_env env = FakeNapiEnv();
   StubNapiSetCbArgc(1);
   StubNapiFailInt64OnCall(1);
@@ -1053,7 +1145,7 @@ TEST_F(PlatformViewOHOSNapiTest, NativeLoadDartDeferredLibraryStages) {
   StubNapiSetInt64Value(0);
 }
 
-TEST_F(PlatformViewOHOSNapiTest, InitNotifyPageChangedLoaderAllPaths) {
+TEST_F(PlatformViewOHOSNapiTest, InitNotifyPageChangedLoader) {
   EXPECT_NO_FATAL_FAILURE(PlatformViewOHOSNapi::InitNotifyPageChangedLoader());
   ASSERT_NE(PlatformViewOHOSNapi::ability_runtime_loader_, nullptr);
 
@@ -1064,12 +1156,13 @@ TEST_F(PlatformViewOHOSNapiTest, InitNotifyPageChangedLoaderAllPaths) {
   UpdateDlopenForceFail(false);
 }
 
-TEST_F(PlatformViewOHOSNapiTest, NativeNotifyPageChangedLowApiArm) {
+TEST_F(PlatformViewOHOSNapiTest, NativeNotifyPageChangedLowApi) {
   EXPECT_NO_FATAL_FAILURE(
       PlatformViewOHOSNapi::nativeNotifyPageChanged(FakeNapiEnv(), nullptr));
 }
 
-TEST_F(PlatformViewOHOSNapiTest, NativeInvokeEmptyResponseCallbackStages) {
+TEST_F(PlatformViewOHOSNapiTest,
+       NativeInvokePlatformMessageEmptyResponseCallback) {
   napi_env env = FakeNapiEnv();
   StubNapiSetCbArgc(2);
   StubNapiFailInt64OnCall(1);
@@ -1083,6 +1176,17 @@ TEST_F(PlatformViewOHOSNapiTest, NativeInvokeEmptyResponseCallbackStages) {
           env, nullptr),
       nullptr);
   StubNapiFailInt64OnCall(0);
+
+  auto holder = MakeSoftwareHolder();
+  ASSERT_TRUE(holder->IsValid());
+  StubNapiReset();
+  StubNapiSetCbArgc(2);
+  const int64_t ints[] = {reinterpret_cast<int64_t>(holder.get()), 0};
+  StubNapiSetInt64Values(ints, sizeof(ints) / sizeof(ints[0]));
+  EXPECT_EQ(
+      PlatformViewOHOSNapi::nativeInvokePlatformMessageEmptyResponseCallback(
+          env, nullptr),
+      nullptr);
 }
 
 TEST_F(PlatformViewOHOSNapiTest, NativeTextureEntryPointsNullEnv) {
@@ -1155,52 +1259,70 @@ TEST_F(PlatformViewOHOSNapiTest, NativeHolderGatedEntryPointsNullEnv) {
 }
 
 TEST_F(PlatformViewOHOSNapiTest, NativeDispatchPlatformMessage) {
+  napi_env env = FakeNapiEnv();
   EXPECT_EQ(
       PlatformViewOHOSNapi::nativeDispatchPlatformMessage(nullptr, nullptr),
       nullptr);
-  EXPECT_EQ(PlatformViewOHOSNapi::nativeDispatchPlatformMessage(FakeNapiEnv(),
-                                                                nullptr),
-            nullptr);
-}
-
-TEST_F(PlatformViewOHOSNapiTest, NativeDispatchPlatformMessageParseStages) {
-  napi_env env = FakeNapiEnv();
-  StubNapiSetCbArgc(5);
-
-  StubNapiFailInt64OnCall(1);
   EXPECT_EQ(PlatformViewOHOSNapi::nativeDispatchPlatformMessage(env, nullptr),
             nullptr);
 
+  StubNapiSetCbArgc(5);
+  StubNapiFailInt64OnCall(1);
+  EXPECT_EQ(PlatformViewOHOSNapi::nativeDispatchPlatformMessage(env, nullptr),
+            nullptr);
   StubNapiFailInt64OnCall(0);
   StubNapiSetValuetype(napi_number);
   EXPECT_EQ(PlatformViewOHOSNapi::nativeDispatchPlatformMessage(env, nullptr),
             nullptr);
-
   StubNapiSetValuetype(napi_string);
-  StubNapiSetString("flutter/ch");
+  StubNapiSetString("unittest/ch");
   StubNapiSetArrayLike(false, false, false);
   EXPECT_EQ(PlatformViewOHOSNapi::nativeDispatchPlatformMessage(env, nullptr),
             nullptr);
 
-  char payload[4] = "msg";
+  char payload[] = "msg";
   StubNapiSetArrayLike(true, false, false);
   StubNapiSetArraybufferData(payload, sizeof(payload));
   StubNapiFailInt64OnCall(2);
   EXPECT_EQ(PlatformViewOHOSNapi::nativeDispatchPlatformMessage(env, nullptr),
             nullptr);
-
   StubNapiFailInt64OnCall(3);
+  EXPECT_EQ(PlatformViewOHOSNapi::nativeDispatchPlatformMessage(env, nullptr),
+            nullptr);
+
+  auto holder = MakeSoftwareHolder();
+  ASSERT_TRUE(holder->IsValid());
+  StubNapiReset();
+  StubNapiSetCbArgc(5);
+  StubNapiSetValuetype(napi_string);
+  StubNapiSetString("unittest/ch");
+  StubNapiSetArrayLike(true, false, false);
+  StubNapiSetArraybufferData(payload, sizeof(payload));
+  const int64_t ints[] = {reinterpret_cast<int64_t>(holder.get()),
+                          static_cast<int64_t>(sizeof(payload)), 0};
+  StubNapiSetInt64Values(ints, sizeof(ints) / sizeof(ints[0]));
   EXPECT_EQ(PlatformViewOHOSNapi::nativeDispatchPlatformMessage(env, nullptr),
             nullptr);
 }
 
-TEST_F(PlatformViewOHOSNapiTest, NativeDispatchEmptyPlatformMessageGuards) {
+TEST_F(PlatformViewOHOSNapiTest, NativeDispatchEmptyPlatformMessage) {
   napi_env env = FakeNapiEnv();
   StubNapiFailInt64OnCall(1);
   EXPECT_EQ(
       PlatformViewOHOSNapi::nativeDispatchEmptyPlatformMessage(env, nullptr),
       nullptr);
   StubNapiFailInt64OnCall(2);
+  EXPECT_EQ(
+      PlatformViewOHOSNapi::nativeDispatchEmptyPlatformMessage(env, nullptr),
+      nullptr);
+
+  auto holder = MakeSoftwareHolder();
+  ASSERT_TRUE(holder->IsValid());
+  StubNapiReset();
+  StubNapiSetValuetype(napi_string);
+  StubNapiSetString("unittest/ch");
+  const int64_t ints[] = {reinterpret_cast<int64_t>(holder.get()), 0};
+  StubNapiSetInt64Values(ints, sizeof(ints) / sizeof(ints[0]));
   EXPECT_EQ(
       PlatformViewOHOSNapi::nativeDispatchEmptyPlatformMessage(env, nullptr),
       nullptr);
@@ -1225,13 +1347,34 @@ TEST_F(PlatformViewOHOSNapiTest, PlatformMessageMarshalingNullEnvErrors) {
 }
 
 TEST_F(PlatformViewOHOSNapiTest, NativeInvokePlatformMessageResponseCallback) {
+  napi_env env = FakeNapiEnv();
   EXPECT_EQ(PlatformViewOHOSNapi::nativeInvokePlatformMessageResponseCallback(
-                FakeNapiEnv(), nullptr),
+                env, nullptr),
             nullptr);
   StubNapiSetValuetype(napi_null);
   EXPECT_EQ(PlatformViewOHOSNapi::nativeInvokePlatformMessageResponseCallback(
-                FakeNapiEnv(), nullptr),
+                env, nullptr),
             nullptr);
+
+  auto holder = MakeSoftwareHolder();
+  ASSERT_TRUE(holder->IsValid());
+  char payload[] = "msg";
+  StubNapiReset();
+  StubNapiSetCbArgc(4);
+  StubNapiSetArrayLike(true, false, false);
+  StubNapiSetArraybufferData(payload, sizeof(payload));
+  const int64_t ints[] = {reinterpret_cast<int64_t>(holder.get()), 0,
+                          static_cast<int64_t>(sizeof(payload))};
+  StubNapiSetInt64Values(ints, sizeof(ints) / sizeof(ints[0]));
+  EXPECT_EQ(PlatformViewOHOSNapi::nativeInvokePlatformMessageResponseCallback(
+                env, nullptr),
+            nullptr);
+
+  StubNapiFailInt64OnCall(3);
+  EXPECT_EQ(PlatformViewOHOSNapi::nativeInvokePlatformMessageResponseCallback(
+                env, nullptr),
+            nullptr);
+  StubNapiFailInt64OnCall(0);
 }
 
 TEST_F(PlatformViewOHOSNapiTest, NativeNotifyPageChangedLowApiLevel) {
@@ -1242,10 +1385,23 @@ TEST_F(PlatformViewOHOSNapiTest, NativeNotifyPageChangedLowApiLevel) {
 
 TEST_F(PlatformViewOHOSNapiTest, NativeLookupCallbackInformation) {
   constexpr int64_t kHandle = 0;
+  StubNapiFailCbInfo(kStubFailure);
+  EXPECT_NO_FATAL_FAILURE(PlatformViewOHOSNapi::nativeLookupCallbackInformation(
+      FakeNapiEnv(), nullptr));
+  StubNapiFailCbInfo(napi_ok);
+  StubNapiFailBigintInt64(kStubFailure);
+  EXPECT_EQ(PlatformViewOHOSNapi::nativeLookupCallbackInformation(FakeNapiEnv(),
+                                                                  nullptr),
+            nullptr);
+  StubNapiFailBigintInt64(napi_ok);
   EXPECT_EQ(PlatformViewOHOSNapi::nativeLookupCallbackInformation(FakeNapiEnv(),
                                                                   nullptr),
             nullptr);
   DartCallbackCache::cache_[kHandle] = {"utCb", "UtClass", "/ut/lib"};
+  EXPECT_EQ(PlatformViewOHOSNapi::nativeLookupCallbackInformation(FakeNapiEnv(),
+                                                                  nullptr),
+            nullptr);
+  StubNapiFailCreateReference(kStubFailure);
   EXPECT_EQ(PlatformViewOHOSNapi::nativeLookupCallbackInformation(FakeNapiEnv(),
                                                                   nullptr),
             nullptr);
@@ -1262,10 +1418,34 @@ TEST_F(PlatformViewOHOSNapiTest, NativeLookupCallbackInformation) {
 
 TEST_F(PlatformViewOHOSNapiTest, NativeLookupCallbackInformationBigInt) {
   constexpr int64_t kHandle = 0;
+  StubNapiSetCbArgc(2);
+  StubNapiFailCbInfo(kStubFailure);
   EXPECT_EQ(PlatformViewOHOSNapi::nativeLookupCallbackInformationBigInt(
                 FakeNapiEnv(), nullptr),
             nullptr);
+  StubNapiFailCbInfo(napi_ok);
+  StubNapiFailBigintInt64(kStubFailure);
+  EXPECT_EQ(PlatformViewOHOSNapi::nativeLookupCallbackInformationBigInt(
+                FakeNapiEnv(), nullptr),
+            nullptr);
+  StubNapiFailBigintInt64(napi_ok);
+  EXPECT_EQ(PlatformViewOHOSNapi::nativeLookupCallbackInformationBigInt(
+                FakeNapiEnv(), nullptr),
+            nullptr);
+  StubNapiSetBigintLossless(false);
+  EXPECT_EQ(PlatformViewOHOSNapi::nativeLookupCallbackInformationBigInt(
+                FakeNapiEnv(), nullptr),
+            nullptr);
+  StubNapiSetBigintLossless(true);
   DartCallbackCache::cache_[kHandle] = {"utCb2", "UtClass2", "/ut/lib2"};
+  StubNapiFailCreateReference(kStubFailure);
+  EXPECT_EQ(PlatformViewOHOSNapi::nativeLookupCallbackInformationBigInt(
+                FakeNapiEnv(), nullptr),
+            nullptr);
+  StubNapiFailReference(kStubFailure);
+  EXPECT_EQ(PlatformViewOHOSNapi::nativeLookupCallbackInformationBigInt(
+                FakeNapiEnv(), nullptr),
+            nullptr);
   EXPECT_EQ(PlatformViewOHOSNapi::nativeLookupCallbackInformationBigInt(
                 FakeNapiEnv(), nullptr),
             nullptr);
@@ -1549,7 +1729,7 @@ TEST_F(PlatformViewOHOSNapiTest, NativeDispatchEmptyPlatformMessageFullChain) {
             nullptr);
 }
 
-TEST_F(PlatformViewOHOSNapiTest, NativeFontHolderTails) {
+TEST_F(PlatformViewOHOSNapiTest, NativeFontHolder) {
   Settings settings;
   settings.ohos_rendering_api = OHOSRenderingAPI::kSoftware;
   auto holder = std::make_unique<OHOSShellHolder>(
@@ -1568,7 +1748,7 @@ TEST_F(PlatformViewOHOSNapiTest, NativeFontHolderTails) {
             nullptr);
 }
 
-TEST_F(PlatformViewOHOSNapiTest, NativeSemanticsAndA11yHolderTails) {
+TEST_F(PlatformViewOHOSNapiTest, NativeSemanticsAndA11yHolder) {
   Settings settings;
   settings.ohos_rendering_api = OHOSRenderingAPI::kSoftware;
   auto holder = std::make_unique<OHOSShellHolder>(
@@ -1603,7 +1783,7 @@ TEST_F(PlatformViewOHOSNapiTest, NativeSemanticsAndA11yHolderTails) {
             nullptr);
 }
 
-TEST_F(PlatformViewOHOSNapiTest, NativeTextureRegistryHolderTails) {
+TEST_F(PlatformViewOHOSNapiTest, NativeTextureRegistryHolder) {
   Settings settings;
   settings.ohos_rendering_api = OHOSRenderingAPI::kSoftware;
   auto holder = std::make_unique<OHOSShellHolder>(
@@ -1622,7 +1802,7 @@ TEST_F(PlatformViewOHOSNapiTest, NativeTextureRegistryHolderTails) {
       PlatformViewOHOSNapi::nativeGetTextureWindowPtr(env, nullptr));
 }
 
-TEST_F(PlatformViewOHOSNapiTest, NativeTextureParamsHolderTails) {
+TEST_F(PlatformViewOHOSNapiTest, NativeTextureParamsHolder) {
   Settings settings;
   settings.ohos_rendering_api = OHOSRenderingAPI::kSoftware;
   auto holder = std::make_unique<OHOSShellHolder>(
@@ -1646,7 +1826,7 @@ TEST_F(PlatformViewOHOSNapiTest, NativeTextureParamsHolderTails) {
             nullptr);
 }
 
-TEST_F(PlatformViewOHOSNapiTest, NativeMiscHolderTails) {
+TEST_F(PlatformViewOHOSNapiTest, NativeMiscHolder) {
   Settings settings;
   settings.ohos_rendering_api = OHOSRenderingAPI::kSoftware;
   auto holder = std::make_unique<OHOSShellHolder>(
@@ -1664,6 +1844,969 @@ TEST_F(PlatformViewOHOSNapiTest, NativeMiscHolderTails) {
   StubNapiSetDoubleValue(2.0);
   EXPECT_EQ(PlatformViewOHOSNapi::nativeSetViewportMetrics(env, nullptr),
             nullptr);
+}
+
+TEST_F(PlatformViewOHOSNapiTest, NativeDestroyAsyncWithValidHolder) {
+  auto holder = MakeSoftwareHolder();
+  ASSERT_TRUE(holder->IsValid());
+  StubNapiSetInt64Value(reinterpret_cast<int64_t>(holder.get()));
+  EXPECT_NO_FATAL_FAILURE(
+      PlatformViewOHOSNapi::nativeDestroyAsync(FakeNapiEnv(), nullptr));
+  EXPECT_TRUE(holder->IsValid());
+}
+
+TEST_F(PlatformViewOHOSNapiTest, NativeDestroyAsyncExecuteValidHolder) {
+  auto holder = MakeSoftwareHolder();
+  ASSERT_TRUE(holder->IsValid());
+  StubNapiSetInt64Value(reinterpret_cast<int64_t>(holder.release()));
+  EXPECT_NO_FATAL_FAILURE(
+      PlatformViewOHOSNapi::nativeDestroyAsync(FakeNapiEnv(), nullptr));
+  EXPECT_NO_FATAL_FAILURE(StubNapiRunLastAsyncWork());
+}
+
+TEST_F(PlatformViewOHOSNapiTest, NativeDestroyDeletesValidHolder) {
+  auto holder = MakeSoftwareHolder();
+  ASSERT_TRUE(holder->IsValid());
+  StubNapiSetInt64Value(reinterpret_cast<int64_t>(holder.release()));
+  EXPECT_EQ(PlatformViewOHOSNapi::nativeDestroy(FakeNapiEnv(), nullptr),
+            nullptr);
+}
+
+TEST_F(PlatformViewOHOSNapiTest, NativeInitImpellerSelectsVulkan) {
+  StubNapiSetValuetype(napi_string);
+  StubNapiSetString("--enable-impeller");
+  StubNapiSetArrayLength(1);
+  EXPECT_NO_FATAL_FAILURE(OhosMain::NativeInit(FakeNapiEnv(), nullptr));
+  const auto& settings = OhosMain::Get().GetSettings();
+  EXPECT_TRUE(settings.enable_impeller);
+  EXPECT_EQ(settings.ohos_rendering_api, OHOSRenderingAPI::kImpellerVulkan);
+}
+
+TEST_F(PlatformViewOHOSNapiTest, StringArrayToVectorStages) {
+  StubNapiFailArrayLength(kStubFailure);
+  EXPECT_TRUE(::flutter::StringArrayToVector(FakeNapiEnv(), nullptr).empty());
+
+  StubNapiSetArrayLength(2);
+  StubNapiSetString("ab");
+  const auto values = ::flutter::StringArrayToVector(FakeNapiEnv(), nullptr);
+  ASSERT_EQ(values.size(), 2u);
+  EXPECT_EQ(values[0], "ab");
+  EXPECT_EQ(values[1], "ab");
+
+  StubNapiFailStringUtf8(kStubFailure, 1);
+  ::flutter::StringArrayToVector(FakeNapiEnv(), nullptr);
+  StubNapiFailStringUtf8(kStubFailure, 0);
+  ::flutter::StringArrayToVector(FakeNapiEnv(), nullptr);
+}
+
+TEST_F(PlatformViewOHOSNapiTest, NativeInitEnableSoftwareRendering) {
+  StubNapiSetValuetype(napi_string);
+  StubNapiSetString("--enable-software-rendering");
+  StubNapiSetArrayLength(1);
+  EXPECT_NO_FATAL_FAILURE(OhosMain::NativeInit(FakeNapiEnv(), nullptr));
+  StubNapiReset();
+  const auto& settings = OhosMain::Get().GetSettings();
+  EXPECT_TRUE(settings.enable_software_rendering);
+  EXPECT_FALSE(settings.enable_impeller);
+}
+
+TEST_F(PlatformViewOHOSNapiTest, NativeInitUsesExistingKernelFile) {
+#if !FLUTTER_JIT_RUNTIME
+  GTEST_SKIP() << "kernel path is only applied in JIT runtimes";
+#else
+  char kernel_path[4096];
+  snprintf(kernel_path, sizeof(kernel_path), "%s/ut_kernel_blob",
+           GetUtTmpDir());
+  FILE* fp = fopen(kernel_path, "wb");
+  ASSERT_NE(fp, nullptr);
+  fwrite("k", 1, 1, fp);
+  fclose(fp);
+  StubNapiSetValuetype(napi_string);
+  StubNapiSetString(kernel_path);
+  StubNapiSetArrayLength(0);
+  EXPECT_NO_FATAL_FAILURE(OhosMain::NativeInit(FakeNapiEnv(), nullptr));
+  StubNapiReset();
+  EXPECT_EQ(OhosMain::Get().GetSettings().application_kernel_asset,
+            std::string(kernel_path));
+#endif
+}
+
+TEST_F(PlatformViewOHOSNapiTest, NativeInitEmulatorProductModel) {
+  StubNapiSetValuetype(napi_string);
+  StubNapiSetString("emulator");
+  StubNapiSetArrayLength(0);
+  EXPECT_NO_FATAL_FAILURE(OhosMain::NativeInit(FakeNapiEnv(), nullptr));
+  EXPECT_TRUE(OhosMain::IsEmulator());
+}
+
+TEST_F(PlatformViewOHOSNapiTest, SurfaceCreatedCachesNativeWindow) {
+  auto holder = MakeSoftwareHolder();
+  ASSERT_TRUE(holder->IsValid());
+  static char window_storage;
+  OHNativeWindow* window = reinterpret_cast<OHNativeWindow*>(&window_storage);
+  const int64_t holder_id = reinterpret_cast<int64_t>(holder.get());
+  g_graphic_stub.engaged = 1;
+  g_graphic_stub.geometry_width = 320;
+  g_graphic_stub.geometry_height = 240;
+  PlatformViewOHOSNapi::SurfaceCreated(holder_id, window, 320, 240);
+  holder->WaitRasterTasksFinished();
+  auto platform_view = holder->GetPlatformView().get();
+  ASSERT_NE(platform_view->cached_native_window_.get(), nullptr);
+  EXPECT_EQ(platform_view->cached_native_window_->handle(), window);
+  EXPECT_TRUE(platform_view->onscreen_context_valid_.load());
+  g_graphic_stub.engaged = 0;
+  EXPECT_TRUE(holder->IsValid());
+}
+
+TEST_F(PlatformViewOHOSNapiTest, SurfacePreloadIdempotentKeepsFlag) {
+  auto holder = MakeSoftwareHolder();
+  ASSERT_TRUE(holder->IsValid());
+  const int64_t holder_id = reinterpret_cast<int64_t>(holder.get());
+  holder->GetPlatformView().get()->window_is_preload_ = true;
+  PlatformViewOHOSNapi::SurfacePreload(holder_id, 320, 240);
+  EXPECT_TRUE(holder->GetPlatformView().get()->window_is_preload_);
+}
+
+TEST_F(PlatformViewOHOSNapiTest, SurfaceChangedStoresImplicitViewLogical) {
+  auto holder = MakeSoftwareHolder();
+  ASSERT_TRUE(holder->IsValid());
+  const int64_t holder_id = reinterpret_cast<int64_t>(holder.get());
+  g_graphic_stub.engaged = 1;
+  PlatformViewOHOSNapi::SurfaceChanged(holder_id, nullptr, 640, 480);
+  holder->WaitRasterTasksFinished();
+  g_graphic_stub.engaged = 0;
+  EXPECT_TRUE(holder->IsValid());
+}
+
+TEST_F(PlatformViewOHOSNapiTest, NativeSetViewportMetricsFullChainHolder) {
+  auto holder = MakeSoftwareHolder();
+  ASSERT_TRUE(holder->IsValid());
+  StubNapiSetCbArgc(20);
+  StubNapiSetArrayLength(1);
+  StubNapiSetInt64Value(reinterpret_cast<int64_t>(holder.get()));
+  StubNapiSetDoubleValue(2.0);
+  EXPECT_NO_FATAL_FAILURE(
+      PlatformViewOHOSNapi::nativeSetViewportMetrics(FakeNapiEnv(), nullptr));
+  EXPECT_TRUE(holder->IsValid());
+
+  StubNapiFailDoubleOnCall(2);
+  EXPECT_EQ(
+      PlatformViewOHOSNapi::nativeSetViewportMetrics(FakeNapiEnv(), nullptr),
+      nullptr);
+  StubNapiFailDoubleOnCall(0);
+
+  const auto drive = []() {
+    return PlatformViewOHOSNapi::nativeSetViewportMetrics(FakeNapiEnv(),
+                                                          nullptr);
+  };
+  for (int nth = 2; nth <= 15; ++nth) {
+    StubNapiReset();
+    StubNapiSetCbArgc(20);
+    StubNapiSetArrayLength(1);
+    StubNapiSetInt64Value(reinterpret_cast<int64_t>(holder.get()));
+    StubNapiSetDoubleValue(2.0);
+    StubNapiFailInt64OnCall(nth);
+    EXPECT_EQ(drive(), nullptr) << "int64 #" << nth;
+  }
+  for (int nth = 1; nth <= 6; ++nth) {
+    StubNapiReset();
+    StubNapiSetCbArgc(20);
+    StubNapiSetArrayLength(1);
+    StubNapiSetInt64Value(reinterpret_cast<int64_t>(holder.get()));
+    StubNapiSetDoubleValue(2.0);
+    StubNapiFailDoubleOnCall(nth);
+    EXPECT_EQ(drive(), nullptr) << "double #" << nth;
+  }
+  StubNapiReset();
+}
+
+TEST_F(PlatformViewOHOSNapiTest, NativeLTPODispatchHighFrameRateHolder) {
+  auto holder = MakeSoftwareHolder();
+  ASSERT_TRUE(holder->IsValid());
+  StubNapiSetCbArgc(1);
+  StubNapiSetInt64Value(reinterpret_cast<int64_t>(holder.get()));
+  EXPECT_NO_FATAL_FAILURE(PlatformViewOHOSNapi::nativeLTPODispatchHighFrameRate(
+      FakeNapiEnv(), nullptr));
+  EXPECT_TRUE(holder->IsValid());
+}
+
+TEST_F(PlatformViewOHOSNapiTest, NativeSetDVsyncSwitchFullChainHolder) {
+  auto holder = MakeSoftwareHolder();
+  ASSERT_TRUE(holder->IsValid());
+  StubNapiSetCbArgc(2);
+  StubNapiSetInt64Value(reinterpret_cast<int64_t>(holder.get()));
+  EXPECT_EQ(PlatformViewOHOSNapi::nativeSetDVsyncSwitch(FakeNapiEnv(), nullptr),
+            nullptr);
+  EXPECT_TRUE(holder->IsValid());
+}
+
+TEST_F(PlatformViewOHOSNapiTest, NativeSetSemanticsEnabledFullChainHolder) {
+  auto holder = MakeSoftwareHolder();
+  ASSERT_TRUE(holder->IsValid());
+  StubNapiSetCbArgc(2);
+  StubNapiSetInt64Value(reinterpret_cast<int64_t>(holder.get()));
+  EXPECT_NO_FATAL_FAILURE(
+      PlatformViewOHOSNapi::nativeSetSemanticsEnabled(FakeNapiEnv(), nullptr));
+  EXPECT_TRUE(holder->IsValid());
+}
+
+TEST_F(PlatformViewOHOSNapiTest, NativeFullChainUnmarshalFailures) {
+  auto holder = MakeSoftwareHolder();
+  ASSERT_TRUE(holder->IsValid());
+  StubNapiSetValuetype(napi_string);
+  StubNapiSetString("x");
+  StubNapiSetInt64Value(reinterpret_cast<int64_t>(holder.get()));
+  StubNapiSetDoubleValue(1.0);
+
+  StubNapiSetCbArgc(2);
+  StubNapiFailInt64OnCall(1);
+  EXPECT_EQ(PlatformViewOHOSNapi::nativeSetDVsyncSwitch(FakeNapiEnv(), nullptr),
+            nullptr);
+  EXPECT_NO_FATAL_FAILURE(
+      PlatformViewOHOSNapi::nativeSetSemanticsEnabled(FakeNapiEnv(), nullptr));
+  EXPECT_EQ(
+      PlatformViewOHOSNapi::nativeSetQosOnLowMemory(FakeNapiEnv(), nullptr),
+      nullptr);
+  EXPECT_EQ(PlatformViewOHOSNapi::nativeLTPODispatchHighFrameRate(FakeNapiEnv(),
+                                                                  nullptr),
+            nullptr);
+  StubNapiFailInt64OnCall(0);
+
+  StubNapiFailBoolOnCall(1);
+  EXPECT_EQ(PlatformViewOHOSNapi::nativeSetDVsyncSwitch(FakeNapiEnv(), nullptr),
+            nullptr);
+  EXPECT_NO_FATAL_FAILURE(
+      PlatformViewOHOSNapi::nativeSetSemanticsEnabled(FakeNapiEnv(), nullptr));
+  StubNapiFailBoolOnCall(0);
+
+  StubNapiSetCbArgc(20);
+  StubNapiFailInt64OnCall(1);
+  EXPECT_EQ(
+      PlatformViewOHOSNapi::nativeSetViewportMetrics(FakeNapiEnv(), nullptr),
+      nullptr);
+  StubNapiFailInt64OnCall(0);
+
+  EXPECT_TRUE(holder->IsValid());
+}
+
+TEST_F(PlatformViewOHOSNapiTest, NativeSetQosOnLowMemorySoftwareEarlyReturn) {
+  auto holder = MakeSoftwareHolder();
+  ASSERT_TRUE(holder->IsValid());
+  StubNapiSetCbArgc(2);
+  StubNapiSetInt64Value(reinterpret_cast<int64_t>(holder.get()));
+  EXPECT_EQ(
+      PlatformViewOHOSNapi::nativeSetQosOnLowMemory(FakeNapiEnv(), nullptr),
+      nullptr);
+}
+
+TEST_F(PlatformViewOHOSNapiTest, NativeXComponentAttachDetachRoundTrip) {
+  auto holder = MakeSoftwareHolder();
+  ASSERT_TRUE(holder->IsValid());
+  std::string id = "ut_napi_holder_xc";
+  std::string holder_id =
+      std::to_string(reinterpret_cast<int64_t>(holder.get()));
+  XComponentAdapter::GetInstance()->AttachFlutterEngine(id, holder_id);
+  StubNapiSetCbArgc(2);
+  StubNapiSetValuetype(napi_string);
+  StubNapiSetString(id.c_str());
+  StubNapiSetInt64Value(reinterpret_cast<int64_t>(holder.get()));
+  EXPECT_EQ(PlatformViewOHOSNapi::nativeXComponentAttachFlutterEngine(
+                FakeNapiEnv(), nullptr),
+            nullptr);
+  EXPECT_EQ(PlatformViewOHOSNapi::nativeXComponentDetachFlutterEngine(
+                FakeNapiEnv(), nullptr),
+            nullptr);
+  XComponentAdapter* adapter = XComponentAdapter::GetInstance();
+  auto* base = adapter->GetXcomponentBase(id);
+  if (base != nullptr) {
+    std::lock_guard<std::recursive_mutex> lock(adapter->xcomponentMap_mutex_);
+    adapter->xcomponetMap_.erase(id);
+    delete base;
+  }
+}
+
+TEST_F(PlatformViewOHOSNapiTest, SetSemanticsEnabledForwardsToHolder) {
+  auto holder = MakeSoftwareHolder();
+  ASSERT_TRUE(holder->IsValid());
+  PlatformViewOHOSNapi facade(nullptr);
+  const int64_t holder_id = reinterpret_cast<int64_t>(holder.get());
+  EXPECT_NO_FATAL_FAILURE(facade.SetSemanticsEnabled(holder_id, true));
+  EXPECT_NO_FATAL_FAILURE(facade.SetSemanticsEnabled(holder_id, false));
+  EXPECT_TRUE(holder->IsValid());
+}
+
+TEST_F(PlatformViewOHOSNapiTest, SetAccessibilityFeaturesForwardsToHolder) {
+  auto holder = MakeSoftwareHolder();
+  ASSERT_TRUE(holder->IsValid());
+  PlatformViewOHOSNapi facade(nullptr);
+  const int64_t holder_id = reinterpret_cast<int64_t>(holder.get());
+  EXPECT_NO_FATAL_FAILURE(facade.SetAccessibilityFeatures(holder_id, 0));
+  EXPECT_NO_FATAL_FAILURE(facade.SetAccessibilityFeatures(holder_id, 3));
+  EXPECT_TRUE(holder->IsValid());
+}
+
+TEST_F(PlatformViewOHOSNapiTest, NapiCallThrowInnerErrorInfoModes) {
+  napi_env env = FakeNapiEnv();
+  StubNapiFailCbInfo(kStubFailure);
+  auto invoke = [env]() {
+    EXPECT_EQ(PlatformViewOHOSNapi::nativeRegisterTexture(env, nullptr),
+              nullptr);
+    EXPECT_EQ(PlatformViewOHOSNapi::nativeUnregisterTexture(env, nullptr),
+              nullptr);
+    EXPECT_EQ(PlatformViewOHOSNapi::nativeGetTextureWindowId(env, nullptr),
+              nullptr);
+    EXPECT_EQ(PlatformViewOHOSNapi::nativeGetTextureWindowPtr(env, nullptr),
+              nullptr);
+    EXPECT_EQ(PlatformViewOHOSNapi::nativeSetTextureBufferSize(env, nullptr),
+              nullptr);
+    EXPECT_EQ(PlatformViewOHOSNapi::nativeNotifyTextureResizing(env, nullptr),
+              nullptr);
+    EXPECT_EQ(PlatformViewOHOSNapi::nativeSetExternalNativeImage(env, nullptr),
+              nullptr);
+    EXPECT_EQ(
+        PlatformViewOHOSNapi::nativeSetExternalNativeImagePtr(env, nullptr),
+        nullptr);
+    EXPECT_EQ(PlatformViewOHOSNapi::nativeResetExternalTexture(env, nullptr),
+              nullptr);
+    EXPECT_EQ(
+        PlatformViewOHOSNapi::nativeMarkTextureFrameAvailable(env, nullptr),
+        nullptr);
+    EXPECT_EQ(PlatformViewOHOSNapi::nativeRegisterPixelMap(env, nullptr),
+              nullptr);
+    EXPECT_EQ(
+        PlatformViewOHOSNapi::nativeSetTextureBackGroundPixelMap(env, nullptr),
+        nullptr);
+    EXPECT_EQ(
+        PlatformViewOHOSNapi::nativeSetTextureBackGroundColor(env, nullptr),
+        nullptr);
+    EXPECT_EQ(PlatformViewOHOSNapi::nativeEnableFrameCache(env, nullptr),
+              nullptr);
+    EXPECT_EQ(PlatformViewOHOSNapi::nativeSetPipVisible(env, nullptr), nullptr);
+    EXPECT_EQ(
+        PlatformViewOHOSNapi::nativeAccessibilityStateChange(env, nullptr),
+        nullptr);
+    EXPECT_EQ(PlatformViewOHOSNapi::nativeAccessibilityAnnounce(env, nullptr),
+              nullptr);
+    EXPECT_EQ(PlatformViewOHOSNapi::nativeAccessibilityOnTap(env, nullptr),
+              nullptr);
+    EXPECT_EQ(
+        PlatformViewOHOSNapi::nativeAccessibilityOnLongPress(env, nullptr),
+        nullptr);
+    EXPECT_EQ(PlatformViewOHOSNapi::nativeAccessibilityOnTooltip(env, nullptr),
+              nullptr);
+    EXPECT_EQ(
+        PlatformViewOHOSNapi::nativeSetFlutterNavigationAction(env, nullptr),
+        nullptr);
+    EXPECT_EQ(PlatformViewOHOSNapi::nativeSetQosOnLowMemory(env, nullptr),
+              nullptr);
+  };
+  invoke();
+  StubNapiSetLastErrorNull(1);
+  invoke();
+  StubNapiSetLastErrorNull(0);
+  StubNapiSetLastErrorMessageNull(1);
+  invoke();
+  StubNapiSetLastErrorMessageNull(0);
+  StubNapiSetExceptionPending(1);
+  invoke();
+  StubNapiSetExceptionPending(0);
+  StubNapiFailCbInfo(napi_ok);
+}
+
+namespace {
+
+void RunNapiThrowErrorModes(const std::function<void()>& invoke) {
+  invoke();
+  StubNapiSetLastErrorNull(1);
+  invoke();
+  StubNapiSetLastErrorNull(0);
+  StubNapiSetLastErrorMessageNull(1);
+  invoke();
+  StubNapiSetLastErrorMessageNull(0);
+  StubNapiSetExceptionPending(1);
+  invoke();
+  StubNapiSetExceptionPending(0);
+}
+
+}  // namespace
+
+TEST_F(PlatformViewOHOSNapiTest, NapiCallThrowInnerErrorInfoOnInt64) {
+  napi_env env = FakeNapiEnv();
+  auto invoke = [env]() {
+    auto one = [env](napi_value (*fn)(napi_env, napi_callback_info)) {
+      StubNapiFailInt64OnCall(1);
+      EXPECT_EQ(fn(env, nullptr), nullptr);
+    };
+    one(PlatformViewOHOSNapi::nativeRegisterTexture);
+    one(PlatformViewOHOSNapi::nativeUnregisterTexture);
+    one(PlatformViewOHOSNapi::nativeGetTextureWindowId);
+    one(PlatformViewOHOSNapi::nativeGetTextureWindowPtr);
+    one(PlatformViewOHOSNapi::nativeSetTextureBufferSize);
+    one(PlatformViewOHOSNapi::nativeNotifyTextureResizing);
+    one(PlatformViewOHOSNapi::nativeSetExternalNativeImage);
+    one(PlatformViewOHOSNapi::nativeSetExternalNativeImagePtr);
+    one(PlatformViewOHOSNapi::nativeResetExternalTexture);
+    one(PlatformViewOHOSNapi::nativeMarkTextureFrameAvailable);
+    one(PlatformViewOHOSNapi::nativeRegisterPixelMap);
+    one(PlatformViewOHOSNapi::nativeSetTextureBackGroundPixelMap);
+    one(PlatformViewOHOSNapi::nativeSetTextureBackGroundColor);
+    one(PlatformViewOHOSNapi::nativeEnableFrameCache);
+    one(PlatformViewOHOSNapi::nativeSetPipVisible);
+    one(PlatformViewOHOSNapi::nativeAccessibilityStateChange);
+    one(PlatformViewOHOSNapi::nativeAccessibilityAnnounce);
+    one(PlatformViewOHOSNapi::nativeAccessibilityOnTap);
+    one(PlatformViewOHOSNapi::nativeAccessibilityOnLongPress);
+    one(PlatformViewOHOSNapi::nativeAccessibilityOnTooltip);
+    one(PlatformViewOHOSNapi::nativeSetFlutterNavigationAction);
+    one(PlatformViewOHOSNapi::nativeSetQosOnLowMemory);
+    StubNapiFailInt64OnCall(0);
+  };
+  RunNapiThrowErrorModes(invoke);
+}
+
+TEST_F(PlatformViewOHOSNapiTest, NapiCallThrowInnerErrorInfoOnSecondInt64) {
+  napi_env env = FakeNapiEnv();
+  auto invoke = [env]() {
+    auto one = [env](napi_value (*fn)(napi_env, napi_callback_info)) {
+      StubNapiFailInt64OnCall(2);
+      EXPECT_EQ(fn(env, nullptr), nullptr);
+    };
+    one(PlatformViewOHOSNapi::nativeRegisterTexture);
+    one(PlatformViewOHOSNapi::nativeUnregisterTexture);
+    one(PlatformViewOHOSNapi::nativeGetTextureWindowId);
+    one(PlatformViewOHOSNapi::nativeGetTextureWindowPtr);
+    one(PlatformViewOHOSNapi::nativeSetTextureBufferSize);
+    one(PlatformViewOHOSNapi::nativeNotifyTextureResizing);
+    one(PlatformViewOHOSNapi::nativeSetExternalNativeImage);
+    one(PlatformViewOHOSNapi::nativeSetExternalNativeImagePtr);
+    one(PlatformViewOHOSNapi::nativeResetExternalTexture);
+    one(PlatformViewOHOSNapi::nativeMarkTextureFrameAvailable);
+    one(PlatformViewOHOSNapi::nativeRegisterPixelMap);
+    one(PlatformViewOHOSNapi::nativeSetTextureBackGroundPixelMap);
+    one(PlatformViewOHOSNapi::nativeSetTextureBackGroundColor);
+    one(PlatformViewOHOSNapi::nativeSetQosOnLowMemory);
+    StubNapiFailInt64OnCall(3);
+    EXPECT_EQ(PlatformViewOHOSNapi::nativeSetExternalNativeImage(env, nullptr),
+              nullptr);
+    StubNapiFailInt64OnCall(0);
+  };
+  RunNapiThrowErrorModes(invoke);
+}
+
+TEST_F(PlatformViewOHOSNapiTest, NapiCallThrowInnerErrorInfoOnInt32) {
+  napi_env env = FakeNapiEnv();
+  auto invoke = [env]() {
+    auto one = [env](napi_value (*fn)(napi_env, napi_callback_info)) {
+      StubNapiFailInt32OnCall(1);
+      EXPECT_EQ(fn(env, nullptr), nullptr);
+    };
+    one(PlatformViewOHOSNapi::nativeSetTextureBufferSize);
+    one(PlatformViewOHOSNapi::nativeNotifyTextureResizing);
+    one(PlatformViewOHOSNapi::nativeAccessibilityOnTap);
+    one(PlatformViewOHOSNapi::nativeAccessibilityOnLongPress);
+    StubNapiFailInt32OnCall(2);
+    EXPECT_EQ(PlatformViewOHOSNapi::nativeSetTextureBufferSize(env, nullptr),
+              nullptr);
+    EXPECT_EQ(PlatformViewOHOSNapi::nativeNotifyTextureResizing(env, nullptr),
+              nullptr);
+    StubNapiFailInt32OnCall(0);
+  };
+  RunNapiThrowErrorModes(invoke);
+}
+
+TEST_F(PlatformViewOHOSNapiTest, NapiCallThrowInnerErrorInfoOnBoolAndUint32) {
+  napi_env env = FakeNapiEnv();
+  auto invoke = [env]() {
+    auto one_bool = [env](napi_value (*fn)(napi_env, napi_callback_info)) {
+      StubNapiFailBoolOnCall(1);
+      EXPECT_EQ(fn(env, nullptr), nullptr);
+    };
+    one_bool(PlatformViewOHOSNapi::nativeEnableFrameCache);
+    one_bool(PlatformViewOHOSNapi::nativeSetPipVisible);
+    one_bool(PlatformViewOHOSNapi::nativeAccessibilityStateChange);
+    one_bool(PlatformViewOHOSNapi::nativeSetFlutterNavigationAction);
+    one_bool(PlatformViewOHOSNapi::nativeResetExternalTexture);
+    StubNapiFailBoolOnCall(0);
+    StubNapiFailUint32OnCall(1);
+    EXPECT_EQ(
+        PlatformViewOHOSNapi::nativeSetTextureBackGroundColor(env, nullptr),
+        nullptr);
+    StubNapiFailUint32OnCall(0);
+  };
+  RunNapiThrowErrorModes(invoke);
+}
+
+TEST_F(PlatformViewOHOSNapiTest, NapiCallThrowInnerErrorInfoOnBigintUint64) {
+  napi_env env = FakeNapiEnv();
+  auto invoke = [env]() {
+    StubNapiFailBigintUint64(kStubFailure);
+    EXPECT_EQ(
+        PlatformViewOHOSNapi::nativeSetExternalNativeImagePtr(env, nullptr),
+        nullptr);
+    StubNapiFailBigintUint64(napi_ok);
+  };
+  RunNapiThrowErrorModes(invoke);
+}
+
+namespace {
+
+struct NotifyPageChangedCalls {
+  static inline int32_t count = 0;
+  static inline std::string last_page_name;
+  static inline int32_t last_window_id = 0;
+
+  static void Reset() {
+    count = 0;
+    last_page_name.clear();
+    last_window_id = 0;
+  }
+};
+
+int32_t FakeNotifyPageChanged(const char* page_name,
+                              int32_t,
+                              int32_t window_id) {
+  ++NotifyPageChangedCalls::count;
+  if (page_name != nullptr) {
+    NotifyPageChangedCalls::last_page_name = page_name;
+  }
+  NotifyPageChangedCalls::last_window_id = window_id;
+  return 0;
+}
+
+int32_t FakeNotifyPageChangedError(const char* page_name,
+                                   int32_t arg2,
+                                   int32_t window_id) {
+  FakeNotifyPageChanged(page_name, arg2, window_id);
+  return 1;
+}
+
+}  // namespace
+
+TEST_F(PlatformViewOHOSNapiTest, NativeNotifyPageChangedInvokesLoadedFunc) {
+  auto holder = MakeSoftwareHolder();
+  ASSERT_TRUE(holder->IsValid());
+  NotifyPageChangedCalls::Reset();
+  const int api_version = DynamicLibraryLoader::GetApiVersion();
+  PlatformViewOHOSNapi::notify_page_changed_func_ = &FakeNotifyPageChanged;
+  StubNapiSetCbArgc(3);
+  StubNapiSetValuetype(napi_string);
+  StubNapiSetString("page1");
+  StubNapiSetInt32Value(7);
+  EXPECT_NO_FATAL_FAILURE(
+      PlatformViewOHOSNapi::nativeNotifyPageChanged(FakeNapiEnv(), nullptr));
+  if (api_version < 23) {
+    EXPECT_EQ(NotifyPageChangedCalls::count, 0);
+  } else {
+    ASSERT_EQ(NotifyPageChangedCalls::count, 1);
+    EXPECT_EQ(NotifyPageChangedCalls::last_page_name, "page1");
+    EXPECT_EQ(NotifyPageChangedCalls::last_window_id, 7);
+    PlatformViewOHOSNapi::notify_page_changed_func_ =
+        &FakeNotifyPageChangedError;
+    EXPECT_NO_FATAL_FAILURE(
+        PlatformViewOHOSNapi::nativeNotifyPageChanged(FakeNapiEnv(), nullptr));
+    EXPECT_EQ(NotifyPageChangedCalls::count, 2);
+  }
+  NotifyPageChangedCalls::Reset();
+}
+
+TEST_F(PlatformViewOHOSNapiTest, NativeXComponentPreDrawPreloadedShortCircuit) {
+  auto holder = MakeSoftwareHolder();
+  ASSERT_TRUE(holder->IsValid());
+  XComponentAdapter* adapter = XComponentAdapter::GetInstance();
+  const std::string id = "ut_napi_predraw";
+  XComponentBase* base = nullptr;
+  {
+    std::lock_guard<std::recursive_mutex> lock(adapter->xcomponentMap_mutex_);
+    base = new XComponentBase(id);
+    adapter->xcomponetMap_[id] = base;
+  }
+  base->shellholderId_ =
+      std::to_string(reinterpret_cast<int64_t>(holder.get()));
+  base->is_surface_preloaded_ = true;
+
+  StubNapiSetCbArgc(4);
+  StubNapiSetValuetype(napi_string);
+  StubNapiSetString(id.c_str());
+  StubNapiSetInt64Value(reinterpret_cast<int64_t>(holder.get()));
+  StubNapiSetInt32Value(320);
+  EXPECT_NO_FATAL_FAILURE(
+      PlatformViewOHOSNapi::nativeXComponentPreDraw(FakeNapiEnv(), nullptr));
+  EXPECT_TRUE(base->is_surface_preloaded_);
+
+  {
+    std::lock_guard<std::recursive_mutex> lock(adapter->xcomponentMap_mutex_);
+    adapter->xcomponetMap_.erase(id);
+  }
+  delete base;
+}
+
+TEST_F(PlatformViewOHOSNapiTest, NativeXComponentPreDrawUnmarshalFailures) {
+  auto holder = MakeSoftwareHolder();
+  ASSERT_TRUE(holder->IsValid());
+  StubNapiSetCbArgc(4);
+  StubNapiSetInt64Value(reinterpret_cast<int64_t>(holder.get()));
+  StubNapiSetInt32Value(320);
+
+  StubNapiSetValuetype(napi_number);
+  EXPECT_EQ(
+      PlatformViewOHOSNapi::nativeXComponentPreDraw(FakeNapiEnv(), nullptr),
+      nullptr);
+
+  StubNapiSetValuetype(napi_string);
+  StubNapiSetString("never_registered_xc");
+  StubNapiFailInt64OnCall(1);
+  EXPECT_EQ(
+      PlatformViewOHOSNapi::nativeXComponentPreDraw(FakeNapiEnv(), nullptr),
+      nullptr);
+  StubNapiFailInt64OnCall(0);
+
+  StubNapiFailInt32OnCall(1);
+  EXPECT_EQ(
+      PlatformViewOHOSNapi::nativeXComponentPreDraw(FakeNapiEnv(), nullptr),
+      nullptr);
+  StubNapiFailInt32OnCall(0);
+
+  StubNapiFailInt32OnCall(2);
+  EXPECT_EQ(
+      PlatformViewOHOSNapi::nativeXComponentPreDraw(FakeNapiEnv(), nullptr),
+      nullptr);
+  StubNapiFailInt32OnCall(0);
+}
+
+TEST_F(PlatformViewOHOSNapiTest, NativeXComponentAttachDetachFailures) {
+  auto holder = MakeSoftwareHolder();
+  ASSERT_TRUE(holder->IsValid());
+  StubNapiSetCbArgc(2);
+  StubNapiSetInt64Value(reinterpret_cast<int64_t>(holder.get()));
+
+  StubNapiSetValuetype(napi_number);
+  EXPECT_EQ(PlatformViewOHOSNapi::nativeXComponentAttachFlutterEngine(
+                FakeNapiEnv(), nullptr),
+            nullptr);
+  EXPECT_EQ(PlatformViewOHOSNapi::nativeXComponentDetachFlutterEngine(
+                FakeNapiEnv(), nullptr),
+            nullptr);
+
+  StubNapiSetValuetype(napi_string);
+  StubNapiSetString("ut_xc_fail");
+  StubNapiFailInt64OnCall(1);
+  EXPECT_EQ(PlatformViewOHOSNapi::nativeXComponentAttachFlutterEngine(
+                FakeNapiEnv(), nullptr),
+            nullptr);
+  EXPECT_EQ(PlatformViewOHOSNapi::nativeXComponentDetachFlutterEngine(
+                FakeNapiEnv(), nullptr),
+            nullptr);
+  StubNapiFailInt64OnCall(0);
+}
+
+TEST_F(PlatformViewOHOSNapiTest, NativeTextureAndA11yFullChainUnknownIds) {
+  auto holder = MakeSoftwareHolder();
+  ASSERT_TRUE(holder->IsValid());
+  const int64_t holder_id = reinterpret_cast<int64_t>(holder.get());
+  napi_env env = FakeNapiEnv();
+  StubNapiSetInt64Value(holder_id);
+  StubNapiSetInt32Value(8);
+  StubNapiSetDoubleValue(1.0);
+
+  auto run_natives = [&]() {
+    StubNapiSetCbArgc(2);
+    EXPECT_NO_FATAL_FAILURE(
+        PlatformViewOHOSNapi::nativeRegisterTexture(env, nullptr));
+    EXPECT_NO_FATAL_FAILURE(
+        PlatformViewOHOSNapi::nativeUnregisterTexture(env, nullptr));
+    EXPECT_NO_FATAL_FAILURE(
+        PlatformViewOHOSNapi::nativeGetTextureWindowId(env, nullptr));
+    EXPECT_NO_FATAL_FAILURE(
+        PlatformViewOHOSNapi::nativeGetTextureWindowPtr(env, nullptr));
+    EXPECT_NO_FATAL_FAILURE(
+        PlatformViewOHOSNapi::nativeMarkTextureFrameAvailable(env, nullptr));
+    EXPECT_NO_FATAL_FAILURE(
+        PlatformViewOHOSNapi::nativeEnableFrameCache(env, nullptr));
+    EXPECT_NO_FATAL_FAILURE(
+        PlatformViewOHOSNapi::nativeSetPipVisible(env, nullptr));
+    EXPECT_NO_FATAL_FAILURE(
+        PlatformViewOHOSNapi::nativeAccessibilityStateChange(env, nullptr));
+    EXPECT_NO_FATAL_FAILURE(
+        PlatformViewOHOSNapi::nativeSetFlutterNavigationAction(env, nullptr));
+    EXPECT_NO_FATAL_FAILURE(
+        PlatformViewOHOSNapi::nativeAccessibilityOnTap(env, nullptr));
+    EXPECT_NO_FATAL_FAILURE(
+        PlatformViewOHOSNapi::nativeAccessibilityOnLongPress(env, nullptr));
+
+    StubNapiSetCbArgc(3);
+    EXPECT_NO_FATAL_FAILURE(
+        PlatformViewOHOSNapi::nativeSetTextureBackGroundColor(env, nullptr));
+    EXPECT_NO_FATAL_FAILURE(
+        PlatformViewOHOSNapi::nativeResetExternalTexture(env, nullptr));
+    EXPECT_NO_FATAL_FAILURE(
+        PlatformViewOHOSNapi::nativeSetExternalNativeImage(env, nullptr));
+
+    StubNapiSetCbArgc(4);
+    EXPECT_NO_FATAL_FAILURE(
+        PlatformViewOHOSNapi::nativeSetTextureBufferSize(env, nullptr));
+    EXPECT_NO_FATAL_FAILURE(
+        PlatformViewOHOSNapi::nativeNotifyTextureResizing(env, nullptr));
+
+    StubNapiSetCbArgc(20);
+    StubNapiSetArrayLength(1);
+    EXPECT_NO_FATAL_FAILURE(
+        PlatformViewOHOSNapi::nativeSetViewportMetrics(env, nullptr));
+
+    StubNapiSetCbArgc(2);
+    StubNapiSetArrayLength(0);
+  };
+  run_natives();
+  {
+    fml::ScopedSetLogSettings quiet({fml::kLogFatal});
+    run_natives();
+  }
+
+  EXPECT_TRUE(holder->IsValid());
+}
+
+TEST_F(PlatformViewOHOSNapiTest, NativeNotifyPageChangedParseFailures) {
+  PlatformViewOHOSNapi::notify_page_changed_func_ = &FakeNotifyPageChanged;
+  NotifyPageChangedCalls::Reset();
+  napi_env env = FakeNapiEnv();
+  const bool high_api = DynamicLibraryLoader::GetApiVersion() >= 23;
+
+  StubNapiFailCbInfo(kStubFailure);
+  if (high_api) {
+    EXPECT_EQ(PlatformViewOHOSNapi::nativeNotifyPageChanged(env, nullptr),
+              nullptr);
+  } else {
+    EXPECT_NO_FATAL_FAILURE(
+        PlatformViewOHOSNapi::nativeNotifyPageChanged(env, nullptr));
+  }
+  StubNapiFailCbInfo(napi_ok);
+
+  StubNapiSetCbArgc(2);
+  if (high_api) {
+    EXPECT_EQ(PlatformViewOHOSNapi::nativeNotifyPageChanged(env, nullptr),
+              nullptr);
+  } else {
+    EXPECT_NO_FATAL_FAILURE(
+        PlatformViewOHOSNapi::nativeNotifyPageChanged(env, nullptr));
+  }
+
+  StubNapiSetCbArgc(3);
+  StubNapiSetValuetype(napi_number);
+  if (high_api) {
+    EXPECT_EQ(PlatformViewOHOSNapi::nativeNotifyPageChanged(env, nullptr),
+              nullptr);
+  } else {
+    EXPECT_NO_FATAL_FAILURE(
+        PlatformViewOHOSNapi::nativeNotifyPageChanged(env, nullptr));
+  }
+
+  StubNapiSetValuetype(napi_string);
+  StubNapiSetString("page-parse");
+  StubNapiFailInt32OnCall(1);
+  if (high_api) {
+    EXPECT_EQ(PlatformViewOHOSNapi::nativeNotifyPageChanged(env, nullptr),
+              nullptr);
+  } else {
+    EXPECT_NO_FATAL_FAILURE(
+        PlatformViewOHOSNapi::nativeNotifyPageChanged(env, nullptr));
+  }
+  StubNapiFailInt32OnCall(2);
+  if (high_api) {
+    EXPECT_EQ(PlatformViewOHOSNapi::nativeNotifyPageChanged(env, nullptr),
+              nullptr);
+  } else {
+    EXPECT_NO_FATAL_FAILURE(
+        PlatformViewOHOSNapi::nativeNotifyPageChanged(env, nullptr));
+  }
+  StubNapiFailInt32OnCall(0);
+  EXPECT_EQ(NotifyPageChangedCalls::count, 0);
+  NotifyPageChangedCalls::Reset();
+}
+
+TEST_F(PlatformViewOHOSNapiTest, NativeXComponentAttachParseFailures) {
+  napi_env env = FakeNapiEnv();
+  StubNapiFailCbInfo(kStubFailure);
+  EXPECT_EQ(
+      PlatformViewOHOSNapi::nativeXComponentAttachFlutterEngine(env, nullptr),
+      nullptr);
+  StubNapiFailCbInfo(napi_ok);
+  StubNapiSetValuetype(napi_number);
+  EXPECT_EQ(
+      PlatformViewOHOSNapi::nativeXComponentAttachFlutterEngine(env, nullptr),
+      nullptr);
+  StubNapiSetValuetype(napi_string);
+  StubNapiSetString("ut_attach_fail");
+  StubNapiFailInt64OnCall(1);
+  EXPECT_EQ(
+      PlatformViewOHOSNapi::nativeXComponentAttachFlutterEngine(env, nullptr),
+      nullptr);
+  StubNapiFailInt64OnCall(0);
+}
+
+TEST_F(PlatformViewOHOSNapiTest, NativeXComponentDetachParseFailures) {
+  napi_env env = FakeNapiEnv();
+  StubNapiFailCbInfo(kStubFailure);
+  EXPECT_EQ(
+      PlatformViewOHOSNapi::nativeXComponentDetachFlutterEngine(env, nullptr),
+      nullptr);
+  StubNapiFailCbInfo(napi_ok);
+  StubNapiSetValuetype(napi_number);
+  EXPECT_EQ(
+      PlatformViewOHOSNapi::nativeXComponentDetachFlutterEngine(env, nullptr),
+      nullptr);
+  StubNapiSetValuetype(napi_string);
+  StubNapiSetString("ut_detach_fail");
+  StubNapiFailInt64OnCall(1);
+  EXPECT_EQ(
+      PlatformViewOHOSNapi::nativeXComponentDetachFlutterEngine(env, nullptr),
+      nullptr);
+  StubNapiFailInt64OnCall(0);
+}
+
+TEST_F(PlatformViewOHOSNapiTest, NativeUpdateCurrentXComponentIdGetStringFail) {
+  StubNapiSetValuetype(napi_number);
+  EXPECT_EQ(PlatformViewOHOSNapi::nativeUpdateCurrentXComponentId(FakeNapiEnv(),
+                                                                  nullptr),
+            nullptr);
+}
+
+TEST_F(PlatformViewOHOSNapiTest,
+       NativeXComponentDispatchMouseWheelParseFailures) {
+  napi_env env = FakeNapiEnv();
+  StubNapiFailCbInfo(kStubFailure);
+  EXPECT_EQ(
+      PlatformViewOHOSNapi::nativeXComponentDispatchMouseWheel(env, nullptr),
+      nullptr);
+  StubNapiFailCbInfo(napi_ok);
+
+  StubNapiFailInt64OnCall(1);
+  EXPECT_EQ(
+      PlatformViewOHOSNapi::nativeXComponentDispatchMouseWheel(env, nullptr),
+      nullptr);
+  StubNapiFailInt64OnCall(0);
+
+  StubNapiSetValuetype(napi_number);
+  EXPECT_EQ(
+      PlatformViewOHOSNapi::nativeXComponentDispatchMouseWheel(env, nullptr),
+      nullptr);
+
+  StubNapiSetValuetype(napi_string);
+  StubNapiSetString("wheel");
+  StubNapiFailStringUtf8(kStubFailure, 2);
+  EXPECT_EQ(
+      PlatformViewOHOSNapi::nativeXComponentDispatchMouseWheel(env, nullptr),
+      nullptr);
+
+  StubNapiFailInt64OnCall(2);
+  EXPECT_EQ(
+      PlatformViewOHOSNapi::nativeXComponentDispatchMouseWheel(env, nullptr),
+      nullptr);
+  StubNapiFailInt64OnCall(0);
+
+  StubNapiFailDoubleOnCall(1);
+  EXPECT_EQ(
+      PlatformViewOHOSNapi::nativeXComponentDispatchMouseWheel(env, nullptr),
+      nullptr);
+  StubNapiFailDoubleOnCall(2);
+  EXPECT_EQ(
+      PlatformViewOHOSNapi::nativeXComponentDispatchMouseWheel(env, nullptr),
+      nullptr);
+  StubNapiFailDoubleOnCall(3);
+  EXPECT_EQ(
+      PlatformViewOHOSNapi::nativeXComponentDispatchMouseWheel(env, nullptr),
+      nullptr);
+  StubNapiFailDoubleOnCall(0);
+
+  StubNapiFailInt64OnCall(3);
+  EXPECT_EQ(
+      PlatformViewOHOSNapi::nativeXComponentDispatchMouseWheel(env, nullptr),
+      nullptr);
+  StubNapiFailInt64OnCall(0);
+}
+
+TEST_F(PlatformViewOHOSNapiTest, LogSeverityReplayRemainingEdges) {
+  PlatformViewOHOSNapi::env_ = FakeNapiEnv();
+  {
+    fml::ScopedSetLogSettings quiet({fml::kLogFatal});
+    PlatformViewOHOSNapi facade(nullptr);
+    const std::vector<std::function<void()>> callouts = {
+        [&] {},
+        [&] { facade.FlutterViewOnTouchEvent(nullptr, 0); },
+        [&] { facade.FlutterViewOnMouseEvent(nullptr, 0); },
+        [&] { facade.FlutterViewOnAxisEvent(nullptr, 0); },
+    };
+    for (const auto& call : callouts) {
+      StubNapiFailCallFunction(kStubFailure);
+      EXPECT_NO_FATAL_FAILURE(call());
+    }
+    StubNapiFailReference(kStubFailure);
+    EXPECT_NO_FATAL_FAILURE({
+      PlatformViewOHOSNapi doomed(nullptr);
+      doomed.ref_napi_obj_ = reinterpret_cast<napi_ref>(0x2);
+    });
+
+    napi_env env = FakeNapiEnv();
+    StubNapiFailCallFunction(napi_ok);
+    StubNapiSetInt64Value(0);
+    StubNapiFailCbInfo(kStubFailure);
+    EXPECT_EQ(PlatformViewOHOSNapi::nativeAnimationVoting(env, nullptr),
+              nullptr);
+    EXPECT_EQ(PlatformViewOHOSNapi::nativeVideoVoting(env, nullptr), nullptr);
+    EXPECT_EQ(
+        PlatformViewOHOSNapi::nativeLTPODispatchHighFrameRate(env, nullptr),
+        nullptr);
+    EXPECT_EQ(PlatformViewOHOSNapi::nativeSetAnimationStatus(env, nullptr),
+              nullptr);
+    EXPECT_EQ(PlatformViewOHOSNapi::nativeNotifyPageChanged(env, nullptr),
+              nullptr);
+    StubNapiFailCbInfo(napi_ok);
+    StubNapiSetCbArgc(2);
+    StubNapiFailInt32OnCall(1);
+    EXPECT_EQ(PlatformViewOHOSNapi::nativeAnimationVoting(env, nullptr),
+              nullptr);
+    EXPECT_EQ(PlatformViewOHOSNapi::nativeVideoVoting(env, nullptr), nullptr);
+    StubNapiFailInt32OnCall(0);
+    StubNapiFailDoubleOnCall(1);
+    EXPECT_EQ(PlatformViewOHOSNapi::nativeAnimationVoting(env, nullptr),
+              nullptr);
+    StubNapiFailDoubleOnCall(0);
+    StubNapiFailInt32OnCall(2);
+    EXPECT_EQ(PlatformViewOHOSNapi::nativeVideoVoting(env, nullptr), nullptr);
+    StubNapiFailInt32OnCall(0);
+    StubNapiFailInt64OnCall(1);
+    EXPECT_EQ(
+        PlatformViewOHOSNapi::nativeLTPODispatchHighFrameRate(env, nullptr),
+        nullptr);
+    EXPECT_EQ(PlatformViewOHOSNapi::nativeSetAnimationStatus(env, nullptr),
+              nullptr);
+    StubNapiFailInt64OnCall(0);
+    StubNapiSetCbArgc(1);
+    EXPECT_EQ(PlatformViewOHOSNapi::nativeNotifyPageChanged(env, nullptr),
+              nullptr);
+    StubNapiSetCbArgc(3);
+    StubNapiFailStringUtf8(kStubFailure, 0);
+    EXPECT_EQ(PlatformViewOHOSNapi::nativeNotifyPageChanged(env, nullptr),
+              nullptr);
+    StubNapiFailStringUtf8(napi_ok, 0);
+  }
+  {
+    fml::ScopedSetLogSettings loud({fml::kLogInfo});
+    napi_env env = FakeNapiEnv();
+    StubNapiSetInt64Value(0);
+    EXPECT_EQ(PlatformViewOHOSNapi::nativeNotifyPageChanged(env, nullptr),
+              nullptr);
+    EXPECT_EQ(
+        PlatformViewOHOSNapi::nativeLTPODispatchHighFrameRate(env, nullptr),
+        nullptr);
+    StubNapiSetCbArgc(2);
+    StubNapiSetInt32Value(99);
+    EXPECT_EQ(PlatformViewOHOSNapi::nativeSetAnimationStatus(env, nullptr),
+              nullptr);
+    auto holder = MakeSoftwareHolder();
+    ASSERT_TRUE(holder->IsValid());
+    PlatformViewOHOSNapi::SurfaceChanged(
+        reinterpret_cast<int64_t>(holder.get()), nullptr, 320, 240);
+    holder->WaitRasterTasksFinished();
+  }
 }
 
 }  // namespace testing

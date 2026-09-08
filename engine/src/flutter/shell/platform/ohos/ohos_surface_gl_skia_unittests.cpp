@@ -82,6 +82,8 @@ struct FakeEGLState {
   EGLBoolean choose_config_result = EGL_TRUE;
   EGLint choose_config_count = 1;
   bool choose_config_write_null = false;
+  int fail_choose_config_on_nth = 0;
+  int choose_config_calls = 0;
 
   int fail_create_context_on_nth = 0;
   int create_context_calls = 0;
@@ -207,6 +209,27 @@ TEST_F(OhosSurfaceGLSkiaTest, ConstructionKeepsValidOffscreenSurface) {
   EXPECT_NE(surface_->offscreen_surface_, nullptr);
   EXPECT_TRUE(surface_->offscreen_surface_->IsValid());
   EXPECT_TRUE(surface_->IsValid());
+}
+
+TEST_F(OhosSurfaceGLSkiaTest, EmitsInfoLogs) {
+  fml::ScopedSetLogSettings loud({fml::kLogInfo});
+  OhosSurfaceGLSkia fresh(context_);
+  EXPECT_TRUE(fresh.IsValid());
+
+  auto window = fml::MakeRefCounted<OHOSNativeWindow>(kFakeNativeWindow);
+  ASSERT_TRUE(fresh.SetNativeWindow(window));
+  EXPECT_TRUE(fresh.OnScreenSurfaceResize(SkISize::Make(800, 600)));
+
+  GrMockOptions mock_options;
+  auto gr_context = GrDirectContext::MakeMock(&mock_options);
+  ASSERT_NE(gr_context, nullptr);
+  auto gpu_surface = fresh.CreateGPUSurface(gr_context.get());
+  ASSERT_NE(gpu_surface, nullptr);
+
+  GraphicStubKnobGuard knob_guard;
+  OHNativeWindowBuffer* buffer =
+      reinterpret_cast<OHNativeWindowBuffer*>(0x7700);
+  EXPECT_TRUE(fresh.PaintOffscreenData(buffer, 3));
 }
 
 TEST_F(OhosSurfaceGLSkiaTest, TeardownOnScreenContextClearsWindowState) {
@@ -594,9 +617,15 @@ TEST_F(OhosSurfaceGLSkiaTest, PaintOffscreenDataAttachesFlushesDestroys) {
 
   g_stub_graphic_fail_mask = kStubFailFlushBuffer;
   EXPECT_TRUE(surface_->PaintOffscreenData(buffer, 4));
+  g_stub_graphic_fail_mask = kStubFailAttachBuffer;
+  EXPECT_FALSE(surface_->PaintOffscreenData(buffer, 5));
+  {
+    fml::ScopedSetLogSettings quiet({fml::kLogFatal});
+    EXPECT_FALSE(surface_->PaintOffscreenData(buffer, 6));
+  }
 }
 
-TEST_F(OhosSurfaceGLSkiaTest, QuietSeverityAndContextInvalidLeg) {
+TEST_F(OhosSurfaceGLSkiaTest, ContextInvalidPath) {
   QuietLogs quiet;
   {
     OhosSurfaceGLSkia fresh(context_);
@@ -616,7 +645,7 @@ TEST_F(OhosSurfaceGLSkiaTest, QuietSeverityAndContextInvalidLeg) {
   EXPECT_TRUE(surface_->IsValid());
 }
 
-TEST_F(OhosSurfaceGLSkiaTest, QuietSeverityOnGpuSurfaceBootstrap) {
+TEST_F(OhosSurfaceGLSkiaTest, GpuSurfaceBootstrap) {
   QuietLogs quiet;
   auto window = fml::MakeRefCounted<OHOSNativeWindow>(kFakeNativeWindow);
   ASSERT_TRUE(surface_->SetNativeWindow(window));
@@ -634,7 +663,7 @@ TEST_F(OhosSurfaceGLSkiaTest, QuietSeverityOnGpuSurfaceBootstrap) {
   EXPECT_EQ(context_->GetMainSkiaContext(), nullptr);
 }
 
-TEST_F(OhosSurfaceGLSkiaTest, QuietSeverityOnResizePaths) {
+TEST_F(OhosSurfaceGLSkiaTest, ResizePaths) {
   QuietLogs quiet;
   EXPECT_FALSE(surface_->OnScreenSurfaceResize(SkISize::Make(640, 480)));
 
@@ -649,7 +678,7 @@ TEST_F(OhosSurfaceGLSkiaTest, QuietSeverityOnResizePaths) {
   EXPECT_EQ(CountEvents("CreateWindowSurface"), creations + 1);
 }
 
-TEST_F(OhosSurfaceGLSkiaTest, QuietSeverityOnContextOps) {
+TEST_F(OhosSurfaceGLSkiaTest, ContextOps) {
   QuietLogs quiet;
   {
     g_egl.pbuffer_surface_fail = true;
@@ -688,7 +717,7 @@ TEST_F(OhosSurfaceGLSkiaTest, QuietSeverityOnContextOps) {
   EXPECT_EQ(fbo.fbo_id, 0u);
 }
 
-TEST_F(OhosSurfaceGLSkiaTest, QuietSeverityOnPaintOffscreen) {
+TEST_F(OhosSurfaceGLSkiaTest, PaintOffscreen) {
   QuietLogs quiet;
   GraphicStubKnobGuard knob_guard;
   surface_->native_window_ =
@@ -702,7 +731,7 @@ TEST_F(OhosSurfaceGLSkiaTest, QuietSeverityOnPaintOffscreen) {
   EXPECT_TRUE(surface_->PaintOffscreenData(buffer, 6));
 }
 
-TEST_F(OhosSurfaceGLSkiaTest, QuietSeverityOnGetGLInterfaceDance) {
+TEST_F(OhosSurfaceGLSkiaTest, GetGLInterface) {
   QuietLogs quiet;
   int created = g_egl.create_context_calls;
   EXPECT_EQ(surface_->GetGLInterface(), nullptr);
@@ -799,7 +828,7 @@ TEST_F(OhosSurfaceGLSkiaTest, PresentSkipsTimingWhenWindowCleared) {
   EXPECT_EQ(CountEvents("SwapBuffers"), 1u);
 }
 
-TEST_F(OhosSurfaceGLSkiaTest, QuietSeverityOnSnapshotSurface) {
+TEST_F(OhosSurfaceGLSkiaTest, SnapshotSurface) {
   QuietLogs quiet;
   auto snapshot = surface_->CreateSnapshotSurface();
   ASSERT_NE(snapshot, nullptr);
