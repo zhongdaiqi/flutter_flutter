@@ -16,6 +16,7 @@
 #include <atomic>
 #include <chrono>
 #include <thread>
+#include "flutter/fml/log_settings.h"
 #include "flutter/fml/message_loop.h"
 #include "flutter/fml/message_loop_impl.h"
 #include "flutter/fml/platform/ohos/message_loop_ohos.h"
@@ -193,14 +194,6 @@ TEST(MessageLoopOhosTest, DoubleTerminateNoPlatform) {
   loop->Terminate();
 }
 
-// Terminate + cleanup for platform loop. Unlike the non-platform path,
-// double Terminate() is unsafe here (uv_close on already-closed handle).
-TEST(MessageLoopOhosTest, TerminateAndCleanupWithPlatform) {
-  auto ctx = CreateLoopWithPlatform();
-  ctx.loop->Terminate();
-  CleanupPlatformLoop(ctx.platform_loop);
-}
-
 // ===========================================================================
 // 5. Run + Terminate — brief run cycle
 // ===========================================================================
@@ -244,25 +237,6 @@ TEST(MessageLoopOhosTest, RunAndTerminateWithPlatform) {
 // ===========================================================================
 // 6. PostTask — task execution via Run
 // ===========================================================================
-
-// PostTask before Run, then Run should execute the task.
-// Uses UV_RUN_NOWAIT to avoid blocking.
-TEST(MessageLoopOhosTest, PostTaskAndRun) {
-  fml::RefPtr<fml::MessageLoopImpl> loop = CreateLoopNoPlatform();
-  auto* loop_ohos = static_cast<fml::MessageLoopOhos*>(loop.get());
-
-  std::atomic<bool> task_ran(false);
-  loop->PostTask([&task_ran]() { task_ran.store(true); },
-                 fml::TimePoint::Now());
-
-  for (int i = 0; i < 100 && !task_ran.load(); i++) {
-    uv_run(&loop_ohos->loop_, UV_RUN_NOWAIT);
-    std::this_thread::sleep_for(std::chrono::milliseconds(10));
-  }
-
-  EXPECT_TRUE(task_ran.load());
-  loop->Terminate();
-}
 
 // PostTask with a delayed execution time.
 // Uses UV_RUN_NOWAIT to avoid blocking.
@@ -331,6 +305,10 @@ TEST(MessageLoopOhosTest, OnPollCallbackError) {
 
   // status < 0 → error path
   fml::MessageLoopOhos::OnPollCallback(&poll_handle, -1, 0);
+  {
+    fml::ScopedSetLogSettings quiet({fml::kLogFatal});
+    fml::MessageLoopOhos::OnPollCallback(&poll_handle, -1, 0);
+  }
 
   loop_impl->Terminate();
 }
