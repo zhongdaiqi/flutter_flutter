@@ -153,7 +153,7 @@ PlatformViewOHOS::~PlatformViewOHOS() {
 
 void PlatformViewOHOS::NotifyCreate(
     fml::RefPtr<OHOSNativeWindow> native_window) {
-  LOGI("NotifyCreate start");
+  FML_LOG(INFO) << "NotifyCreate start";
 
   FML_LOG(WARNING) << "GpuReclaim: NotifyCreate, lifecycle="
                    << LifecycleStateToString(lifecycle_state_);
@@ -163,7 +163,7 @@ void PlatformViewOHOS::NotifyCreate(
 
   if (ohos_surface_) {
     InstallFirstFrameCallback();
-    LOGI("NotifyCreate start1");
+    FML_LOG(INFO) << "NotifyCreate start1";
     // We register these external textures with the engine again to ensure that
     // the screen is normal in the scenario of page jump and return (when there
     // is a detachEngine operation during page jump, there will be a
@@ -181,8 +181,10 @@ void PlatformViewOHOS::NotifyCreate(
         task_runners_.GetRasterTaskRunner(),
         [&, surface = ohos_surface_.get(),
          native_window = std::move(native_window)]() {
-          LOGI("NotifyCreate start4");
+          FML_LOG(INFO) << "NotifyCreate start4";
           bool set_window_result = surface->SetDisplayWindow(native_window);
+          LOGI("SetDisplayWindow result=%{public}d window=%{public}p",
+               set_window_result, native_window.get());
           // Mark onscreen context as valid only after successful setup
           if (set_window_result) {
             onscreen_context_valid_.store(true, std::memory_order_release);
@@ -195,6 +197,8 @@ void PlatformViewOHOS::NotifyCreate(
           // Note that NotifyDestroyed will wait raster task, so platformview is
           // not deleted here.
           if (!window_is_preload_) {
+            LOGI("NotifyCreated called, onscreen_valid=%{public}d",
+                 onscreen_context_valid_.load(std::memory_order_acquire));
             PlatformView::NotifyCreated();
           } else if (surface->NeedNewFrame()) {
             PlatformView::ScheduleFrame();
@@ -220,7 +224,7 @@ void PlatformViewOHOS::NotifyCreate(
 
 void PlatformViewOHOS::Preload(int width, int height) {
   if (ohos_surface_ && !window_is_preload_) {
-    LOGI("Preload start");
+    FML_LOG(INFO) << "Preload start";
     InstallFirstFrameCallback(true);
 
     for (auto [texture_id, external_texture] : all_external_texture_) {
@@ -233,7 +237,7 @@ void PlatformViewOHOS::Preload(int width, int height) {
         task_runners_.GetRasterTaskRunner(),
         [&, surface = ohos_surface_.get(), width, height]() {
           TRACE_EVENT0("flutter", "surface:Preload");
-          LOGI("Preload PlatformViewOHOS");
+          FML_LOG(INFO) << "Preload PlatformViewOHOS";
           if (!window_is_preload_) {
             bool ret = surface->PrepareOffscreenWindow(width, height);
             if (ret) {
@@ -249,7 +253,7 @@ void PlatformViewOHOS::Preload(int width, int height) {
 
 void PlatformViewOHOS::NotifySurfaceWindowChanged(
     fml::RefPtr<OHOSNativeWindow> native_window) {
-  LOGI("PlatformViewOHOS NotifySurfaceWindowChanged enter");
+  FML_LOG(INFO) << "PlatformViewOHOS NotifySurfaceWindowChanged enter";
   TRACE_EVENT0("flutter", "NotifySurfaceWindowChanged");
   if (ohos_surface_) {
     fml::AutoResetWaitableEvent latch;
@@ -290,7 +294,7 @@ void PlatformViewOHOS::NotifySurfaceWindowChanged(
 }
 
 void PlatformViewOHOS::NotifyChanged(const SkISize& size) {
-  LOGI("PlatformViewOHOS NotifyChanged enter");
+  FML_LOG(INFO) << "PlatformViewOHOS NotifyChanged enter";
   if (ohos_surface_) {
     fml::AutoResetWaitableEvent latch;
     fml::TaskRunner::RunNowOrPostTask(
@@ -317,7 +321,7 @@ void PlatformViewOHOS::UpdateDisplaySize(int width, int height) {
 
 // |PlatformView|
 void PlatformViewOHOS::NotifyDestroyed() {
-  LOGI("PlatformViewOHOS NotifyDestroyed enter");
+  FML_LOG(INFO) << "PlatformViewOHOS NotifyDestroyed enter";
 
   FML_LOG(WARNING) << "GpuReclaim: NotifyDestroyed begin, lifecycle="
                    << LifecycleStateToString(lifecycle_state_);
@@ -547,7 +551,7 @@ sk_sp<GrDirectContext> PlatformViewOHOS::CreateResourceContext() const {
 
 // |PlatformView|
 void PlatformViewOHOS::ReleaseResourceContext() const {
-  LOGI("PlatformViewOHOS::ReleaseResourceContext");
+  FML_LOG(INFO) << "PlatformViewOHOS::ReleaseResourceContext";
   // IO thread will invoke glGetError() when exit.
   // It will bring lots of "Call To OpenGL ES API With No Current Context"
   // without gl context. So we don't clear current.
@@ -559,7 +563,7 @@ void PlatformViewOHOS::ReleaseResourceContext() const {
 // |PlatformView|
 std::shared_ptr<impeller::Context> PlatformViewOHOS::GetImpellerContext()
     const {
-  FML_DLOG(INFO) << "GetImpellerContext";
+  LOGI("first-frame callback.");
   if (ohos_surface_) {
     return ohos_surface_->GetImpellerContext();
   }
@@ -582,7 +586,7 @@ void PlatformViewOHOS::RequestDartDeferredLibrary(intptr_t loading_unit_id) {
 }
 
 void PlatformViewOHOS::InstallFirstFrameCallback(bool is_preload) {
-  FML_DLOG(INFO) << "InstallFirstFrameCallback";
+  LOGI("first-frame fired");
   SetNextFrameCallback(
       [platform_view = GetWeakPtr(),
        platform_task_runner = task_runners_.GetPlatformTaskRunner(),
@@ -1043,6 +1047,7 @@ void PlatformViewOHOS::OnSurfaceCreated() {
   // Reset frame gate and reclaim level independently to guarantee both states
   // are correct even if a prior abnormal path left them inconsistent.
   frame_gate_enabled_.store(false, std::memory_order_release);
+  LOGI("frame_gate enabled=false reason=SurfaceCreated");
   if (current_reclaim_level_ != GpuReclaimLevel::kRestore) {
     FML_LOG(WARNING) << "GpuReclaim: SurfaceCreated forcing restore from "
                      << ReclaimLevelToString(current_reclaim_level_);
@@ -1214,6 +1219,11 @@ void PlatformViewOHOS::ExecuteReclaimRestore() {
 
   // 2. Rebuild onscreen context if it was torn down
   if (!ShouldRebuildOnscreenContext()) {
+    LOGI(
+        "rebuild skipped, surface=%{public}s window=%{public}s "
+        "valid=%{public}d",
+        (ohos_surface_ ? "yes" : "no"), (cached_native_window_ ? "yes" : "no"),
+        onscreen_context_valid_.load(std::memory_order_acquire));
     return;
   }
   PostRebuildOnscreenContextTasks();
@@ -1238,8 +1248,8 @@ void PlatformViewOHOS::PostRebuildOnscreenContextTasks() {
         const bool set_window_result =
             surface_ptr && surface_ptr->SetDisplayWindow(native_window);
         if (!set_window_result) {
-          FML_LOG(ERROR)
-              << "GpuReclaim: [Raster] SetDisplayWindow failed during rebuild";
+          FML_LOG(ERROR) << "GpuReclaim: [Raster] rebuild SetDisplayWindow "
+                            "failed, no retry";
           return;
         }
         FML_LOG(WARNING) << "GpuReclaim: [Raster] Surface rebuild completed";
@@ -1275,6 +1285,7 @@ void PlatformViewOHOS::ExecuteReclaimAggressive() {
   // 1. Enable frame gate immediately to suppress external texture-driven frame
   //    scheduling while the app is in background.
   frame_gate_enabled_.store(true, std::memory_order_release);
+  LOGI("frame_gate enabled=true reason=ExecuteAggressive");
 
   // 2. Defer actual GPU teardown to allow async PiP detection to complete.
   //    OHOS has no synchronous PiP API available to the framework here -
@@ -1305,6 +1316,7 @@ void PlatformViewOHOS::ExecuteReclaimAggressive() {
           FML_LOG(WARNING)
               << "GpuReclaim: Deferred aggressive cancelled - PiP visible";
           self->frame_gate_enabled_.store(false, std::memory_order_release);
+          LOGI("frame_gate enabled=false reason=PiP_visible");
           self->current_reclaim_level_ = GpuReclaimLevel::kRestore;
           return;
         }
@@ -1327,6 +1339,7 @@ void PlatformViewOHOS::ExecuteReclaimAggressiveCore() {
 
   // 1. Mark context invalid BEFORE teardown
   onscreen_context_valid_.store(false, std::memory_order_release);
+  LOGI("frame_gate enabled=false reason=ExecuteAggressiveCore");
 
   // 2. Free GPU resources and teardown onscreen context (on Raster thread,
   // sync)

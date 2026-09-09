@@ -158,7 +158,8 @@ bool OHOSSurfaceSoftware::PresentBackingStore(sk_sp<SkSurface> backing_store) {
       native_window_.get()->Gethandle(), &buffer, &fenceFd);
   if (ret != 0) {
     LOGE(
-        "OH_NativeWindow_NativeWindowRequestBuffer() failed in PresentBackingStore "
+        "OH_NativeWindow_NativeWindowRequestBuffer() failed in "
+        "PresentBackingStore "
         ":%{public}d",
         ret);
     return false;
@@ -168,17 +169,20 @@ bool OHOSSurfaceSoftware::PresentBackingStore(sk_sp<SkSurface> backing_store) {
       OH_NativeWindow_GetBufferHandleFromNative(buffer);
 
   if (bufferHandle == nullptr) {
-    LOGE("OH_NativeWindow_GetBufferHandleFromNative() failed in PresentBackingStore");
+    LOGE(
+        "OH_NativeWindow_GetBufferHandleFromNative() failed in "
+        "PresentBackingStore");
     OH_NativeWindow_DestroyNativeWindowBuffer(buffer);
     return false;
   }
-  LOGI(
-      "BufferHandle.fd:%{public}d,w:%{public}d,h:%{public}d,stride:%{public}d,"
-      "format:%{public}d,usage:%{public}ld,virAddr:%{public}p,phyAddr:%{public}"
-      "ld,key:%{public}d",
-      bufferHandle->fd, bufferHandle->width, bufferHandle->height,
-      bufferHandle->stride, bufferHandle->format, bufferHandle->usage,
-      bufferHandle->virAddr, bufferHandle->phyAddr, bufferHandle->key);
+  FML_LOG(INFO) << "BufferHandle.fd:" << bufferHandle->fd
+                << ",w:" << bufferHandle->width << ",h:" << bufferHandle->height
+                << ",stride:" << bufferHandle->stride
+                << ",format:" << bufferHandle->format
+                << ",usage:" << bufferHandle->usage
+                << ",virAddr:" << bufferHandle->virAddr
+                << ",phyAddr:" << bufferHandle->phyAddr
+                << ",key:" << bufferHandle->key;
   void* virAddr = mmap(nullptr, bufferHandle->size, PROT_READ | PROT_WRITE,
                        MAP_SHARED, bufferHandle->fd, 0);
   if (virAddr == MAP_FAILED) {
@@ -224,7 +228,8 @@ bool OHOSSurfaceSoftware::PresentBackingStore(sk_sp<SkSurface> backing_store) {
         FML_DLOG(INFO) << "MakeRasterDirect  Failed.";
       }
     } else {
-      FML_DLOG(INFO) << "GetSkColorType Failed.";
+      FML_LOG(WARNING)
+          << "GetSkColorType Failed.software surface unsupported format";
     }
   }
 
@@ -233,13 +238,16 @@ bool OHOSSurfaceSoftware::PresentBackingStore(sk_sp<SkSurface> backing_store) {
     munmap(virAddr, bufferHandle->size);
     OH_RESTRACE_FREE_REGION(virAddr, bufferHandle->size);
   }
-  LOGI("OH_NativeWindow_NativeWindowFlushBuffer  ....");
+  FML_LOG(INFO) << "OH_NativeWindow_NativeWindowFlushBuffer  ....";
   ret = OH_NativeWindow_NativeWindowFlushBuffer(
       native_window_.get()->Gethandle(), buffer, fenceFd, region);
   if (ret != 0) {
-    LOGE("OH_NativeWindow_NativeWindowFlushBuffer() failed in PresentBackingStore, ret = %{public}d", ret);
+    LOGE(
+        "OH_NativeWindow_NativeWindowFlushBuffer() failed in "
+        "PresentBackingStore, ret = %{public}d",
+        ret);
   } else {
-    LOGI("PresentBackingStore flush Buffer :%{public}d", ret);
+    FML_LOG(INFO) << "PresentBackingStore flush Buffer :" << ret;
   }
   OH_NativeWindow_DestroyNativeWindowBuffer(buffer);
   return ret == 0;
