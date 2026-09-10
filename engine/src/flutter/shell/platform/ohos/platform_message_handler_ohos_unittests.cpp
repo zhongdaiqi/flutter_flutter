@@ -35,7 +35,8 @@ class MockPlatformMessageResponse : public PlatformMessageResponse {
   void Complete(std::unique_ptr<fml::Mapping> data) override {
     is_complete_called_ = true;
     if (data) {
-      complete_data_ = std::string(data->GetMapping(), data->GetMapping() + data->GetSize());
+      complete_data_ =
+          std::string(data->GetMapping(), data->GetMapping() + data->GetSize());
     }
   }
 
@@ -73,24 +74,27 @@ TEST_F(PlatformMessageHandlerOHOSTest,
   EXPECT_TRUE(handler_->DoesHandlePlatformMessageOnPlatformThread());
 }
 
-// InvokePlatformMessageResponseCallback with non-existent response_id should return early
+// InvokePlatformMessageResponseCallback with non-existent response_id should
+// return early
 TEST_F(PlatformMessageHandlerOHOSTest,
        InvokeResponseCallbackWithUnknownIdReturnsEarly) {
-  auto mapping = fml::MallocMapping::Copy(
-      reinterpret_cast<const uint8_t*>("hello"), 5);
+  auto mapping =
+      fml::MallocMapping::Copy(reinterpret_cast<const uint8_t*>("hello"), 5);
   handler_->InvokePlatformMessageResponseCallback(
       999, std::make_unique<fml::MallocMapping>(std::move(mapping)));
   SUCCEED();
 }
 
-// InvokePlatformMessageEmptyResponseCallback with non-existent response_id should return early
+// InvokePlatformMessageEmptyResponseCallback with non-existent response_id
+// should return early
 TEST_F(PlatformMessageHandlerOHOSTest,
        InvokeEmptyResponseCallbackWithUnknownIdReturnsEarly) {
   handler_->InvokePlatformMessageEmptyResponseCallback(999);
   SUCCEED();
 }
 
-// ===== The following tests use a real MessageLoop TaskRunner to cover happy path branches =====
+// ===== The following tests use a real MessageLoop TaskRunner to cover happy
+// path branches =====
 
 class PlatformMessageHandlerOHOSWithLoopTest : public ::testing::Test {
  protected:
@@ -118,17 +122,18 @@ class PlatformMessageHandlerOHOSWithLoopTest : public ::testing::Test {
 };
 
 // HandlePlatformMessage with a response should store the response into
-// pending_responses_ (covers if (auto response = message->response()) true branch)
+// pending_responses_ (covers if (auto response = message->response()) true
+// branch)
 TEST_F(PlatformMessageHandlerOHOSWithLoopTest,
        HandlePlatformMessageWithResponseRegistersPending) {
   auto mock_response = MockPlatformMessageResponse::Create();
-  auto message = std::make_unique<PlatformMessage>("test_channel",
-                                                    mock_response);
+  auto message =
+      std::make_unique<PlatformMessage>("test_channel", mock_response);
   // PostTask only enqueues without executing; napi_env=nullptr won't crash
   handler_->HandlePlatformMessage(std::move(message));
   // response_id starts at 1; verify Invoke can find the pending response
-  auto mapping = fml::MallocMapping::Copy(
-      reinterpret_cast<const uint8_t*>("data"), 4);
+  auto mapping =
+      fml::MallocMapping::Copy(reinterpret_cast<const uint8_t*>("data"), 4);
   handler_->InvokePlatformMessageResponseCallback(
       1, std::make_unique<fml::MallocMapping>(std::move(mapping)));
   EXPECT_TRUE(mock_response->is_complete_called());
@@ -161,31 +166,32 @@ TEST_F(PlatformMessageHandlerOHOSWithLoopTest,
   EXPECT_TRUE(mock_response->is_complete_empty_called());
 }
 
-// InvokePlatformMessageResponseCallback finds the pending response and calls Complete
-// (covers happy path: response_id matches -> message_response->Complete)
+// InvokePlatformMessageResponseCallback finds the pending response and calls
+// Complete (covers happy path: response_id matches ->
+// message_response->Complete)
 TEST_F(PlatformMessageHandlerOHOSWithLoopTest,
        InvokeResponseCallbackCompletesPendingResponse) {
   auto mock_response = MockPlatformMessageResponse::Create();
-  auto message = std::make_unique<PlatformMessage>("test_channel",
-                                                    mock_response);
+  auto message =
+      std::make_unique<PlatformMessage>("test_channel", mock_response);
   handler_->HandlePlatformMessage(std::move(message));
 
-  auto mapping = fml::MallocMapping::Copy(
-      reinterpret_cast<const uint8_t*>("hello"), 5);
+  auto mapping =
+      fml::MallocMapping::Copy(reinterpret_cast<const uint8_t*>("hello"), 5);
   handler_->InvokePlatformMessageResponseCallback(
       1, std::make_unique<fml::MallocMapping>(std::move(mapping)));
   EXPECT_TRUE(mock_response->is_complete_called());
   EXPECT_EQ(mock_response->complete_data(), "hello");
 }
 
-// InvokePlatformMessageEmptyResponseCallback finds the pending response and calls
-// CompleteEmpty (covers happy path: response_id matches ->
+// InvokePlatformMessageEmptyResponseCallback finds the pending response and
+// calls CompleteEmpty (covers happy path: response_id matches ->
 // message_response->CompleteEmpty)
 TEST_F(PlatformMessageHandlerOHOSWithLoopTest,
        InvokeEmptyResponseCallbackCompletesPendingResponse) {
   auto mock_response = MockPlatformMessageResponse::Create();
-  auto message = std::make_unique<PlatformMessage>("test_channel",
-                                                    mock_response);
+  auto message =
+      std::make_unique<PlatformMessage>("test_channel", mock_response);
   handler_->HandlePlatformMessage(std::move(message));
 
   handler_->InvokePlatformMessageEmptyResponseCallback(1);
@@ -208,8 +214,8 @@ TEST_F(PlatformMessageHandlerOHOSWithLoopTest,
   EXPECT_FALSE(mock_response->is_complete_called());
 
   // Correct id=1 should trigger the callback
-  auto mapping = fml::MallocMapping::Copy(
-      reinterpret_cast<const uint8_t*>("data"), 4);
+  auto mapping =
+      fml::MallocMapping::Copy(reinterpret_cast<const uint8_t*>("data"), 4);
   handler_->InvokePlatformMessageResponseCallback(
       1, std::make_unique<fml::MallocMapping>(std::move(mapping)));
   EXPECT_TRUE(mock_response->is_complete_called());

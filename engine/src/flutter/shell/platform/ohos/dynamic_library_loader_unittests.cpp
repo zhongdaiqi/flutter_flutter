@@ -53,7 +53,8 @@ TEST(DynamicLibraryLoaderTest, LoadSymbolsReturnsFalseForMissingSymbol) {
   EXPECT_EQ(dummy_target, nullptr);
 }
 
-// LoadSymbols should skip and return false when minApi is higher than current API version
+// LoadSymbols should skip and return false when minApi is higher than current
+// API version
 TEST(DynamicLibraryLoaderTest, LoadSymbolsSkipsWhenApiTooLow) {
   DynamicLibraryLoader loader("libc.so");
   ASSERT_TRUE(loader.IsLoaded());
@@ -66,7 +67,8 @@ TEST(DynamicLibraryLoaderTest, LoadSymbolsSkipsWhenApiTooLow) {
 }
 
 // LoadSymbols should succeed loading a real symbol from libace_ndk.z.so
-// Using a symbol the engine actually loads: OH_ArkUI_UIInputEvent_GetDeviceId (minApi=14)
+// Using a symbol the engine actually loads: OH_ArkUI_UIInputEvent_GetDeviceId
+// (minApi=14)
 TEST(DynamicLibraryLoaderTest, LoadSymbolsSucceedsForRealAceNdkSymbol) {
   DynamicLibraryLoader loader("libace_ndk.z.so");
   ASSERT_TRUE(loader.IsLoaded()) << "libace_ndk.z.so not found on device";
@@ -80,8 +82,8 @@ TEST(DynamicLibraryLoaderTest, LoadSymbolsSucceedsForRealAceNdkSymbol) {
   EXPECT_NE(device_id_func, nullptr);
 }
 
-// LoadSymbols should succeed loading multiple real symbols, covering loop iteration branch
-// Using 3 symbols actually loaded by ohos_touch_processor.cpp
+// LoadSymbols should succeed loading multiple real symbols, covering loop
+// iteration branch Using 3 symbols actually loaded by ohos_touch_processor.cpp
 TEST(DynamicLibraryLoaderTest, LoadSymbolsSucceedsForMultipleRealSymbols) {
   DynamicLibraryLoader loader("libace_ndk.z.so");
   ASSERT_TRUE(loader.IsLoaded()) << "libace_ndk.z.so not found on device";
@@ -92,8 +94,8 @@ TEST(DynamicLibraryLoaderTest, LoadSymbolsSucceedsForMultipleRealSymbols) {
   std::vector<SymbolInfo> symbols = {
       {"OH_ArkUI_UIInputEvent_GetDeviceId", &get_device_id, 14},
       {"OH_ArkUI_AxisEvent_GetAxisAction", &get_axis_action, 15},
-      {"OH_ArkUI_UIInputEvent_GetModifierKeyStates",
-       &get_modifier_key_states, 17},
+      {"OH_ArkUI_UIInputEvent_GetModifierKeyStates", &get_modifier_key_states,
+       17},
   };
 
   EXPECT_TRUE(loader.LoadSymbols(symbols));
@@ -102,7 +104,8 @@ TEST(DynamicLibraryLoaderTest, LoadSymbolsSucceedsForMultipleRealSymbols) {
   EXPECT_NE(get_modifier_key_states, nullptr);
 }
 
-// LoadSymbols with an empty vector should return true, covering loop skip branch
+// LoadSymbols with an empty vector should return true, covering loop skip
+// branch
 TEST(DynamicLibraryLoaderTest, LoadSymbolsReturnsTrueForEmptyVector) {
   DynamicLibraryLoader loader("libace_ndk.z.so");
   ASSERT_TRUE(loader.IsLoaded()) << "libace_ndk.z.so not found on device";

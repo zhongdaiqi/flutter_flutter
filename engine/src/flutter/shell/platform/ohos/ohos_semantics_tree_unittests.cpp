@@ -28,7 +28,8 @@ TEST_F(SemanticsTreeTest, FindNodeByIdReturnsNullOnEmptyTree) {
   EXPECT_EQ(tree_.FindNodeById(1), nullptr);
 }
 
-// FindNodeById(-1) should redirect to root (id=0), still returns nullptr on empty tree
+// FindNodeById(-1) should redirect to root (id=0), still returns nullptr on
+// empty tree
 TEST_F(SemanticsTreeTest, FindNodeByIdNegativeOneRedirectsToRoot) {
   EXPECT_EQ(tree_.FindNodeById(-1), nullptr);
 }
@@ -37,7 +38,8 @@ TEST_F(SemanticsTreeTest, FindNodeByIdNegativeOneRedirectsToRoot) {
 TEST_F(SemanticsTreeTest, GetOrAddNodeCreatesNewNode) {
   auto* node = tree_.GetOrAddNode(1);
   ASSERT_NE(node, nullptr);
-  EXPECT_EQ(node->id, 0);  // New node id defaults to 0, not yet set by UpdateWithNode
+  EXPECT_EQ(node->id,
+            0);  // New node id defaults to 0, not yet set by UpdateWithNode
 
   // Getting again should return the same pointer
   auto* same_node = tree_.GetOrAddNode(1);
@@ -98,7 +100,8 @@ TEST_F(SemanticsTreeTest, SetAccessibilityFocusNodeReturnsTrueForExisting) {
   EXPECT_TRUE(tree_.SetAccessibilityFocusNode(1));
 }
 
-// After SetAccessibilityFocusNode, ClearAccessibilityFocusNode should clear focus
+// After SetAccessibilityFocusNode, ClearAccessibilityFocusNode should clear
+// focus
 TEST_F(SemanticsTreeTest, ClearAccessibilityFocusAfterSet) {
   auto* node = tree_.GetOrAddNode(1);
   node->id = 1;
@@ -112,17 +115,18 @@ TEST_F(SemanticsTreeTest, ClearAccessibilityFocusAfterSet) {
 
 // FindFocusNode should return nullptr when there is no focus
 TEST_F(SemanticsTreeTest, FindFocusNodeReturnsNullWhenNoFocus) {
-  EXPECT_EQ(tree_.FindFocusNode(-1, ARKUI_ACCESSIBILITY_NATIVE_FOCUS_TYPE_INPUT),
-            nullptr);
   EXPECT_EQ(
-      tree_.FindFocusNode(-1, ARKUI_ACCESSIBILITY_NATIVE_FOCUS_TYPE_ACCESSIBILITY),
+      tree_.FindFocusNode(-1, ARKUI_ACCESSIBILITY_NATIVE_FOCUS_TYPE_INPUT),
       nullptr);
+  EXPECT_EQ(tree_.FindFocusNode(
+                -1, ARKUI_ACCESSIBILITY_NATIVE_FOCUS_TYPE_ACCESSIBILITY),
+            nullptr);
 }
 
 // FindNextFocusNode should return nullptr for a non-existent start node
 TEST_F(SemanticsTreeTest, FindNextFocusNodeReturnsNullForMissingStart) {
-  EXPECT_EQ(tree_.FindNextFocusNode(999,
-                                     ARKUI_ACCESSIBILITY_NATIVE_DIRECTION_FORWARD),
+  EXPECT_EQ(tree_.FindNextFocusNode(
+                999, ARKUI_ACCESSIBILITY_NATIVE_DIRECTION_FORWARD),
             nullptr);
 }
 
@@ -259,14 +263,15 @@ TEST_F(SemanticsTreeTest, FindFocusNodeReturnsInputFocusNodeWithNegativeId) {
   tree_.UpdateWithNodes(nodes);
 
   // input_focused_node_ is set when a node has isFocused flag
-  auto* focused = tree_.FindFocusNode(
-      -1, ARKUI_ACCESSIBILITY_NATIVE_FOCUS_TYPE_INPUT);
+  auto* focused =
+      tree_.FindFocusNode(-1, ARKUI_ACCESSIBILITY_NATIVE_FOCUS_TYPE_INPUT);
   // input_focused_node_ should be set to the child node
   EXPECT_NE(focused, nullptr);
   EXPECT_EQ(focused->id, 1);
 }
 
-TEST_F(SemanticsTreeTest, FindFocusNodeReturnsAccessibilityFocusWithNegativeId) {
+TEST_F(SemanticsTreeTest,
+       FindFocusNodeReturnsAccessibilityFocusWithNegativeId) {
   std::unordered_map<int32_t, SemanticsNode> nodes;
   SemanticsNode root;
   root.id = 0;
@@ -293,9 +298,8 @@ TEST_F(SemanticsTreeTest, FindFocusNodeReturnsNullForInvalidFocusType) {
   nodes[0] = root;
   tree_.UpdateWithNodes(nodes);
 
-  auto* focused = tree_.FindFocusNode(-1,
-                                      static_cast<ArkUI_AccessibilityFocusType>(
-                                          999));
+  auto* focused =
+      tree_.FindFocusNode(-1, static_cast<ArkUI_AccessibilityFocusType>(999));
   EXPECT_EQ(focused, nullptr);
 }
 
@@ -314,8 +318,8 @@ TEST_F(SemanticsTreeTest, FindFocusNodeWithIdMatchingAncestor) {
 
   // FindFocusNode with id=0 (root, which is ancestor of focused node)
   // should return the focused node
-  auto* focused = tree_.FindFocusNode(
-      0, ARKUI_ACCESSIBILITY_NATIVE_FOCUS_TYPE_INPUT);
+  auto* focused =
+      tree_.FindFocusNode(0, ARKUI_ACCESSIBILITY_NATIVE_FOCUS_TYPE_INPUT);
   EXPECT_NE(focused, nullptr);
   EXPECT_EQ(focused->id, 1);
 }
@@ -334,8 +338,8 @@ TEST_F(SemanticsTreeTest, FindFocusNodeWithIdNotMatchingAncestor) {
   tree_.UpdateWithNodes(nodes);
 
   // FindFocusNode with id=999 (not an ancestor)
-  auto* focused = tree_.FindFocusNode(
-      999, ARKUI_ACCESSIBILITY_NATIVE_FOCUS_TYPE_INPUT);
+  auto* focused =
+      tree_.FindFocusNode(999, ARKUI_ACCESSIBILITY_NATIVE_FOCUS_TYPE_INPUT);
   EXPECT_EQ(focused, nullptr);
 }
 
@@ -358,8 +362,8 @@ TEST_F(SemanticsTreeTest, FindNextFocusNodeForwardReturnsNextFocusable) {
   tree_.UpdateWithNodes(nodes);
 
   // Find next focus from node 1 in forward direction
-  auto* next = tree_.FindNextFocusNode(
-      1, ARKUI_ACCESSIBILITY_NATIVE_DIRECTION_FORWARD);
+  auto* next =
+      tree_.FindNextFocusNode(1, ARKUI_ACCESSIBILITY_NATIVE_DIRECTION_FORWARD);
   EXPECT_NE(next, nullptr);
   EXPECT_EQ(next->id, 2);
 }
@@ -381,8 +385,8 @@ TEST_F(SemanticsTreeTest, FindNextFocusNodeBackwardReturnsPrevFocusable) {
   tree_.UpdateWithNodes(nodes);
 
   // Find next focus from node 2 in backward direction
-  auto* next = tree_.FindNextFocusNode(
-      2, ARKUI_ACCESSIBILITY_NATIVE_DIRECTION_BACKWARD);
+  auto* next =
+      tree_.FindNextFocusNode(2, ARKUI_ACCESSIBILITY_NATIVE_DIRECTION_BACKWARD);
   EXPECT_NE(next, nullptr);
   EXPECT_EQ(next->id, 1);
 }
@@ -400,8 +404,8 @@ TEST_F(SemanticsTreeTest, FindNextFocusNodeForwardReturnsStartWhenNoNext) {
   tree_.UpdateWithNodes(nodes);
 
   // Node 1 has no next focusable node, should return start node
-  auto* next = tree_.FindNextFocusNode(
-      1, ARKUI_ACCESSIBILITY_NATIVE_DIRECTION_FORWARD);
+  auto* next =
+      tree_.FindNextFocusNode(1, ARKUI_ACCESSIBILITY_NATIVE_DIRECTION_FORWARD);
   EXPECT_NE(next, nullptr);
   EXPECT_EQ(next->id, 1);
 }
@@ -422,8 +426,8 @@ TEST_F(SemanticsTreeTest, FindNextFocusNodeRightReturnsNextSibling) {
   nodes[2] = child2;
   tree_.UpdateWithNodes(nodes);
 
-  auto* next = tree_.FindNextFocusNode(
-      1, ARKUI_ACCESSIBILITY_NATIVE_DIRECTION_RIGHT);
+  auto* next =
+      tree_.FindNextFocusNode(1, ARKUI_ACCESSIBILITY_NATIVE_DIRECTION_RIGHT);
   EXPECT_NE(next, nullptr);
   EXPECT_EQ(next->id, 2);
 }
@@ -444,8 +448,8 @@ TEST_F(SemanticsTreeTest, FindNextFocusNodeLeftReturnsPrevSibling) {
   nodes[2] = child2;
   tree_.UpdateWithNodes(nodes);
 
-  auto* next = tree_.FindNextFocusNode(
-      2, ARKUI_ACCESSIBILITY_NATIVE_DIRECTION_LEFT);
+  auto* next =
+      tree_.FindNextFocusNode(2, ARKUI_ACCESSIBILITY_NATIVE_DIRECTION_LEFT);
   EXPECT_NE(next, nullptr);
   EXPECT_EQ(next->id, 1);
 }
@@ -462,8 +466,8 @@ TEST_F(SemanticsTreeTest, FindNextFocusNodeUpReturnsParent) {
   nodes[1] = child;
   tree_.UpdateWithNodes(nodes);
 
-  auto* next = tree_.FindNextFocusNode(
-      1, ARKUI_ACCESSIBILITY_NATIVE_DIRECTION_UP);
+  auto* next =
+      tree_.FindNextFocusNode(1, ARKUI_ACCESSIBILITY_NATIVE_DIRECTION_UP);
   EXPECT_NE(next, nullptr);
   // Up should return parent (root), but root is not focusable, so it returns
   // startNode
@@ -482,8 +486,8 @@ TEST_F(SemanticsTreeTest, FindNextFocusNodeDownReturnsFirstChild) {
   nodes[1] = child;
   tree_.UpdateWithNodes(nodes);
 
-  auto* next = tree_.FindNextFocusNode(
-      0, ARKUI_ACCESSIBILITY_NATIVE_DIRECTION_DOWN);
+  auto* next =
+      tree_.FindNextFocusNode(0, ARKUI_ACCESSIBILITY_NATIVE_DIRECTION_DOWN);
   EXPECT_NE(next, nullptr);
   EXPECT_EQ(next->id, 1);
 }
@@ -541,8 +545,7 @@ TEST_F(SemanticsTreeTest, DetectRouteChangeReturnsFalseWithNoRouteNodes) {
 // ===== UpdateNextFocusWhenDisappear: focused_node_ in remove_ids =====
 
 // focused_node_ is in remove_ids, nextNode is focusable → forward search hits
-TEST_F(SemanticsTreeTest,
-       UpdateNextFocusWhenDisappearFindsNextNodeForward) {
+TEST_F(SemanticsTreeTest, UpdateNextFocusWhenDisappearFindsNextNodeForward) {
   std::unordered_map<int32_t, SemanticsNode> nodes;
   SemanticsNode root;
   root.id = 0;
@@ -632,8 +635,7 @@ TEST_F(SemanticsTreeTest,
 }
 
 // focused_node_ in remove_ids, no focusable sibling, ancestor is focusable
-TEST_F(SemanticsTreeTest,
-       UpdateNextFocusWhenDisappearFindsFocusableAncestor) {
+TEST_F(SemanticsTreeTest, UpdateNextFocusWhenDisappearFindsFocusableAncestor) {
   std::unordered_map<int32_t, SemanticsNode> nodes;
   SemanticsNode root;
   root.id = 0;
@@ -713,8 +715,7 @@ TEST_F(SemanticsTreeTest,
 
 // need_search_from_root: both focused_node_ and need_request_focused_node_
 // are null → triggers search from root
-TEST_F(SemanticsTreeTest,
-       UpdateNextFocusWhenDisappearNeedSearchFromRoot) {
+TEST_F(SemanticsTreeTest, UpdateNextFocusWhenDisappearNeedSearchFromRoot) {
   std::unordered_map<int32_t, SemanticsNode> nodes;
   SemanticsNode root;
   root.id = 0;
@@ -789,8 +790,7 @@ TEST_F(SemanticsTreeTest,
 
 // in_request_progress_ true, need_request_focused_node_ not visible →
 // force_update
-TEST_F(SemanticsTreeTest,
-       UpdateNextFocusWhenDisappearForceUpdateNotVisible) {
+TEST_F(SemanticsTreeTest, UpdateNextFocusWhenDisappearForceUpdateNotVisible) {
   std::unordered_map<int32_t, SemanticsNode> nodes;
   SemanticsNode root;
   root.id = 0;
@@ -821,8 +821,7 @@ TEST_F(SemanticsTreeTest,
 
 // in_request_progress_ true, need_request_focused_node_ not focusable →
 // force_update
-TEST_F(SemanticsTreeTest,
-       UpdateNextFocusWhenDisappearForceUpdateNotFocusable) {
+TEST_F(SemanticsTreeTest, UpdateNextFocusWhenDisappearForceUpdateNotFocusable) {
   std::unordered_map<int32_t, SemanticsNode> nodes;
   SemanticsNode root;
   root.id = 0;
@@ -1003,8 +1002,7 @@ TEST_F(SemanticsTreeTest, FindNextFocusNodeInvalidDirectionReturnsStart) {
 }
 
 // FindNextFocusNode FORWARD: nextFocusableNode is null → returns startNode
-TEST_F(SemanticsTreeTest,
-       FindNextFocusNodeForwardNoNextFocusableReturnsStart) {
+TEST_F(SemanticsTreeTest, FindNextFocusNodeForwardNoNextFocusableReturnsStart) {
   std::unordered_map<int32_t, SemanticsNode> nodes;
   SemanticsNode root;
   root.id = 0;
@@ -1016,8 +1014,8 @@ TEST_F(SemanticsTreeTest,
   nodes[1] = child;
   tree_.UpdateWithNodes(nodes);
 
-  auto* next = tree_.FindNextFocusNode(
-      1, ARKUI_ACCESSIBILITY_NATIVE_DIRECTION_FORWARD);
+  auto* next =
+      tree_.FindNextFocusNode(1, ARKUI_ACCESSIBILITY_NATIVE_DIRECTION_FORWARD);
   EXPECT_NE(next, nullptr);
   EXPECT_EQ(next->id, 1);
 }
@@ -1037,8 +1035,8 @@ TEST_F(SemanticsTreeTest,
   nodes[1] = child;
   tree_.UpdateWithNodes(nodes);
 
-  auto* next = tree_.FindNextFocusNode(
-      1, ARKUI_ACCESSIBILITY_NATIVE_DIRECTION_BACKWARD);
+  auto* next =
+      tree_.FindNextFocusNode(1, ARKUI_ACCESSIBILITY_NATIVE_DIRECTION_BACKWARD);
   EXPECT_NE(next, nullptr);
   EXPECT_EQ(next->id, 1);
 }
@@ -1057,8 +1055,8 @@ TEST_F(SemanticsTreeTest, FindNextFocusNodeUpNoParentReturnsStart) {
   tree_.UpdateWithNodes(nodes);
 
   // root has no parent → UP returns startNode (root)
-  auto* next = tree_.FindNextFocusNode(
-      0, ARKUI_ACCESSIBILITY_NATIVE_DIRECTION_UP);
+  auto* next =
+      tree_.FindNextFocusNode(0, ARKUI_ACCESSIBILITY_NATIVE_DIRECTION_UP);
   EXPECT_NE(next, nullptr);
   EXPECT_EQ(next->id, 0);
 }
@@ -1077,8 +1075,8 @@ TEST_F(SemanticsTreeTest, FindNextFocusNodeDownNoChildrenReturnsStart) {
   tree_.UpdateWithNodes(nodes);
 
   // child1 has no children → DOWN returns startNode
-  auto* next = tree_.FindNextFocusNode(
-      1, ARKUI_ACCESSIBILITY_NATIVE_DIRECTION_DOWN);
+  auto* next =
+      tree_.FindNextFocusNode(1, ARKUI_ACCESSIBILITY_NATIVE_DIRECTION_DOWN);
   EXPECT_NE(next, nullptr);
   EXPECT_EQ(next->id, 1);
 }
@@ -1097,8 +1095,8 @@ TEST_F(SemanticsTreeTest, FindNextFocusNodeLeftNoPrevReturnsStart) {
   tree_.UpdateWithNodes(nodes);
 
   // child1 is first child, previousNode is null → LEFT returns startNode
-  auto* next = tree_.FindNextFocusNode(
-      1, ARKUI_ACCESSIBILITY_NATIVE_DIRECTION_LEFT);
+  auto* next =
+      tree_.FindNextFocusNode(1, ARKUI_ACCESSIBILITY_NATIVE_DIRECTION_LEFT);
   EXPECT_NE(next, nullptr);
   EXPECT_EQ(next->id, 1);
 }
@@ -1117,8 +1115,8 @@ TEST_F(SemanticsTreeTest, FindNextFocusNodeRightNoNextReturnsStart) {
   tree_.UpdateWithNodes(nodes);
 
   // child1 is last child, nextNode is null → RIGHT returns startNode
-  auto* next = tree_.FindNextFocusNode(
-      1, ARKUI_ACCESSIBILITY_NATIVE_DIRECTION_RIGHT);
+  auto* next =
+      tree_.FindNextFocusNode(1, ARKUI_ACCESSIBILITY_NATIVE_DIRECTION_RIGHT);
   EXPECT_NE(next, nullptr);
   EXPECT_EQ(next->id, 1);
 }
@@ -1137,8 +1135,8 @@ TEST_F(SemanticsTreeTest, FindNextFocusNodeReturnsStartWhenRootIsNext) {
   tree_.UpdateWithNodes(nodes);
 
   // UP from child1 → parent is root → root_node_ → returns startNode
-  auto* next = tree_.FindNextFocusNode(
-      1, ARKUI_ACCESSIBILITY_NATIVE_DIRECTION_UP);
+  auto* next =
+      tree_.FindNextFocusNode(1, ARKUI_ACCESSIBILITY_NATIVE_DIRECTION_UP);
   EXPECT_NE(next, nullptr);
   EXPECT_EQ(next->id, 1);
 }
@@ -1166,8 +1164,8 @@ TEST_F(SemanticsTreeTest, FindNextFocusNodeMultiRoundLoopFindsFocusable) {
 
   // RIGHT from child1 → child2 (not focusable) → loop continues →
   // child2.nextNode=child3 (focusable) → returns child3
-  auto* next = tree_.FindNextFocusNode(
-      1, ARKUI_ACCESSIBILITY_NATIVE_DIRECTION_RIGHT);
+  auto* next =
+      tree_.FindNextFocusNode(1, ARKUI_ACCESSIBILITY_NATIVE_DIRECTION_RIGHT);
   EXPECT_NE(next, nullptr);
   // Multi-round loop: child2 not focusable → continue → child3 focusable
   EXPECT_EQ(next->id, 3);
@@ -1245,7 +1243,7 @@ TEST_F(SemanticsTreeTest, DetectRouteChangeSecondCallSameRouteReturnsFalse) {
   nodes[1] = route1;
   tree_.UpdateWithNodes(nodes);
 
-  tree_.DetectRouteChange();  // first call → true
+  tree_.DetectRouteChange();                // first call → true
   EXPECT_FALSE(tree_.DetectRouteChange());  // second call → false
 }
 
@@ -1311,7 +1309,8 @@ TEST_F(SemanticsTreeTest, DetectRouteChangeRouteCountChangedReturnsTrue) {
 
 // DetectRouteChange: route node exists but isExist=false → not collected
 TEST_F(SemanticsTreeTest, DetectRouteChangeIgnoresNonExistentRouteNodes) {
-  // Build tree with route node, then update without it (it becomes non-existent)
+  // Build tree with route node, then update without it (it becomes
+  // non-existent)
   std::unordered_map<int32_t, SemanticsNode> nodes1;
   SemanticsNode root1;
   root1.id = 0;

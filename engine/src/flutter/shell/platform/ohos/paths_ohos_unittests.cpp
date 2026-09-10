@@ -27,7 +27,8 @@ TEST(PathsOhosTest, InitializeCachesPathAndGetDirectory) {
   EXPECT_TRUE(fd.is_valid());
 }
 
-// When initialized with a nonexistent path, GetCachesDirectory should return an invalid FD
+// When initialized with a nonexistent path, GetCachesDirectory should return an
+// invalid FD
 TEST(PathsOhosTest, GetCachesDirectoryInvalidForNonexistentPath) {
   fml::paths::InitializeOhosCachesPath("/nonexistent/path/xyz");
   fml::UniqueFD fd = fml::paths::GetCachesDirectory();

@@ -51,8 +51,8 @@ TEST(OhosLogger, ReturnsZeroForEmptyFormatString) {
   }
 }
 
-// The return value must match the length of the formatted message (excluding the
-// null terminator) for a plain literal.
+// The return value must match the length of the formatted message (excluding
+// the null terminator) for a plain literal.
 TEST(OhosLogger, ReturnsLengthForSimpleLiteral) {
   EXPECT_EQ(ohos_log(kOhosLogInfo, "XComFlutterOHOS"),
             ExpectedLength("XComFlutterOHOS"));
@@ -61,8 +61,7 @@ TEST(OhosLogger, ReturnsLengthForSimpleLiteral) {
 // Exercises common printf format specifiers and checks the returned length
 // against the equivalent std::string formatting.
 TEST(OhosLogger, HandlesFormatSpecifiers) {
-  EXPECT_EQ(ohos_log(kOhosLogInfo, "count=%d", 42),
-            ExpectedLength("count=42"));
+  EXPECT_EQ(ohos_log(kOhosLogInfo, "count=%d", 42), ExpectedLength("count=42"));
 
   EXPECT_EQ(ohos_log(kOhosLogInfo, "name=%s", "flutter"),
             ExpectedLength("name=flutter"));
@@ -92,8 +91,8 @@ TEST(OhosLogger, HandlesLongStringWithinBuffer) {
   EXPECT_EQ(ohos_log(kOhosLogInfo, "%s", payload.c_str()), kLen);
 }
 
-// A formatted result exactly filling the usable buffer (1022 chars + NUL) is the
-// largest safe input; the function must still return the true length.
+// A formatted result exactly filling the usable buffer (1022 chars + NUL) is
+// the largest safe input; the function must still return the true length.
 TEST(OhosLogger, HandlesStringFillingBuffer) {
   const int kLen = 1022;
   std::string payload(kLen, 'B');

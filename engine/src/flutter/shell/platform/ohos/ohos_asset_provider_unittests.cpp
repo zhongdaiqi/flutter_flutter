@@ -201,7 +201,8 @@ TEST(OHOSAssetProvider, GetAsMappingReturnsNullWithNullHandleAndCustomDir) {
   EXPECT_EQ(mapping, nullptr);
 }
 
-// GetAsMapping should return nullptr when handle is null and asset_name is empty
+// GetAsMapping should return nullptr when handle is null and asset_name is
+// empty
 TEST(OHOSAssetProvider, GetAsMappingReturnsNullWithEmptyAssetName) {
   void* handle = nullptr;
   OHOSAssetProvider provider(handle);
@@ -400,7 +401,8 @@ TEST(OHOSAssetProvider, GetAsMappingMappingGetSizeConsistent) {
   EXPECT_EQ(size1, kMockRawFileSize);
 }
 
-// GetAsMapping's returned Mapping GetMapping should return the same pointer across calls
+// GetAsMapping's returned Mapping GetMapping should return the same pointer
+// across calls
 TEST(OHOSAssetProvider, GetAsMappingMappingGetMappingConsistent) {
   void* handle = reinterpret_cast<void*>(0x1234);
   OHOSAssetProvider provider(handle, "my_assets");

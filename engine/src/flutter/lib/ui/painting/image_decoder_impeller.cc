@@ -77,13 +77,12 @@ static constexpr bool kShouldUseMallocDeviceBuffer = false;
 
 #ifdef FML_OS_OHOS
 // [an optimization method]
-// By default, Android uses Skia rendering and OHOS platform uses Impeller rendering.
-// Whether on Android or OHOS platforms, in debug mode, rendering overrized images
-// by Impeller will take a long time.
-// But in release mode, the time for rendering on Android is short.
-// Anyway, it is an optimization method that OHOS platform can
-// use the pixelmap interface of the SDK
-// to scale overrized images and accelerate rendering.
+// By default, Android uses Skia rendering and OHOS platform uses Impeller
+// rendering. Whether on Android or OHOS platforms, in debug mode, rendering
+// overrized images by Impeller will take a long time. But in release mode, the
+// time for rendering on Android is short. Anyway, it is an optimization method
+// that OHOS platform can use the pixelmap interface of the SDK to scale
+// overrized images and accelerate rendering.
 static constexpr bool kNotScalePixels = true;
 #else
 static constexpr bool kNotScalePixels = false;
@@ -157,11 +156,11 @@ SkISize GetOhosDmaDecodeDimensions(ImageDescriptor* rawDescriptor,
   const SkISize sourceDimensions =
       SkISize::Make(rawDescriptor->image_info().width(),
                     rawDescriptor->image_info().height());
-  const SkISize sourceWithinMaxTexture = SkISize::Make(
-      std::min(static_cast<int32_t>(maxTextureSize.width),
-               sourceDimensions.width()),
-      std::min(static_cast<int32_t>(maxTextureSize.height),
-               sourceDimensions.height()));
+  const SkISize sourceWithinMaxTexture =
+      SkISize::Make(std::min(static_cast<int32_t>(maxTextureSize.width),
+                             sourceDimensions.width()),
+                    std::min(static_cast<int32_t>(maxTextureSize.height),
+                             sourceDimensions.height()));
   if (targetSize.isEmpty()) {
     return sourceWithinMaxTexture;
   }
@@ -260,12 +259,11 @@ DecompressResult ImageDecoderImpeller::DecompressTexture(
     return DecompressResult{.decode_error = decode_error};
   }
 
-
   // [target_size] will be output as the size of [ui.FrameInfo.Image]
   target_size.set(std::min(static_cast<int32_t>(max_texture_size.width),
-                          target_size.width()),
+                           target_size.width()),
                   std::min(static_cast<int32_t>(max_texture_size.height),
-                          target_size.height()));
+                           target_size.height()));
 
   const SkISize source_size = descriptor->image_info().dimensions();
   auto decode_size = source_size;
@@ -575,13 +573,13 @@ void ImageDecoderImpeller::UploadTextureToPrivate(
   gpu_disabled_switch->Execute(
       fml::SyncSwitch::Handlers()
           .SetIfFalse(
-          [&result, context, buffer, image_info, resize_info, colorspace] {
-            sk_sp<DlImage> image;
-            std::string decode_error;
-            std::tie(image, decode_error) = UnsafeUploadTextureToPrivate(
-                context, buffer, image_info, resize_info, colorspace);
-            result(image, decode_error);
-          })
+              [&result, context, buffer, image_info, resize_info, colorspace] {
+                sk_sp<DlImage> image;
+                std::string decode_error;
+                std::tie(image, decode_error) = UnsafeUploadTextureToPrivate(
+                    context, buffer, image_info, resize_info, colorspace);
+                result(image, decode_error);
+              })
           .SetIfTrue([&result, context, buffer, image_info, resize_info,
                       colorspace] {
             auto result_ptr = std::make_shared<ImageResult>(std::move(result));

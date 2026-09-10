@@ -54,8 +54,8 @@ std::shared_ptr<ContextVK> CreateContext() {
 
 // Allocate a real OH_NativeBuffer with the given dimensions and format.
 OH_NativeBuffer* AllocNativeBuffer(int32_t width,
-                                    int32_t height,
-                                    int32_t format) {
+                                   int32_t height,
+                                   int32_t format) {
   OH_NativeBuffer_Config config;
   config.width = width;
   config.height = height;
@@ -101,8 +101,7 @@ TEST(OHBTextureSourceVKTest, CanImportRGBA8888) {
       OH_NativeWindow_CreateNativeWindowBufferFromNativeBuffer(native_buffer);
   ASSERT_NE(window_buffer, nullptr);
 
-  OHBTextureSourceVK source(context, window_buffer,
-                            TextureColorSpace::kSRGB);
+  OHBTextureSourceVK source(context, window_buffer, TextureColorSpace::kSRGB);
   EXPECT_TRUE(source.IsValid());
   // An RGBA_8888 buffer has a known vk::Format, so no YUV conversion is
   // needed.
@@ -130,9 +129,9 @@ TEST(OHBTextureSourceVKTest, AcceptsAllTextureColorSpaces) {
   auto context = CreateContext();
   ASSERT_TRUE(context);
 
-  for (auto color_space : {TextureColorSpace::kSRGB,
-                            TextureColorSpace::kDisplayP3,
-                            TextureColorSpace::kExtendedSRGB}) {
+  for (auto color_space :
+       {TextureColorSpace::kSRGB, TextureColorSpace::kDisplayP3,
+        TextureColorSpace::kExtendedSRGB}) {
     OH_NativeBuffer* native_buffer =
         AllocNativeBuffer(8, 8, NATIVEBUFFER_PIXEL_FMT_RGBA_8888);
     ASSERT_NE(native_buffer, nullptr);
@@ -141,7 +140,8 @@ TEST(OHBTextureSourceVKTest, AcceptsAllTextureColorSpaces) {
     ASSERT_NE(window_buffer, nullptr);
 
     OHBTextureSourceVK source(context, window_buffer, color_space);
-    EXPECT_TRUE(source.IsValid()) << "color_space=" << static_cast<int>(color_space);
+    EXPECT_TRUE(source.IsValid())
+        << "color_space=" << static_cast<int>(color_space);
 
     OH_NativeWindow_DestroyNativeWindowBuffer(window_buffer);
     OH_NativeBuffer_Unreference(native_buffer);

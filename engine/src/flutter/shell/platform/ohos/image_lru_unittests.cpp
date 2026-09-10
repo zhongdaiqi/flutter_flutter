@@ -166,7 +166,8 @@ TEST_F(ImageLruTest, AddImageEvictsLRUWhenFull) {
   auto image = MakeTestImage();
   // Fill the cache exactly to kMaxQueueSize; nothing is evicted.
   for (auto i = 1u; i <= kMaxQueueSize; i++) {
-    EXPECT_EQ(lru_.AddImage(image, default_config_, i), 0u) << "iteration " << i;
+    EXPECT_EQ(lru_.AddImage(image, default_config_, i), 0u)
+        << "iteration " << i;
   }
   // Adding one more evicts key 1 (the LRU, since it was inserted first and
   // never accessed).
@@ -233,7 +234,8 @@ TEST_F(ImageLruTest, AddThenFindRoundTrips) {
 TEST_F(ImageLruTest, ReaddingSameKeyDoesNotGrowCache) {
   auto image = MakeTestImage();
   for (auto i = 0u; i < kMaxQueueSize + 10; i++) {
-    ASSERT_EQ(lru_.AddImage(image, default_config_, 1), 0u) << "iteration " << i;
+    ASSERT_EQ(lru_.AddImage(image, default_config_, 1), 0u)
+        << "iteration " << i;
   }
   // Only one entry should exist; adding a different key should not evict
   // anything because the cache has only 1 entry.

@@ -110,8 +110,7 @@ TEST(MessageLoopOhosTest, CreateWithPlatformLoop) {
 // WakeUp with a future time point should succeed (TimerRearm returns true).
 TEST(MessageLoopOhosTest, WakeUpFutureTime) {
   fml::RefPtr<fml::MessageLoopImpl> loop = CreateLoopNoPlatform();
-  loop->WakeUp(fml::TimePoint::Now() +
-               fml::TimeDelta::FromMilliseconds(500));
+  loop->WakeUp(fml::TimePoint::Now() + fml::TimeDelta::FromMilliseconds(500));
   loop->Terminate();
 }
 
@@ -168,8 +167,7 @@ TEST(MessageLoopOhosTest, TerminateBeforeRunWithPlatform) {
 // Terminate after WakeUp — non-platform loop.
 TEST(MessageLoopOhosTest, TerminateAfterWakeUpNoPlatform) {
   fml::RefPtr<fml::MessageLoopImpl> loop = CreateLoopNoPlatform();
-  loop->WakeUp(fml::TimePoint::Now() +
-               fml::TimeDelta::FromMilliseconds(50));
+  loop->WakeUp(fml::TimePoint::Now() + fml::TimeDelta::FromMilliseconds(50));
   // Small delay to let timer potentially fire
   std::this_thread::sleep_for(std::chrono::milliseconds(60));
   loop->Terminate();
@@ -272,8 +270,7 @@ TEST(MessageLoopOhosTest, PostDelayedTaskAndRun) {
 
   std::atomic<bool> task_ran(false);
   loop->PostTask([&task_ran]() { task_ran.store(true); },
-                 fml::TimePoint::Now() +
-                     fml::TimeDelta::FromMilliseconds(100));
+                 fml::TimePoint::Now() + fml::TimeDelta::FromMilliseconds(100));
 
   for (int i = 0; i < 200 && !task_ran.load(); i++) {
     uv_run(&loop_ohos->loop_, UV_RUN_NOWAIT);
@@ -511,8 +508,7 @@ TEST(MessageLoopOhosTest, RunWithDelayedTask) {
 
   std::atomic<bool> task_ran(false);
   loop->PostTask([&task_ran]() { task_ran.store(true); },
-                 fml::TimePoint::Now() +
-                     fml::TimeDelta::FromMilliseconds(50));
+                 fml::TimePoint::Now() + fml::TimeDelta::FromMilliseconds(50));
 
   for (int i = 0; i < 200 && !task_ran.load(); i++) {
     uv_run(&loop_ohos->loop_, UV_RUN_NOWAIT);
@@ -559,9 +555,8 @@ TEST(MessageLoopOhosTest, TaskObserver) {
 
   std::atomic<int> observer_count(0);
   intptr_t key = 1;
-  loop->AddTaskObserver(key, [&observer_count]() {
-    observer_count.fetch_add(1);
-  });
+  loop->AddTaskObserver(key,
+                        [&observer_count]() { observer_count.fetch_add(1); });
 
   std::atomic<bool> task_ran(false);
   loop->PostTask([&task_ran]() { task_ran.store(true); },

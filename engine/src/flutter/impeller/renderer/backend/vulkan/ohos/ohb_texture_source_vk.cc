@@ -221,8 +221,9 @@ OHBTextureSourceVK::OHBTextureSourceVK(
     const std::shared_ptr<ContextVK>& context,
     OHNativeWindowBuffer* native_window_buffer,
     TextureColorSpace color_space)
-    : TextureSourceVK(CreateTextureDescriptorFromNativeWindowBuffer(
-        native_window_buffer, color_space)) {
+    : TextureSourceVK(
+          CreateTextureDescriptorFromNativeWindowBuffer(native_window_buffer,
+                                                        color_space)) {
   is_valid_ = false;
   if (!native_window_buffer) {
     return;
