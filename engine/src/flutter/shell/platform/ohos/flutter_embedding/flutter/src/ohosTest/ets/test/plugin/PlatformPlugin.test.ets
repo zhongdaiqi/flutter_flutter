@@ -53,8 +53,8 @@ class FakePluginWindow {
 
 /** Duck-typed FlutterView recording padding calls. */
 class FakePluginView {
-  paddingTops: Array<number> = [];
-  setPaddingTop(v: number): void { this.paddingTops.push(v); }
+  paddingTops: Array<number | undefined> = [];
+  setPaddingTop(v?: number): void { this.paddingTops.push(v); }
 }
 
 /** Duck-typed MethodResult counting replies. */
@@ -227,7 +227,7 @@ export default function PlatformPluginTest() {
       try {
         plugin.updateSystemUiOverlays();
         expect(win.decorVisibleCalls[0]).assertEqual(true);
-        expect(view.paddingTops[0]).assertEqual(0);
+        expect(view.paddingTops[0]).assertEqual(undefined);
       } finally {
         (fm as Any).isWindowDecorSafeAreaAvoidSupported = orig;
       }
