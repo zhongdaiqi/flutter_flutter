@@ -393,18 +393,18 @@ export default function FlutterManagerTest() {
         fm.handleWindowDecorSafeArea('decor-view', 'decor-ctx' as Any as Context);
         expect(view.paddingTops.length).assertEqual(1);
         expect(view.paddingTops[0]).assertEqual(vp2px(30));
-        // Visible decoration clears the padding instead.
+        // Visible decoration clears the padding instead (undefined = fall back to systemAvoidArea).
         win.decorVisible = true;
         view.paddingTops = [];
         fm.handleWindowDecorSafeArea('decor-view', 'decor-ctx' as Any as Context);
         expect(view.paddingTops.length).assertEqual(1);
-        expect(view.paddingTops[0]).assertEqual(0);
+        expect(view.paddingTops[0]).assertEqual(undefined);
         // Hidden title buttons also clear the padding.
         win.decorVisible = false;
         win.titleButtonHeight = 0;
         view.paddingTops = [];
         fm.handleWindowDecorSafeArea('decor-view', 'decor-ctx' as Any as Context);
-        expect(view.paddingTops[0]).assertEqual(0);
+        expect(view.paddingTops[0]).assertEqual(undefined);
       } finally {
         (fm as Any).isWindowDecorSafeAreaAvoidSupported = original;
         fm.popWindowStage(ability as Any);
@@ -500,8 +500,8 @@ class FakeManagerWindow {
 
 /** Duck-typed FlutterView recording padding calls. */
 class FakeManagerView {
-  paddingTops: Array<number> = [];
-  paddingBottoms: Array<number> = [];
-  setPaddingTop(v: number): void { this.paddingTops.push(v); }
-  setPaddingBottom(v: number): void { this.paddingBottoms.push(v); }
+  paddingTops: Array<number | undefined> = [];
+  paddingBottoms: Array<number | undefined> = [];
+  setPaddingTop(v?: number): void { this.paddingTops.push(v); }
+  setPaddingBottom(v?: number): void { this.paddingBottoms.push(v); }
 }
