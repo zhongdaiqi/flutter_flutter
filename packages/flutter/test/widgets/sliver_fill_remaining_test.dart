@@ -25,7 +25,7 @@ enum _TestVisualDensity {
 
   static _TestVisualDensity get adaptivePlatformDensity {
     return switch (defaultTargetPlatform) {
-      TargetPlatform.android || TargetPlatform.iOS || TargetPlatform.fuchsia => standard,
+      TargetPlatform.android || TargetPlatform.iOS || TargetPlatform.fuchsia || TargetPlatform.ohos => standard,
       TargetPlatform.linux || TargetPlatform.macOS || TargetPlatform.windows => compact,
     };
   }

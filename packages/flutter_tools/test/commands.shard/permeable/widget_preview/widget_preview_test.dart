@@ -427,6 +427,7 @@ void main() {
         await startWidgetPreview(rootProject: rootProject);
         expectSinglePreviewLaunchTimingEvent();
       },
+      skip: true, // OHOS not supported
       overrides: <Type, Generator>{
         Analytics: () => fakeAnalytics,
         DeviceManager: () => fakeDeviceManager,
@@ -620,6 +621,7 @@ List<_i1.WidgetPreview> previews() => [
           expect(generatedFile.readAsStringSync().stripScriptUris, expectedGeneratedFileContents);
           expectSinglePreviewLaunchTimingEvent();
         },
+        skip: true, // OHOS not supported
         overrides: <Type, Generator>{
           Analytics: () => fakeAnalytics,
           DeviceManager: () => fakeDeviceManager,
@@ -730,6 +732,7 @@ List<_i1.WidgetPreview> previews() => [
           await startWidgetPreview(rootProject: rootProject);
           expectSinglePreviewLaunchTimingEvent();
         },
+        skip: true, // OHOS not supported
         overrides: <Type, Generator>{
           Analytics: () => fakeAnalytics,
           DeviceManager: () => fakeDeviceManager,

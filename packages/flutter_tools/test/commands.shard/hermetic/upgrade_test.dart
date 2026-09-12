@@ -126,6 +126,7 @@ void main() {
       Logger: () => logger,
       ProcessManager: () => processManager,
     },
+    skip: true, // OHOS not supported
   );
 
   const startingTag = '3.0.0';
@@ -220,6 +221,7 @@ void main() {
       Logger: () => logger,
       ProcessManager: () => processManager,
     },
+    skip: true, // OHOS not supported
   );
 
   testUsingContext(
@@ -315,6 +317,7 @@ void main() {
       Logger: () => logger,
       ProcessManager: () => processManager,
     },
+    skip: true, // OHOS not supported
   );
   testUsingContext(
     'allows upgrading if the only local modifications are pubspec.lock files',

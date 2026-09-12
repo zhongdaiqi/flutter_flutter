@@ -323,6 +323,19 @@ class InstallCodeAssets extends Target {
     if (osName == 'linux' || osName == 'windows') {
       // Avoid needing migration for CMake files, keep old directory structure.
       targetUri = targetUri.resolve('$osName/');
+    } else if (osName == 'ohos') {
+      final Uri configTargetUri = projectUri.resolve(
+        '${getBuildDirectory()}/native_assets/ohos/',
+      );
+      await installCodeAssets(
+        dartHookResult: combinedResult,
+        environmentDefines: environment.defines,
+        targetPlatform: targetPlatform,
+        projectUri: projectUri,
+        fileSystem: fileSystem,
+        nativeAssetsFileUri: nativeAssetsFileUri,
+        targetUri: configTargetUri,
+      );
     }
 
     final List<File> installedFiles = await installCodeAssets(

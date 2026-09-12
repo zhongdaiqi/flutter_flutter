@@ -53,6 +53,7 @@ dependencies:
   http_multi_server: 3.2.2
   convert: 3.1.2
   async: 2.13.1
+  json5: ^0.8.0
   unified_analytics: 8.0.15
   pubspec_parse: 1.5.0
 
@@ -127,4 +128,14 @@ dartdoc:
   # Exclude this package from the hosted API docs.
   nodoc: true
 
-# PUBSPEC CHECKSUM: ctgrgi
+# PUBSPEC CHECKSUM: 3bnrvh
+
+# NOTE (ohos port): 鸿蒙适配 fork 了 code_assets/hooks_runner（fluttertpc_dart_native）。
+# ref 暂沿用 flutter_3.44.9_deps，构建失败时检查上游是否有 3.47 版本的分支。
+# 已在本地 rebase：flutter_3.47.4_deps = upstream 1.2.1/1.5.0 + ohos patch（见源码注释）。
+# TODO(ohos): 推送 flutter_3.47.4_deps 到 gitcode 后改回 git 引用。
+dependency_overrides:
+  code_assets:
+    path: /Users/mac/projects/nutpi/flutter/fluttertpc_dart_native/pkgs/code_assets
+  hooks_runner:
+    path: /Users/mac/projects/nutpi/flutter/fluttertpc_dart_native/pkgs/hooks_runner

@@ -352,8 +352,18 @@ void main() {
       2000.0,
       warnIfMissed: false,
     ); // hitting the debugger
-    expect(value, equals(0.4));
-  });
+    switch (defaultTargetPlatform) {
+      case TargetPlatform.iOS:
+      case TargetPlatform.macOS:
+        expect(value, equals(0.4));
+      case TargetPlatform.linux:
+      case TargetPlatform.windows:
+      case TargetPlatform.android:
+      case TargetPlatform.fuchsia:
+      case TargetPlatform.ohos:
+        expect(value, equals(0.45));
+    }
+  }, variant: TargetPlatformVariant.all());
 
   testWidgets('SemanticsDebugger checkbox', (WidgetTester tester) async {
     final Key keyTop = UniqueKey();
