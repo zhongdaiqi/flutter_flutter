@@ -491,7 +491,7 @@ export default function flutterViewTest() {
       expect(v['hostVisible']).assertEqual(false);
     });
   });
-  describe('FlutterView.detachFromFlutterEngine', () => {
+  describe('FlutterView.detachFromFlutterEngine.unattachedView', () => {
     it('detaches cleanly from an unattached view', 0, () => {
       const view = new FlutterView('7007', getContext() as common.Context);
       let threw = false;
