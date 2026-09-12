@@ -255,7 +255,7 @@ export default function touchEventProcessorTest() {
       expect(e.changedTouches.length).assertEqual(1);
     });
   });
-  describe('TouchEventProcessor.constructCustomTouchEvent', () => {
+  describe('TouchEventProcessor.constructCustomTouchEvent.doesNotThrow', () => {
     it('constructs touch event without throwing', Level.LEVEL0, () => {
       const proc = TouchEventProcessor.getInstance();
       let threw = false;
@@ -272,7 +272,7 @@ export default function touchEventProcessorTest() {
     });
   });
 
-  describe('TouchEventProcessor.postTouchEvent', () => {
+  describe('TouchEventProcessor.postTouchEvent.doesNotThrow', () => {
     it('does not throw with empty strings', Level.LEVEL0, () => {
       const proc = TouchEventProcessor.getInstance();
       let threw = false;
@@ -281,7 +281,7 @@ export default function touchEventProcessorTest() {
     });
   });
 
-  describe('TouchEventProcessor.postMouseEvent', () => {
+  describe('TouchEventProcessor.postMouseEvent.doesNotThrow', () => {
     it('does not throw with empty strings', Level.LEVEL0, () => {
       const proc = TouchEventProcessor.getInstance();
       let threw = false;
@@ -290,7 +290,7 @@ export default function touchEventProcessorTest() {
     });
   });
 
-  describe('TouchEventProcessor.postAxisEvent', () => {
+  describe('TouchEventProcessor.postAxisEvent.doesNotThrow', () => {
     it('does not throw with empty strings', Level.LEVEL0, () => {
       const proc = TouchEventProcessor.getInstance();
       let threw = false;
