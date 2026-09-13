@@ -4,6 +4,13 @@
  * found in the LICENSE_HW file.
  */
 
+// P27: 本文件沿用历史 `#define private public` hack 覆盖下方 6 个 OHOS 头
+// （访问面过大，friend 化不现实；external_view_embedder_unittests 采用
+// friend+tunnel 方案属例外）。hack 窗口内 OHOS 头的 include 链会波及 libc++
+// 的 <ranges>（lazy_split_view.h），新 libc++ 下 access-redeclaration 成为
+// hard error。故在 hack 前先完整展开 <ranges>，靠 include guard 隔离后续
+// 同名子头，保证宏窗口内不再踏入 libc++。
+#include <ranges>
 #include <gtest/gtest.h>
 #include <cstdint>
 #include <cstdio>

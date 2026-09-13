@@ -356,8 +356,6 @@ std::optional<impeller::PixelFormat> ImageDecoderImpeller::ToPixelFormat(
       return impeller::PixelFormat::kB10G10R10XR;
     case kRGBA_F32_SkColorType:
       return impeller::PixelFormat::kR32G32B32A32Float;
-    case kBGRA_1010102_SkColorType:
-      return impeller::PixelFormat::kB10G10R10A2UNorm;
     default:
       return std::nullopt;
   }

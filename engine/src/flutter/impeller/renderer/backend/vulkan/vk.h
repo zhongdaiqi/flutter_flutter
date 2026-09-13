@@ -40,6 +40,15 @@
 
 // Nothing for now.
 
+#elif FML_OS_OHOS
+
+// The vanilla Vulkan-Headers carry VK_OHOS_surface (and its C++ wrappers in
+// vulkan.hpp) behind this platform macro; without it vulkan.hpp does not
+// include vulkan_ohos.h.
+#ifndef VK_USE_PLATFORM_OHOS
+#define VK_USE_PLATFORM_OHOS
+#endif  // VK_USE_PLATFORM_OHOS
+
 #elif FML_OS_WIN
 
 #ifndef VK_USE_PLATFORM_WIN32_KHR
@@ -73,6 +82,17 @@
 #define VULKAN_HPP_NO_SPACESHIP_OPERATOR
 
 #include "vulkan/vulkan.hpp"  // IWYU pragma: keep.
+
+#ifdef FML_OS_OHOS
+// OHOS platform patch: vk:: C++ wrappers for VK_OHOS_external_memory types
+// (ExternalFormatOHOS, NativeBufferPropertiesOHOS, NativeBufferFormat
+// PropertiesOHOS) plus the StructExtends specializations that let them live
+// in a vk::StructureChain. Upstream Vulkan-Headers only carries VK_OHOS_
+// surface; the OHOS fork's vulkan.hpp (DEPS_ohos fluttertpc_vulkan-deps)
+// provided these for the YUV path — see yuv_conversion_vk.{h,cc} and
+// ohos/ohb_texture_source_vk.cc.
+#include "vulkan/vulkan_ohos_types.hpp"  // IWYU pragma: keep.
+#endif  // FML_OS_OHOS
 
 // The Vulkan headers may bring in X11 headers which define some macros that
 // conflict with other code.  Undefine these macros after including Vulkan.

@@ -37,7 +37,11 @@ TEST(QosOhosTest, FenceWaiterWorksAfterSetQosOnLowMemory) {
 
   auto signal = fml::ManualResetWaitableEvent();
   auto fence = device.createFenceUnique({}).value;
-  waiter->AddFence(std::move(fence), [&signal]() { signal.Signal(); });
+  // 3.47.4 起 AddFence 要求 submit_callback（fence_waiter_vk.h:44，返回
+  // fml::Status 的提交回调）夹在 fence 与 completion 之间；测试只关心
+  // completion 是否在 wait 循环中触发，提交回调直返回 OK 即可。
+  waiter->AddFence(std::move(fence), [](vk::Fence) { return fml::Status(); },
+                   [&signal]() { signal.Signal(); });
 
   ASSERT_FALSE(signal.WaitWithTimeout(fml::TimeDelta::FromSeconds(5)));
 }

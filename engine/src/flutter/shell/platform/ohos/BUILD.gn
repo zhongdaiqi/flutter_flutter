@@ -153,6 +153,9 @@ source_set("flutter_ohos_sources") {
     "//flutter/shell/platform/common/client_wrapper:client_wrapper_library_stubs",
     "//flutter/shell/platform/embedder:embedder_headers",
     "//flutter/third_party/rapidjson",
+    # P27: ohos_vsync_voting_mgr.cpp 用 jsoncpp 解析 framesconfig.json；
+    # 实现取 spirv-headers 自带 amalgamated jsoncpp（third_party/jsoncpp 代理 target）。
+    "//third_party/jsoncpp",
   ]
 
   public_deps = [

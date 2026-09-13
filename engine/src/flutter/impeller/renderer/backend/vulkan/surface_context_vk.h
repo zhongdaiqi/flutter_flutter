@@ -14,6 +14,12 @@
 #include "impeller/renderer/command_queue.h"
 #include "impeller/renderer/context.h"
 
+#ifdef FML_OS_OHOS
+// Provides OHNativeWindow (typedef of struct NativeWindow) for
+// CreateOHOSSurface.
+#include <native_window/external_window.h>
+#endif  // FML_OS_OHOS
+
 namespace impeller {
 
 class ContextVK;

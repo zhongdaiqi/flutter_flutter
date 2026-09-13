@@ -97,7 +97,12 @@ if (is_mac) {
       "//flutter/third_party/angle:libEGL",
       "//flutter/third_party/angle:libGLESv2",
       "//flutter/third_party/googletest:gtest",
-      "//flutter/third_party/swiftshader",
     ]
+    if (!is_ohos) {
+      # OHOS：金色图像测试（golden）无 OHOS 基线数据，且 arm64 上
+      # SwiftShader Reactor 无 subzero 后端与 llvm-10.0 依赖，无法提供
+      # 软件 Vulkan/GLES 栈；本 target 在 OHOS 上仅参与编译不参与执行。
+      deps += [ "//flutter/third_party/swiftshader" ]
+    }
   }
 }

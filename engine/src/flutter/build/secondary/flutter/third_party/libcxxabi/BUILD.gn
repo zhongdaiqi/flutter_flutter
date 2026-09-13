@@ -49,6 +49,17 @@ source_set("libcxxabi") {
       "src/cxa_exception.cpp",
       "src/cxa_personality.cpp",
     ]
+  } else if (is_ohos) {
+    # OHOS toolchains link with -nostdlib++ (use_flutter_cxx) and do not pull
+    # a system unwinding library, so host tools built with exceptions enabled
+    # (e.g. wasm-opt from binaryen) must get the real Itanium ABI
+    # implementation from the engine's own libcxxabi instead of the
+    # cxa_noexception stub. Mirror the Darwin treatment here.
+    configs -= [ "//build/config/gcc:no_exceptions" ]
+    sources += [
+      "src/cxa_exception.cpp",
+      "src/cxa_personality.cpp",
+    ]
   } else {
     if (!is_tsan) {
       sources += [ "src/cxa_noexception.cpp" ]

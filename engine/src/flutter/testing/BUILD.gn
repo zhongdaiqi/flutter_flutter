@@ -168,7 +168,9 @@ if (enable_unittests && shell_enable_vulkan) {
       "//flutter/vulkan/procs",
     ]
 
-    if (!is_fuchsia) {
+    if (!is_fuchsia && !is_ohos) {
+      # OHOS：软件 Vulkan ICD 仅服务 host/x64 测试；OHOS 单测全部走真实
+      # OHOS Vulkan 驱动（test_vulkan_context 只注册 ICD JSON 路径）。
       deps += [ "//flutter/third_party/swiftshader" ]
       configs += [ "//flutter/third_party/swiftshader:swiftshader_config" ]
     }
@@ -226,10 +228,15 @@ if (!is_ios) {
 
     configs += [ "//flutter/third_party/swiftshader:swiftshader_config" ]
 
-    deps = [
-      "//flutter/fml",
-      "//flutter/third_party/swiftshader",
-    ]
+    deps = [ "//flutter/fml" ]
+    if (!is_ohos) {
+      # OHOS：软件 Vulkan ICD（vk_swiftshader_icd.json）仅在 host/x64 测试链
+      # 中有意义。arm64-ohos 上 SwiftShader Reactor 无 subzero 后端亦无
+      # llvm-10.0 依赖，官方 CI 从未在 arm64 上加载本 target 的完整依赖图；
+      # OHOS 单测全部走真实 OHOS Vulkan 驱动，故此处断开 swiftshader 依赖，
+      # 仅保留 source_set 外壳以兼容 impeller/playground 的无条件引用。
+      deps += [ "//flutter/third_party/swiftshader" ]
+    }
   }
 }
 

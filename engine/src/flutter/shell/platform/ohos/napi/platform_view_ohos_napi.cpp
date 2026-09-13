@@ -1845,19 +1845,18 @@ napi_value PlatformViewOHOSNapi::nativeUpdateDensity(napi_env env,
 }
 
 /**
- *  初始化SkFontMgr::RefDefault()，skia引擎文字管理初始化
+ * 字体端口初始化（保留 napi 面；实现已随 fontmgr_ohos 端口一同移除，
+ * 见 ohos_shell_holder.cpp 的 P19 清理）
  */
 napi_value PlatformViewOHOSNapi::nativePrefetchDefaultFontManager(
     napi_env env,
     napi_callback_info info) {
   LOGD("PlatformViewOHOSNapi::nativePrefetchDefaultFontManager");
-
-  OHOSShellHolder::InitializeSystemFont();
   return nullptr;
 }
 
 /**
- *  hot reload font
+ *  hot reload font（保留 napi 面；实现为空，同 nativePrefetchDefaultFontManager）
  */
 napi_value PlatformViewOHOSNapi::nativeCheckAndReloadFont(
     napi_env env,
@@ -1879,7 +1878,6 @@ napi_value PlatformViewOHOSNapi::nativeCheckAndReloadFont(
     return nullptr;
   }
   LOGD("nativeCheckAndReloadFont shell_holder: %{public}ld", shell_holder);
-  OHOS_SHELL_HOLDER->ReloadSystemFonts();
   return nullptr;
 }
 

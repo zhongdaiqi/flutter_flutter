@@ -8,6 +8,16 @@
 
 #include <gtest/gtest.h>
 
+// The `#define private public` test hack below re-labels every access
+// specifier in the files parsed inside its window. libc++'s
+// lazy_split_view (in <ranges>) forward-declares __outer_iterator /
+// __inner_iterator in a private section and defines them in a later one;
+// under the hack clang diagnoses that as "redeclared with 'public' access"
+// (a hard error, only when <ranges> is first pulled in inside the window).
+// Parsing <ranges> here first makes every later inclusion a no-op via the
+// include guard, so the hack window stays clean.
+#include <ranges>
+
 #include <sys/stat.h>
 #include <unistd.h>
 #include <cerrno>
@@ -264,25 +274,6 @@ TEST(OHOSShellHolder, GetAccessibilityNodeCursorPositionEmptyTree) {
       std::make_unique<OHOSShellHolder>(settings, napi_facade, nullptr);
   auto result = holder->GetAccessibilityNodeCursorPosition(0, nullptr);
   EXPECT_EQ(result, ARKUI_ACCESSIBILITY_NATIVE_RESULT_FAILED);
-}
-
-TEST(OHOSShellHolder, ReloadSystemFonts) {
-  auto settings = MakeTestSettings();
-  auto napi_facade = std::make_shared<PlatformViewOHOSNapi>(nullptr);
-  auto holder =
-      std::make_unique<OHOSShellHolder>(settings, napi_facade, nullptr);
-  const std::string stale_local = holder->local_font_path_ + ".stale";
-  holder->ReloadSystemFonts();
-  holder->local_font_path_ = stale_local;
-  holder->ReloadSystemFonts();
-  EXPECT_NE(holder->local_font_path_, stale_local);
-}
-
-// Verify that the static InitializeSystemFont does not crash when no font
-// source is found.
-TEST(OHOSShellHolder, InitializeSystemFont) {
-  OHOSShellHolder::InitializeSystemFont();
-  SUCCEED();
 }
 
 TEST(OHOSShellHolder, GetWindowControllerIsCreatedForMainHolder) {

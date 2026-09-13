@@ -28,6 +28,16 @@
 
 namespace flutter {
 
+// P27: 单测夹具的跨 TU 前置声明。friend 声明（下方 private 区）使用限定名
+// testing::OHOSExternalViewEmbedderTest / ::OHOSExternalViewEmbedderFrameTest，
+// 按 C++ 规则限定名 friend 必须已有声明（不像非限定 friend 可隐式注入）。
+// friend 关系只授予两个夹具类本身（不传给 TEST_F 派生类），夹具内的
+// 转发方法（*ForTest）是 TEST_F 访问 private 成员的唯一通道。
+namespace testing {
+class OHOSExternalViewEmbedderTest;
+class OHOSExternalViewEmbedderFrameTest;
+}  // namespace testing
+
 /// Allows to embed OpenHarmony native views into a Flutter application, in the
 /// "Hybrid Composition++" (HCPP) fashion.
 ///
@@ -121,6 +131,13 @@ class OHOSExternalViewEmbedder final : public ExternalViewEmbedder {
       const EmbeddedViewParams& params);
 
  private:
+  // P27: 单测需直接驱动 ShowOverlayLayerIfNeeded / HideOverlayLayerIfNeeded
+  // 的幂等分支（ShowAndHideOverlayLayerHelpers，external_view_embedder_
+  // unittests.cpp）。历史上测试用 `#define private public` 覆盖本头，3.47.4
+  // 起该 hack 会波及 include 链深处的 libc++（access-redeclaration 在新
+  // libc++ 下成为 hard error），改用最小 friend 声明替代。
+  friend class testing::OHOSExternalViewEmbedderTest;
+  friend class testing::OHOSExternalViewEmbedderFrameTest;
   const std::shared_ptr<OHOSContext> ohos_context_;
 
   // Allows to call methods in ArkTS via NAPI.

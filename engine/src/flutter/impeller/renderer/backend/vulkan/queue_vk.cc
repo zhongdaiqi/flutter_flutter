@@ -8,10 +8,22 @@
 
 #include "impeller/renderer/backend/vulkan/context_vk.h"
 
+#ifdef FML_OS_OHOS
+// The vendored Vulkan-Hpp headers ship without the OHOS platform extension
+// declarations, so the entry point is spelled out locally. Signature matches
+// the OHOS spec: (queue, semaphore count, semaphores, image, fence fd out).
+using PFNVkQueueSignalReleaseImageOHOS =
+    VkResult (*)(VkQueue queue,
+                 uint32_t semaphore_count,
+                 const VkSemaphore* p_semaphores,
+                 VkImage image,
+                 int* p_fence_fd);
+#endif
+
 namespace impeller {
 
-QueueVK::QueueVK(QueueIndexVK index, vk::Queue queue)
-    : index_(index), queue_(queue) {}
+QueueVK::QueueVK(QueueIndexVK index, vk::Queue queue, vk::Device device)
+    : index_(index), queue_(queue), device_(device) {}
 
 QueueVK::~QueueVK() = default;
 
@@ -41,18 +53,6 @@ void QueueVK::WaitIdle() const {
   return;
 }
 
-#ifdef FML_OS_OHOS
-vk::Result QueueVK::QueueSignalReleaseImageOHOS(
-    std::vector<vk::Semaphore> semaphores,
-    vk::Image image,
-    int* fence_fd) {
-  Lock lock(queue_mutex_);
-  return queue_.queueSignalReleaseImageOHOS((int32_t)semaphores.size(),
-                                            (vk::Semaphore*)semaphores.data(),
-                                            image, fence_fd);
-}
-#endif
-
 void QueueVK::InsertDebugMarker(std::string_view label) const {
   if (!HasValidationLayers()) {
     return;
@@ -62,6 +62,33 @@ void QueueVK::InsertDebugMarker(std::string_view label) const {
   Lock lock(queue_mutex_);
   queue_.insertDebugUtilsLabelEXT(label_info);
 }
+
+#ifdef FML_OS_OHOS
+vk::Result QueueVK::QueueSignalReleaseImageOHOS(
+    std::vector<vk::Semaphore> semaphores,
+    vk::Image image,
+    int* fence_fd) {
+  Lock lock(queue_mutex_);
+  // The vendored Vulkan-Hpp wrapper predates the OHOS platform extensions,
+  // so vkQueueSignalReleaseImageOHOS is resolved dynamically off the device
+  // dispatch table (same pattern as the VMA proc table in allocator_vk.cc).
+  auto fn = reinterpret_cast<PFNVkQueueSignalReleaseImageOHOS>(
+      VULKAN_HPP_DEFAULT_DISPATCHER.vkGetDeviceProcAddr(
+          static_cast<VkDevice>(device_), "vkQueueSignalReleaseImageOHOS"));
+  if (fn == nullptr) {
+    return vk::Result::eErrorExtensionNotPresent;
+  }
+  std::vector<VkSemaphore> raw_semaphores;
+  raw_semaphores.reserve(semaphores.size());
+  for (const auto& semaphore : semaphores) {
+    raw_semaphores.push_back(static_cast<VkSemaphore>(semaphore));
+  }
+  auto result = reinterpret_cast<PFNVkQueueSignalReleaseImageOHOS>(fn)(
+      static_cast<VkQueue>(queue_), static_cast<uint32_t>(raw_semaphores.size()),
+      raw_semaphores.data(), static_cast<VkImage>(image), fence_fd);
+  return static_cast<vk::Result>(result);
+}
+#endif
 
 QueuesVK::QueuesVK() = default;
 
@@ -91,7 +118,8 @@ QueuesVK QueuesVK::FromQueueIndices(const vk::Device& device,
   auto vk_transfer = device.getQueue(transfer.family, transfer.index);
 
   // Always set up the graphics queue.
-  auto graphics_queue = std::make_shared<QueueVK>(graphics, vk_graphics);
+  auto graphics_queue =
+      std::make_shared<QueueVK>(graphics, vk_graphics, device);
   ContextVK::SetDebugName(device, vk_graphics, "ImpellerGraphicsQ");
 
   // Setup the compute queue if its different from the graphics queue.
@@ -99,7 +127,7 @@ QueuesVK QueuesVK::FromQueueIndices(const vk::Device& device,
   if (compute == graphics) {
     compute_queue = graphics_queue;
   } else {
-    compute_queue = std::make_shared<QueueVK>(compute, vk_compute);
+    compute_queue = std::make_shared<QueueVK>(compute, vk_compute, device);
     ContextVK::SetDebugName(device, vk_compute, "ImpellerComputeQ");
   }
 
@@ -111,7 +139,7 @@ QueuesVK QueuesVK::FromQueueIndices(const vk::Device& device,
   } else if (transfer == compute) {
     transfer_queue = compute_queue;
   } else {
-    transfer_queue = std::make_shared<QueueVK>(transfer, vk_transfer);
+    transfer_queue = std::make_shared<QueueVK>(transfer, vk_transfer, device);
     ContextVK::SetDebugName(device, vk_transfer, "ImpellerTransferQ");
   }
 

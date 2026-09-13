@@ -217,6 +217,9 @@ class KernelSnapshot extends Target {
       KernelSnapshot.recordedUsesFileName,
     );
     if (featureFlags.isRecordUseEnabled) {
+      // OHOS: 3.47.4 同步后改用本地构建的 3.13.3+ohos frontend_server
+      // （TargetOS 白名单含 ohos），已支持 --recorded-uses；LinkHooks
+      // 依赖该文件（native assets 链路），与安卓/ iOS 行为对齐。
       if (buildMode.isPrecompiled) {
         extraFrontEndOptions.add('--recorded-uses=${recordedUsesFile.path}');
       } else {
@@ -275,6 +278,8 @@ class KernelSnapshot extends Target {
       TargetPlatform.linux_riscv64 ||
       TargetPlatform.linux_x64 => 'linux',
       TargetPlatform.windows_arm64 || TargetPlatform.windows_x64 => 'windows',
+      // OHOS: frontend_server 来自 OBS 配套 dart-sdk（3.12.2+ohos 补丁，白名单
+      // 含 ohos），与 3.44.9 基线行为一致。
       TargetPlatform.ohos ||
       TargetPlatform.ohos_arm ||
       TargetPlatform.ohos_arm64 ||
@@ -317,6 +322,7 @@ class KernelSnapshot extends Target {
       packageConfig: packageConfig,
       buildDir: environment.buildDir,
       targetOS: targetOS,
+      targetPlatform: targetPlatform,
       checkDartPluginRegistry: environment.generateDartPluginRegistry,
     );
     if (output == null || output.errorCount != 0) {

@@ -10,6 +10,17 @@ import("$_skia_root/gn/toolchain/wasm.gni")
 import("$_skia_root/modules/pathops/pathops.gni")
 import("flutter_defines.gni")
 
+# OHOS: fontmgr_ohos optional target 的开关（3.47.4 同步自带，源自 attachment 分支）。
+# 该 arg 从未在 skia.gni 的 declare_args 中声明；官方 CI 显式以 false 传入（其 skia
+# 仓库亦无 src/ports/skia_ohos/ 端口源码，见 oh-3.44.9 skia e9ed4fc9f），因此本地
+# 显式声明默认 false 以对齐官方产物行为，需要时可经 args.gn 覆盖。
+# （保持 false：3.47.4 skia 无 src/ports/skia_ohos/ 端口源码，字体端口的 napi 面
+# 已由 P19 清理架空；jsoncpp 依赖另经 //third_party/jsoncpp:jsoncpp 挂载到
+# flutter_ohos_sources，供 ohos_vsync_voting_mgr 的 vsync 配置解析使用。）
+declare_args() {
+  skia_enable_fontmgr_ohos = false
+}
+
 if (is_fuchsia) {
   import("//flutter/tools/fuchsia/gn-sdk/src/gn_configs.gni")
 

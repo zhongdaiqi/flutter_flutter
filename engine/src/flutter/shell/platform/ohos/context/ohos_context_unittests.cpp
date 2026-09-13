@@ -57,6 +57,8 @@ class FakeImpellerContext final : public impeller::Context {
     return nullptr;
   }
   void Shutdown() override { ++shutdown_count_; }
+  // 3.47.4 新增纯虚接口；测试 fake 无 GPU 队列，按其注释语义直返 false。
+  bool FinishQueue() override { return false; }
   RuntimeStageBackend GetRuntimeStageBackend() const override {
     return RuntimeStageBackend::kVulkan;
   }

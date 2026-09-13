@@ -15,6 +15,10 @@
 // `if (!facade)` branch — the ones a live environment never reaches without
 // a real engine — is exercised.
 
+// P27: 宏窗口内 OHOS 头链会首次展开 libc++ <ranges>（lazy_split_view.h 的
+// access-redeclaration 在新 libc++ 下成 hard error），先完整展开 <ranges>
+// 靠 include guard 隔离。
+#include <ranges>
 #define private public
 #include "flutter/shell/platform/ohos/napi/platform_view_ohos_napi.h"
 #include "flutter/shell/platform/ohos/ohos_shell_holder.h"

@@ -426,6 +426,15 @@ config("compiler") {
     }
 
     defines += [ "__OHOS__" ]
+
+    # Command-line VK_USE_PLATFORM_OHOS so that any TU that pulls in a Vulkan
+    # header before vk.h (e.g. vk_mem_alloc.h via flutter_vma.h, which
+    # includes <vulkan/vulkan.h> directly) still gets vulkan_ohos.h loaded.
+    # Without this, the vulkan.h include guard is set with the macro unset,
+    # and vulkan.hpp's later `#include <vulkan/vulkan.h>` becomes a no-op,
+    # leaving vulkan_enums.hpp's OHOS section (SurfaceCreateFlagBitsOHOS /
+    # OHOSSurfaceExtensionName) referencing undefined types.
+    defines += [ "VK_USE_PLATFORM_OHOS" ]
   } else if (is_linux) {
     cflags += [ "-pthread" ]
     ldflags += [ "-pthread" ]

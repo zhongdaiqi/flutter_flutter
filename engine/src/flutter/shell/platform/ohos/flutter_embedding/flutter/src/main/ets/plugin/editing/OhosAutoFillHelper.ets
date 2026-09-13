@@ -103,7 +103,7 @@ export interface OhosViewData {
 interface AutoFillManagerPageNodeInfo {
   id: number;
   depth: number;
-  autoFillType: autoFillManager.AutoFillType;
+  autoFillType: number;
   tag: string;
   value: string;
   placeholder: string;
@@ -125,6 +125,59 @@ interface AutoFillManagerViewData {
 
 interface AutoFillCustomData {
   data: Record<string, string>;
+}
+
+/**
+ * Local mirrors of the API 26+ autoFillManager types (FillRequest / FillCallback /
+ * FillFailureResult / SaveRequest). The API 24 SDK this engine builds against only
+ * exports AutoSaveCallback and requestAutoSave(context, callback); the full autofill
+ * surface landed in API 26. All runtime calls are gated by AUTOFILL_SUPPORT_API, so
+ * these shapes only ever cross into the real autoFillManager on API 26+ devices.
+ * Field shapes match the API 26 definitions one-to-one.
+ */
+interface AutoFillManagerFillRequest {
+  type: number;
+  viewData: AutoFillManagerViewData;
+  customData: AutoFillCustomData;
+  isPopup: boolean;
+  triggerType: number;
+}
+
+interface AutoFillManagerFillFailureResult {
+  errCode: number;
+}
+
+interface AutoFillManagerFillCallback {
+  onSuccess: (filledViewData: AutoFillManagerViewData) => void;
+  onFailure: (result: AutoFillManagerFillFailureResult) => void;
+}
+
+interface AutoFillManagerSaveRequest {
+  viewData: AutoFillManagerViewData;
+}
+
+/**
+ * Runtime access to the API 26+ autoFillManager surface (requestAutoFill /
+ * requestAutoSave with request payload) without statically referencing members the
+ * API 24 SDK d.ts lacks. The API 24 autoFillManager namespace only exports
+ * AutoSaveCallback and requestAutoSave(context, callback); everything else is
+ * fetched at runtime through a dynamic import, and every call site is gated by the
+ * AUTOFILL_SUPPORT_API check, so nothing below executes on API 24/25 devices.
+ * If the module has not resolved on the very first interaction, the call reports
+ * failure (-2) and the caller can retry on the next user interaction.
+ */
+let afmApi26: Object | null | undefined;
+
+function afmApi26Ref(): Object | null {
+  if (afmApi26 !== undefined) {
+    return afmApi26;
+  }
+  afmApi26 = null;
+  import('@kit.AbilityKit').then((m: ESObject): void => {
+    afmApi26 = m.autoFillManager as Object;
+  }).catch((): void => {
+  });
+  return afmApi26;
 }
 
 /**
@@ -201,8 +254,8 @@ export class OhosAutoFillHelper {
     }
   }
 
-  private static toSdkAutoFillType(value: number): autoFillManager.AutoFillType {
-    return value as autoFillManager.AutoFillType;
+  private static toSdkAutoFillType(value: number): number {
+    return value;
   }
 
   static hintToAutoFillType(hint: string): number {
@@ -506,7 +559,7 @@ export class OhosAutoFillHelper {
     };
   }
 
-  private static toManagerViewData(viewData: OhosViewData): autoFillManager.ViewData {
+  private static toManagerViewData(viewData: OhosViewData): AutoFillManagerViewData {
     const pageNodeInfos: AutoFillManagerPageNodeInfo[] = [];
     for (const node of viewData.pageNodeInfos) {
       pageNodeInfos.push(OhosAutoFillHelper.toManagerPageNodeInfo(node));
@@ -521,13 +574,12 @@ export class OhosAutoFillHelper {
       isUserSelected: viewData.isUserSelected,
       isOtherAccount: viewData.isOtherAccount,
     };
-    return managerViewData as autoFillManager.ViewData;
+    return managerViewData;
   }
 
-  static parseFillResult(viewData: autoFillManager.ViewData): Map<number, string> {
+  static parseFillResult(viewData: AutoFillManagerViewData): Map<number, string> {
     const values: Map<number, string> = new Map();
-    const pageNodeInfos: OhosPageNodeInfo[] =
-      (viewData as AutoFillManagerViewData).pageNodeInfos;
+    const pageNodeInfos: OhosPageNodeInfo[] = viewData.pageNodeInfos;
     for (const node of pageNodeInfos) {
       if (node.value.length > 0) {
         values.set(node.id, node.value);
@@ -555,25 +607,31 @@ export class OhosAutoFillHelper {
     }
     OhosAutoFillHelper.logViewDataSummary(viewData, 'requestAutoFill before invoke');
     const managerViewData = OhosAutoFillHelper.toManagerViewData(viewData);
-    const fillRequest = {
+    const fillRequest: AutoFillManagerFillRequest = {
       type: OhosAutoFillHelper.toSdkAutoFillType(autoFillType),
       viewData: managerViewData,
       customData: OhosAutoFillHelper.createEmptyCustomData(),
       isPopup: false,
-      triggerType: AUTOFILL_TRIGGER_AUTO_REQUEST as autoFillManager.AutoFillTriggerType,
-    } as autoFillManager.FillRequest;
-    const callback: autoFillManager.AutoFillCallback = {
-      onSuccess: (filledViewData: autoFillManager.ViewData): void => {
+      triggerType: AUTOFILL_TRIGGER_AUTO_REQUEST,
+    };
+    const callback: AutoFillManagerFillCallback = {
+      onSuccess: (filledViewData: AutoFillManagerViewData): void => {
         const values = OhosAutoFillHelper.parseFillResult(filledViewData);
         onSuccess(values);
       },
-      onFailure: (result: autoFillManager.FillFailureResult): void => {
+      onFailure: (result: AutoFillManagerFillFailureResult): void => {
         Log.e(TAG, 'requestAutoFill onFailure: ' + JSON.stringify(result));
         onFailure(result.errCode);
       },
     };
+    const afm = afmApi26Ref();
+    if (afm === null) {
+      Log.w(TAG, 'requestAutoFill: AbilityKit not resolved yet, defer');
+      onFailure(-2);
+      return;
+    }
     try {
-      autoFillManager.requestAutoFill(uiContext, fillRequest, callback);
+      (afm as ESObject).requestAutoFill(uiContext, fillRequest, callback);
     } catch (error) {
       const businessError = error as BusinessError;
       Log.e(TAG, 'requestAutoFill error code=' + businessError?.code +
@@ -591,7 +649,7 @@ export class OhosAutoFillHelper {
       napiCallback.onFailure();
       return;
     }
-    const saveRequest: autoFillManager.SaveRequest = {
+    const saveRequest: AutoFillManagerSaveRequest = {
       viewData: OhosAutoFillHelper.toManagerViewData(viewData),
     };
     const validation = OhosAutoFillHelper.validateSaveViewData(viewData);
@@ -600,8 +658,14 @@ export class OhosAutoFillHelper {
       napiCallback.onFailure();
       return;
     }
+    const afm = afmApi26Ref();
+    if (afm === null) {
+      Log.w(TAG, 'requestAutoSave: AbilityKit not resolved yet, defer');
+      napiCallback.onFailure();
+      return;
+    }
     try {
-      autoFillManager.requestAutoSave(uiContext, saveRequest, napiCallback);
+      (afm as ESObject).requestAutoSave(uiContext, saveRequest, napiCallback);
     } catch (error) {
       const businessError = error as BusinessError;
       Log.e(TAG, 'requestAutoSave error code=' + businessError?.code +

@@ -406,6 +406,7 @@ class AllocatedTextureSourceVK final : public TextureSourceVK {
                      << vk::to_string(
                             vk::MemoryPropertyFlags(alloc_nfo.preferredFlags));
       return;
+    }
 
 #ifdef FML_OS_OHOS
     OH_RESTRACE(allocation, allocation_info.size);

@@ -740,6 +740,10 @@ enum TargetPlatform {
       'windows-arm64' => TargetPlatform.windows_arm64,
       'web-javascript' => TargetPlatform.web_javascript,
       'flutter-tester' => TargetPlatform.tester,
+      'ohos' => TargetPlatform.ohos,
+      'ohos-arm' => TargetPlatform.ohos_arm,
+      'ohos-arm64' => TargetPlatform.ohos_arm64,
+      'ohos-x64' => TargetPlatform.ohos_x64,
       _ => throw Exception('Unsupported platform name "$name"'),
     };
   }

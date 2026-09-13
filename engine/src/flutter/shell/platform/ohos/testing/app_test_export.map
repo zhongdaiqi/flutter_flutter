@@ -7,6 +7,13 @@
     kDartVmSnapshotInstructions;
     kDartIsolateSnapshotData;
     kDartIsolateSnapshotInstructions;
+    # release(AOT)构建下引擎以动态符号解析默认 VM/isolate 快照:
+    # DartSnapshot::SearchMapping 会对当前进程 dlopen(NULL) 并查找
+    # kDartSnapshotData/kDartSnapshotText。app test 宿主进程内这两个
+    # 符号由本 .so 提供(wrapper 以 RTLD_GLOBAL dlopen),必须导出,
+    # 否则宿主的空 Settings 建 VM 时推断失败(测试必崩)。
+    kDartSnapshotData;
+    kDartSnapshotText;
   local:
     *;
 };

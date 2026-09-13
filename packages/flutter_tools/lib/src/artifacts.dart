@@ -707,6 +707,17 @@ class CachedArtifacts implements Artifacts {
         // android_arm in profile mode because it is available on all supported host platforms.
         return _getAndroidArtifactPath(artifact, TargetPlatform.android_arm, BuildMode.profile);
       case Artifact.frontendServerSnapshotForEngineDartSdk:
+        // OHOS: 鸿蒙引擎 OBS 发布的 dart-sdk（3.12.2+ohos 补丁）配套提供
+        // frontend_server，其 kernel 格式（130）与引擎 patched SDK 一致；
+        // stock dart-sdk（3.13.3）的 frontend_server 白名单与内核版本均不匹配。
+        if (platform.isOhos) {
+          return _fileSystem.path.join(
+            _cache.getCacheDir('dart-sdk-ohos').path,
+            'bin',
+            'snapshots',
+            artifact.getFileName(_platform),
+          );
+        }
         return _fileSystem.path.join(
           _dartSdkPath(_cache),
           'bin',
@@ -741,6 +752,15 @@ class CachedArtifacts implements Artifacts {
         return _dartSdkPath(_cache);
       case Artifact.engineDartBinary:
       case Artifact.engineDartAotRuntime:
+        // OHOS: 与 frontendServerSnapshotForEngineDartSdk 同理，dartaotruntime/dart
+        // 必须与 OBS 鸿蒙引擎的 kernel 版本（3.12.2）配套。
+        if (platform.isOhos) {
+          return _fileSystem.path.join(
+            _cache.getCacheDir('dart-sdk-ohos').path,
+            'bin',
+            artifact.getFileName(_platform),
+          );
+        }
         return _fileSystem.path.join(_dartSdkPath(_cache), 'bin', artifact.getFileName(_platform));
       case Artifact.flutterMacOSFramework:
         String platformDirName = _enginePlatformDirectoryName(platform);

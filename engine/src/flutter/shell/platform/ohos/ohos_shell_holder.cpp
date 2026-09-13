@@ -18,8 +18,6 @@
 #include "flutter/shell/platform/ohos/ohos_logging.h"
 #include "fml/trace_event.h"
 #include "shell/platform/common/client_wrapper/include/flutter/standard_message_codec.h"
-#include "third_party/skia/src/ports/skia_ohos/SkFontMgr_ohos.h"
-#include "txt/platform.h"
 
 #include <qos/qos.h>
 #include <sys/resource.h>
@@ -36,8 +34,6 @@ int64_t NextEngineId() {
   return next_engine_id++;
 }
 }  // namespace
-
-std::string OHOSLastFontPath = "";
 
 static void OHOSPlatformThreadConfigSetter(
     const fml::Thread::ThreadConfig& config) {
@@ -90,92 +86,6 @@ static PlatformData GetDefaultPlatformData() {
   PlatformData platform_data;
   platform_data.lifecycle_state = "AppLifecycleState.detached";
   return platform_data;
-}
-
-static bool EndsWith(std::string str, std::string suffix) {
-  if (str.length() < suffix.length()) {
-    return false;
-  }
-  return str.substr(str.length() - suffix.length()) == suffix;
-}
-
-static std::string GetFontFileName(std::string path) {
-  std::string fontFamilyName = "";
-  DIR* dir;
-  struct dirent* ent;
-  if ((dir = opendir(path.c_str())) == nullptr) {
-    return fontFamilyName;
-  }
-  while ((ent = readdir(dir)) != nullptr) {
-    if (strcmp(ent->d_name, ".") == 0 || strcmp(ent->d_name, "..") == 0) {
-      continue;
-    }
-    if (EndsWith(ent->d_name, ".ttf")) {
-      fontFamilyName = ent->d_name;
-      break;
-    }
-  }
-  closedir(dir);
-  return fontFamilyName;
-}
-
-static bool IsFontDirValid(std::string path) {
-  DIR* dir;
-  struct dirent* ent;
-  bool isFlagFileExist = false;
-  bool isFontDirExist = false;
-  if ((dir = opendir(path.c_str())) == nullptr) {
-    if (errno == ENOENT) {
-      FML_DLOG(ERROR) << "ERROR ENOENT";
-    } else if (errno == EACCES) {
-      FML_DLOG(ERROR) << "ERROR EACCES";
-    } else {
-      FML_DLOG(ERROR) << "ERROR Other";
-    }
-    return false;
-  }
-  while ((ent = readdir(dir)) != nullptr) {
-    if (strcmp(ent->d_name, ".") == 0 || strcmp(ent->d_name, "..") == 0) {
-      continue;
-    }
-    if (strcmp(ent->d_name, "flag") == 0) {
-      isFlagFileExist = true;
-    } else if (strcmp(ent->d_name, "fonts") == 0) {
-      isFontDirExist = true;
-    }
-  }
-  closedir(dir);
-  if (isFlagFileExist && isFontDirExist) {
-    FML_DLOG(INFO) << "font path exist" << path;
-    return true;
-  }
-  return false;
-}
-
-static std::string CheckFontSource() {
-  std::string path = "/data/themes/a/app";
-  if (!IsFontDirValid(path)) {
-    path = "/data/themes/b/app";
-    if (!IsFontDirValid(path)) {
-      return "";
-    }
-  }
-  path = path.append("/fonts/");
-  std::string fileName = GetFontFileName(path);
-  if (fileName.empty()) {
-    return "";
-  }
-  path = path.append(fileName);
-  return path;
-}
-
-static bool IsFontChanged(std::string currentPath) {
-  if (!currentPath.empty() && currentPath != OHOSLastFontPath) {
-    OHOSLastFontPath = currentPath;
-    return true;
-  } else {
-    return false;
-  }
 }
 
 OHOSShellHolder::OHOSShellHolder(
@@ -298,7 +208,6 @@ OHOSShellHolder::OHOSShellHolder(
   bridge_ = std::make_shared<SemanticsBridge>();
   bridge_mutex_ = std::make_shared<std::mutex>();
   platform_view_->SetSemanticsBridge(bridge_, bridge_mutex_);
-  local_font_path_ = OHOSLastFontPath;
   FML_DCHECK(platform_view_);
   // Only the primary holder owns a windowing controller (single-engine today).
   window_controller_ = std::make_unique<OHOSWindowController>(this);
@@ -326,7 +235,6 @@ OHOSShellHolder::OHOSShellHolder(
   bridge_ = std::make_shared<SemanticsBridge>();
   bridge_mutex_ = std::make_shared<std::mutex>();
   platform_view_->SetSemanticsBridge(bridge_, bridge_mutex_);
-  local_font_path_ = OHOSLastFontPath;
   ScheduleDartMemoryMonitor();
 }
 
@@ -495,32 +403,6 @@ void OHOSShellHolder::Launch(
   FML_LOG(INFO) << "start RunEngine";
   shell_->RunEngine(std::move(config.value()));
   FML_LOG(INFO) << "end Launch";
-}
-
-void OHOSShellHolder::InitializeSystemFont() {
-  SkFontMgr_OHOS* mgr = (SkFontMgr_OHOS*)(txt::GetDefaultFontManager().get());
-
-  std::string path = CheckFontSource();
-  if (path.empty()) {
-    LOGE("system font file not found");
-    return;
-  }
-  if (OHOSLastFontPath.empty()) {
-    OHOSLastFontPath = path;
-  }
-  mgr->InitializeSystemFont(path);
-}
-
-void OHOSShellHolder::ReloadSystemFonts() {
-  std::string currentPath = CheckFontSource();
-  if (IsFontChanged(currentPath)) {
-    SkFontMgr_OHOS* mgr = (SkFontMgr_OHOS*)(txt::GetDefaultFontManager().get());
-    mgr->AddSystemFont(currentPath);
-  }
-  if (local_font_path_ != OHOSLastFontPath) {
-    local_font_path_ = OHOSLastFontPath;
-    shell_->ReloadSystemFonts();
-  }
 }
 
 std::optional<RunConfiguration> OHOSShellHolder::BuildRunConfiguration(

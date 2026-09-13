@@ -33,6 +33,8 @@ constexpr vk::SampleCountFlagBits ToVKSampleCountFlagBits(SampleCount count) {
   switch (count) {
     case SampleCount::kCount1:
       return vk::SampleCountFlagBits::e1;
+    case SampleCount::kCount2:
+      return vk::SampleCountFlagBits::e2;
     case SampleCount::kCount4:
       return vk::SampleCountFlagBits::e4;
   }
@@ -251,6 +253,8 @@ constexpr vk::SampleCountFlagBits ToVKSampleCount(SampleCount sample_count) {
   switch (sample_count) {
     case SampleCount::kCount1:
       return vk::SampleCountFlagBits::e1;
+    case SampleCount::kCount2:
+      return vk::SampleCountFlagBits::e2;
     case SampleCount::kCount4:
       return vk::SampleCountFlagBits::e4;
   }

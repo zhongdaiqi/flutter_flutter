@@ -7,6 +7,10 @@
 // Test private methods by temporarily redefining access specifiers.
 // This is a common C++ unit testing technique for testing internal logic
 // that doesn't require runtime dependencies.
+// P27: 宏窗口内 OHOS 头链会首次展开 libc++ <ranges>（lazy_split_view.h 含
+// access-redeclaration 模式，新 libc++ 下成 hard error），先在宏前完整展开
+// <ranges>，靠 include guard 隔离窗口内的同名子头。
+#include <ranges>
 #define private public
 #define protected public
 

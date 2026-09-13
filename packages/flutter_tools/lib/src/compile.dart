@@ -279,10 +279,13 @@ class KernelCompiler {
     required List<String> dartDefines,
     required PackageConfig packageConfig,
     String? nativeAssets,
+    // OHOS: 目标平台上下文，用于解析宿主侧工具（frontend_server/dartaotruntime），
+    // 鸿蒙平台需切换到 OBS 配套的 dart-sdk-ohos（kernel 版本与引擎一致）。
+    TargetPlatform? targetPlatform,
   }) async {
     final TargetPlatform? platform = targetModel == TargetModel.dartdevc
         ? TargetPlatform.web_javascript
-        : null;
+        : targetPlatform;
     // This is a URI, not a file path, so the forward slash is correct even on Windows.
     if (!sdkRoot.endsWith('/')) {
       sdkRoot = '$sdkRoot/';
@@ -329,6 +332,7 @@ class KernelCompiler {
       final String engineDartPath = _artifacts.getArtifactPath(
         Artifact.engineDartBinary,
         platform: platform,
+        mode: buildMode,
       );
       if (!_processManager.canRun(engineDartPath)) {
         throwToolExit('Unable to find Dart binary at $engineDartPath');
@@ -338,6 +342,7 @@ class KernelCompiler {
       final String engineDartAotRuntimePath = _artifacts.getArtifactPath(
         Artifact.engineDartAotRuntime,
         platform: platform,
+        mode: buildMode,
       );
       if (!_processManager.canRun(engineDartAotRuntimePath)) {
         throwToolExit('Unable to find dartaotruntime binary at $engineDartAotRuntimePath');
@@ -347,6 +352,7 @@ class KernelCompiler {
         _artifacts.getArtifactPath(
           Artifact.frontendServerSnapshotForEngineDartSdk,
           platform: platform,
+          mode: buildMode,
         ),
       ];
     }

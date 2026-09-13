@@ -4,9 +4,7 @@
  * found in the LICENSE_HW file.
  */
 
-#define private public
 #include "flutter/shell/platform/ohos/external_view_embedder/external_view_embedder.h"
-#undef private
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <algorithm>
@@ -464,6 +462,11 @@ class OHOSExternalViewEmbedderTest : public ::testing::Test {
     thread_.reset();
   }
 
+  // P27 tunnel：friend 关系不传给 TEST_F 派生类，private 方法经此处转发
+  // （访问发生在 friend 类成员函数内，合法）。
+  void ShowOverlayLayerForTest() { embedder_->ShowOverlayLayerIfNeeded(); }
+  void HideOverlayLayerForTest() { embedder_->HideOverlayLayerIfNeeded(); }
+
   std::unique_ptr<fml::Thread> thread_;
   std::unique_ptr<TaskRunners> task_runners_;
   std::shared_ptr<PlatformViewOHOSNapi> napi_facade_;
@@ -595,10 +598,10 @@ TEST_F(OHOSExternalViewEmbedderTest, SetOverlayWindowStoresAndDeduplicates) {
 }
 
 TEST_F(OHOSExternalViewEmbedderTest, ShowAndHideOverlayLayerHelpers) {
-  embedder_->ShowOverlayLayerIfNeeded();
-  embedder_->ShowOverlayLayerIfNeeded();
-  embedder_->HideOverlayLayerIfNeeded();
-  embedder_->HideOverlayLayerIfNeeded();
+  ShowOverlayLayerForTest();
+  ShowOverlayLayerForTest();
+  HideOverlayLayerForTest();
+  HideOverlayLayerForTest();
 }
 
 //------------------------------------------------------------------------------
@@ -761,6 +764,14 @@ class OHOSExternalViewEmbedderFrameTest : public ::testing::Test {
     task_runners_->GetPlatformTaskRunner()->PostTask(
         [&latch]() { latch.Signal(); });
     latch.WaitWithTimeout(fml::TimeDelta::FromSeconds(5));
+  }
+
+  // P27 tunnel：friend 关系不传给 TEST_F 派生类，private 字段经此处转发。
+  Surface* GetOverlayGpuSurfaceForTest() const {
+    return embedder_->overlay_gpu_surface_.get();
+  }
+  bool IsOverlayLayerShownForTest() const {
+    return embedder_->overlay_layer_is_shown_->load();
   }
 
   std::unique_ptr<fml::Thread> thread_;
@@ -1021,8 +1032,8 @@ TEST_F(OHOSExternalViewEmbedderFrameTest,
   embedder_->SubmitFlutterView(0, nullptr, nullptr, MakeFrame(&submitted_1));
   WaitIdle();
   EXPECT_TRUE(submitted_1);
-  EXPECT_NE(embedder_->overlay_gpu_surface_.get(), nullptr);
-  EXPECT_TRUE(embedder_->overlay_layer_is_shown_->load());
+  EXPECT_NE(GetOverlayGpuSurfaceForTest(), nullptr);
+  EXPECT_TRUE(IsOverlayLayerShownForTest());
 
   embedder_->PrepareFlutterView(DlISize(200, 200), 1.0);
   PrerollView(1, 0, 0);
@@ -1031,7 +1042,7 @@ TEST_F(OHOSExternalViewEmbedderFrameTest,
   embedder_->SubmitFlutterView(0, nullptr, nullptr, MakeFrame(&submitted_2));
   WaitIdle();
   EXPECT_TRUE(submitted_2);
-  EXPECT_TRUE(embedder_->overlay_layer_is_shown_->load());
+  EXPECT_TRUE(IsOverlayLayerShownForTest());
 
   embedder_->PrepareFlutterView(DlISize(200, 200), 1.0);
   PrerollView(1, 0, 0, MutatorsStack(), /*paint_content=*/false);
@@ -1041,7 +1052,7 @@ TEST_F(OHOSExternalViewEmbedderFrameTest,
   embedder_->SubmitFlutterView(0, nullptr, nullptr, MakeFrame(&submitted_mid));
   WaitIdle();
   EXPECT_TRUE(submitted_mid);
-  EXPECT_TRUE(embedder_->overlay_layer_is_shown_->load());
+  EXPECT_TRUE(IsOverlayLayerShownForTest());
 
   embedder_->PrepareFlutterView(DlISize(200, 200), 1.0);
   PrerollView(1, 0, 0, MutatorsStack(), /*paint_content=*/false);
@@ -1050,7 +1061,7 @@ TEST_F(OHOSExternalViewEmbedderFrameTest,
                                MakeFrame(&submitted_no_overlay));
   WaitIdle();
   EXPECT_TRUE(submitted_no_overlay);
-  EXPECT_FALSE(embedder_->overlay_layer_is_shown_->load());
+  EXPECT_FALSE(IsOverlayLayerShownForTest());
 
   embedder_->PrepareFlutterView(DlISize(200, 200), 1.0);
   PrerollView(1, 0, 0, MutatorsStack(), /*paint_content=*/false);

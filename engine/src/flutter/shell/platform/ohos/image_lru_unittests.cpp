@@ -8,7 +8,7 @@
 #include "flutter/shell/platform/ohos/image_lru.h"
 #undef private
 
-#include "display_list/image/dl_image.h"
+#include "display_list/image/dl_image_skia.h"
 #include "flutter/fml/log_settings.h"
 #include "fml/time/time_point.h"
 #include "gmock/gmock.h"
@@ -42,7 +42,9 @@ OH_NativeBuffer_Config MakeConfig(int32_t width,
 // pointer and never dereferences the underlying pixels, so a null-backed image
 // is sufficient to validate cache behavior.
 sk_sp<flutter::DlImage> MakeTestImage() {
-  return DlImage::Make(static_cast<SkImage*>(nullptr));
+  // 3.47.4 起 DlImage 为抽象基类（SkRefCnt），工厂迁到具体子类 DlImageSkia
+  // （dl_image_skia.h）；Android image_lru_unittests.cc 同款写法。
+  return DlImageSkia::Make(static_cast<SkImage*>(nullptr));
 }
 
 }  // namespace

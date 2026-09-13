@@ -7,6 +7,7 @@
 
 #include <memory>
 
+#include "flutter/fml/closure.h"
 #include "impeller/base/thread.h"
 #include "impeller/renderer/backend/vulkan/vk.h"
 
@@ -30,7 +31,7 @@ struct QueueIndexVK {
 ///
 class QueueVK {
  public:
-  QueueVK(QueueIndexVK index, vk::Queue queue);
+  QueueVK(QueueIndexVK index, vk::Queue queue, vk::Device device = {});
 
   ~QueueVK();
 
@@ -46,6 +47,10 @@ class QueueVK {
   void WaitIdle() const;
 
 #ifdef FML_OS_OHOS
+  // Queues the vkSemaphores with the graphic queue via the OHOS platform
+  // transfer path, and returns the associated fence fd. Implemented with a
+  // dynamic device-proc lookup because the vendored Vulkan-Hpp wrapper
+  // predates the OHOS platform extensions.
   vk::Result QueueSignalReleaseImageOHOS(std::vector<vk::Semaphore> semaphores,
                                          vk::Image image,
                                          int* fence_fd);
@@ -58,6 +63,9 @@ class QueueVK {
 
   const QueueIndexVK index_;
   const vk::Queue queue_ IPLR_GUARDED_BY(queue_mutex_);
+  // Kept for resolving OHOS-only device entry points that the vendored
+  // Vulkan-Hpp static dispatch table does not know about.
+  const vk::Device device_ = {};
 
   QueueVK(const QueueVK&) = delete;
 

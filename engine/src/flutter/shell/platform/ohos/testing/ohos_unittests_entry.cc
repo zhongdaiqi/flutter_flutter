@@ -14,6 +14,12 @@
 
 #include "gtest/gtest.h"
 
+// See the comment in ohos_shell_holder_unittests.cpp: the `#define private
+// public` hack window below must never be the first place <ranges> gets
+// parsed, or libc++'s lazy_split_view fails with "redeclared with 'public'
+// access". Parsing it here keeps the window clean.
+#include <ranges>
+
 #include "flutter/fml/logging.h"
 #include "flutter/fml/message_loop.h"
 #include "flutter/shell/platform/ohos/test_stubs/ace_graphic_ndk_stub.h"
@@ -29,7 +35,6 @@ namespace flutter {
 class PlatformViewOHOS;
 extern std::map<uint64_t, PlatformViewOHOS*> g_texture_platformview_map;
 extern std::recursive_mutex g_map_mutex;
-extern std::string OHOSLastFontPath;
 extern bool g_isMouseLeftActive;
 extern double g_scrollDistance;
 namespace testing {
@@ -131,7 +136,6 @@ void ResetOhosTestProcessState() {
 
   flutter::PlatformViewOHOSNapi::env_ = nullptr;
   flutter::PlatformViewOHOSNapi::notify_page_changed_func_ = nullptr;
-  flutter::OHOSLastFontPath.clear();
   flutter::g_isMouseLeftActive = false;
   flutter::g_scrollDistance = 0.0;
   StubNapiReset();

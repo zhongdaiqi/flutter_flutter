@@ -4,6 +4,10 @@
  * found in the LICENSE_HW file.
  */
 
+// P27: 宏窗口内 OHOS 头链会首次展开 libc++ <ranges>（lazy_split_view.h 的
+// access-redeclaration 在新 libc++ 下成 hard error），先完整展开 <ranges>
+// 靠 include guard 隔离。
+#include <ranges>
 #define private public
 #include "flutter/shell/platform/ohos/platform_view_ohos.h"
 #undef private
@@ -106,6 +110,13 @@ class NullDelegate : public PlatformView::Delegate {
       std::unique_ptr<PlatformMessage> message) override {}
   void OnPlatformViewDispatchPointerDataPacket(
       std::unique_ptr<PointerDataPacket> packet) override {}
+  // 3.47.4 新增 pure virtual；测试侧不承载平台视图，按上游约定返回
+  // {.has_platform_view = false}（见 platform_view_ios_test.mm）。
+  HitTestResponse OnPlatformViewHitTest(int64_t view_id,
+                                        const flutter::PointData offset)
+      override {
+    return {.has_platform_view = false};
+  }
   void OnPlatformViewDispatchSemanticsAction(int64_t view_id,
                                              int32_t node_id,
                                              SemanticsAction action,
@@ -443,6 +454,13 @@ class WbNullDelegate : public PlatformView::Delegate {
       std::unique_ptr<PlatformMessage> message) override {}
   void OnPlatformViewDispatchPointerDataPacket(
       std::unique_ptr<PointerDataPacket> packet) override {}
+  // 3.47.4 新增 pure virtual；测试侧不承载平台视图，按上游约定返回
+  // {.has_platform_view = false}（见 platform_view_ios_test.mm）。
+  HitTestResponse OnPlatformViewHitTest(int64_t view_id,
+                                        const flutter::PointData offset)
+      override {
+    return {.has_platform_view = false};
+  }
   void OnPlatformViewDispatchSemanticsAction(int64_t view_id,
                                              int32_t node_id,
                                              SemanticsAction action,

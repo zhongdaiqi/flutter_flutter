@@ -19,6 +19,25 @@ namespace impeller {
 using ONBProperties = vk::StructureChain<vk::NativeBufferPropertiesOHOS,
                                          vk::NativeBufferFormatPropertiesOHOS>;
 
+// The OHOS fork's generated vulkan.hpp exposed this extension as a
+// vk::Device member; vanilla Vulkan-Headers doesn't generate extension
+// methods, so resolve the entry point through the dynamic dispatcher the way
+// VMA does (see allocator_vk.cc).
+static vk::Result GetNativeBufferPropertiesOHOS(
+    const vk::Device& device,
+    OH_NativeBuffer* buffer,
+    vk::NativeBufferPropertiesOHOS& properties) {
+  using NativeBufferPropertiesProc = VkResult(
+      VKAPI_PTR*)(VkDevice, const struct OH_NativeBuffer*,
+                  VkNativeBufferPropertiesOHOS*);
+  auto proc = reinterpret_cast<NativeBufferPropertiesProc>(
+      VULKAN_HPP_DEFAULT_DISPATCHER.vkGetDeviceProcAddr(
+          device, "vkGetNativeBufferPropertiesOHOS"));
+  return static_cast<vk::Result>(
+      proc(device, buffer,
+           &static_cast<VkNativeBufferPropertiesOHOS&>(properties)));
+}
+
 static bool IsOpaque(int32_t format) {
   return format == static_cast<int32_t>(
                        OH_NativeBuffer_Format::NATIVEBUFFER_PIXEL_FMT_RGBX_8888);
@@ -249,7 +268,7 @@ OHBTextureSourceVK::OHBTextureSourceVK(
 
   ONBProperties onb_props;
   auto get_ret =
-      device.getNativeBufferPropertiesOHOS(native_buffer, &onb_props.get());
+      GetNativeBufferPropertiesOHOS(device, native_buffer, onb_props.get());
   if (get_ret != vk::Result::eSuccess) {
     FML_LOG(ERROR) << "getNativeBufferPropertiesOHOS faile " << int(get_ret);
     return;
@@ -312,8 +331,11 @@ vk::ImageView OHBTextureSourceVK::GetImageView() const {
   return image_view_.get();
 }
 
-vk::ImageView OHBTextureSourceVK::GetRenderTargetView() const {
-  return image_view_.get();  // Assuming same view can be used for render target
+vk::ImageView OHBTextureSourceVK::GetRenderTargetView(uint32_t mip_level,
+                                                      uint32_t array_layer) const {
+  // The OHB image is created with a single mip level and array layer, and the
+  // source view is used directly as the render target attachment view.
+  return image_view_.get();
 }
 
 bool OHBTextureSourceVK::IsValid() const {

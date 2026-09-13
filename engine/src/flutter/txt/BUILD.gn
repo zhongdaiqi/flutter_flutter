@@ -103,8 +103,9 @@ source_set("txt") {
     deps += [ "//flutter/fml" ]
   } else if (is_android) {
     sources += [ "src/txt/platform_android.cc" ]
-  } else if (is_ohos) {
-    sources += [ "src/txt/platform_ohos.cc" ]
+    # OHOS: 华为 fork 的 ohos 平台字体端口依赖未发布的 skia
+    # fontmgr_ohos 文件（skia_enable_fontmgr_ohos=false，与官方产物对齐），
+    # 因此回落到下方 else 分支的 generic platform.cc（空字体管理器）。
   } else if (is_linux) {
     sources += [ "src/txt/platform_linux.cc" ]
   } else if (is_fuchsia) {

@@ -482,6 +482,11 @@ constexpr bool IsMultisampleCapable(TextureType type) {
 
 enum class SampleCount : uint8_t {
   kCount1 = 1,
+  // Restored from the ohos fork: upstream 3.47.4 removed the count-2 member
+  // (nothing referenced it there), but the OHOS render path (content_context,
+  // render_target, swapchain_transients_vk) uses 2x MSAA by design — see
+  // SupportsFramebufferColorSampleCount2x in capabilities_vk.cc.
+  kCount2 = 2,
   kCount4 = 4,
 };
 
