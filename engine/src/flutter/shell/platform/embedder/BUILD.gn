@@ -188,6 +188,9 @@ template("embedder_source_set") {
     if (is_android) {
       deps += [ "//flutter/shell/platform/android:icudtl_asm" ]
       sources += [ "$root_build_dir/gen/flutter/shell/platform/android/flutter/third_party/icu/flutter/icudtl.dat.S" ]
+    } else if (is_ohos) {
+      deps += [ "//flutter/shell/platform/ohos:icudtl_asm" ]
+      sources += [ "$root_build_dir/gen/flutter/shell/platform/ohos/flutter/third_party/icu/flutter/icudtl.dat.S" ]
     }
 
     public_configs += [
@@ -462,6 +465,11 @@ shared_library("flutter_engine_library") {
   if (is_linux) {
     ldflags += [ "-Wl,--version-script=" +
                  rebase_path("embedder_exports.lst", root_build_dir) ]
+  }
+  if (is_ohos) {
+    ldflags += [ "-Wl,--version-script=" + rebase_path("embedder_exports.lst") ]
+    ldflags += [ "-lnative_drawing" ]
+    ldflags += [ "-lqos" ]
   }
 
   deps = [ ":embedder" ]

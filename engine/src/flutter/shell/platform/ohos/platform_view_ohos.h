@@ -1,0 +1,472 @@
+/*
+ * Copyright 2013 The Flutter Authors. All rights reserved.
+ * Use of this source code is governed by a BSD-style license that can be
+ * found in the LICENSE file.
+ */
+
+#ifndef FLUTTER_SHELL_PLATFORM_OHOS_PLATFORM_VIEW_OHOS_H_
+#define FLUTTER_SHELL_PLATFORM_OHOS_PLATFORM_VIEW_OHOS_H_
+
+#include <atomic>
+#include <memory>
+#include <queue>
+#include <string>
+#include <unordered_map>
+#include <unordered_set>
+#include <utility>
+#include <vector>
+
+#include <multimedia/image_framework/image_mdk.h>
+#include <multimedia/image_framework/image_pixel_map_mdk.h>
+
+#include "flutter/fml/memory/weak_ptr.h"
+#include "flutter/fml/task_runner.h"
+#include "flutter/fml/time/time_point.h"
+#include "flutter/lib/ui/window/platform_message.h"
+#include "flutter/shell/common/platform_view.h"
+#include "flutter/shell/platform/ohos/accessibility/ohos_semantics_bridge.h"
+#include "flutter/shell/platform/ohos/background_resource_cleanup.h"
+#include "flutter/shell/platform/ohos/context/ohos_context.h"
+#include "flutter/shell/platform/ohos/external_view_embedder/external_view_embedder.h"
+#include "flutter/shell/platform/ohos/napi/platform_view_ohos_napi.h"
+#include "flutter/shell/platform/ohos/ohos_external_texture_gl.h"
+#include "flutter/shell/platform/ohos/platform_message_handler_ohos.h"
+#include "flutter/shell/platform/ohos/surface/ohos_native_window.h"
+#include "flutter/shell/platform/ohos/surface/ohos_snapshot_surface_producer.h"
+#include "flutter/shell/platform/ohos/surface/ohos_surface.h"
+#include "flutter/shell/platform/ohos/vsync_waiter_ohos.h"
+
+namespace flutter {
+
+class OHOSShellHolder;
+
+enum class OhosThreadType {
+  kPlatform,
+  kUI,
+  kRaster,
+  kIO,
+};
+
+class OhosSurfaceFactoryImpl : public OhosSurfaceFactory {
+ public:
+  OhosSurfaceFactoryImpl(const std::shared_ptr<OHOSContext>& context);
+
+  ~OhosSurfaceFactoryImpl() override;
+
+  std::unique_ptr<OHOSSurface> CreateSurface() override;
+
+ private:
+  const std::shared_ptr<OHOSContext>& ohos_context_;
+};
+
+class PlatformViewOHOS final : public PlatformView {
+ public:
+  PlatformViewOHOS(PlatformView::Delegate& delegate,
+                   const flutter::TaskRunners& task_runners,
+                   const std::shared_ptr<PlatformViewOHOSNapi>& napi_facade,
+                   bool use_software_rendering,
+                   OHOSShellHolder* shell_holder = nullptr);
+
+  PlatformViewOHOS(PlatformView::Delegate& delegate,
+                   const flutter::TaskRunners& task_runners,
+                   const std::shared_ptr<PlatformViewOHOSNapi>& napi_facade,
+                   const std::shared_ptr<flutter::OHOSContext>& OHOS_context,
+                   OHOSShellHolder* shell_holder = nullptr);
+
+  ~PlatformViewOHOS() override;
+
+  void NotifyCreate(fml::RefPtr<OHOSNativeWindow> native_window);
+
+  /// @brief Attaches a non-implicit view's OHNativeWindow as a new render
+  ///        target; on false the caller must tear the window down.
+  bool NotifyCreateForView(int64_t view_id,
+                           fml::RefPtr<OHOSNativeWindow> native_window,
+                           double width,
+                           double height);
+
+  /// @brief Tears down a non-implicit view's surface (paired with RemoveView).
+  void NotifyDestroyForView(int64_t view_id);
+
+  /// @brief Removes a non-implicit view.
+  void RemoveViewForWindow(int64_t view_id);
+
+  void Preload(int width, int height);
+
+  void NotifySurfaceWindowChanged(fml::RefPtr<OHOSNativeWindow> native_window);
+
+  /// @brief Per-view NotifySurfaceWindowChanged: rebuilds the swapchain and
+  ///        metrics; skipping it leaves the view on a dead window (black screen).
+  void NotifySurfaceChangedForView(int64_t view_id,
+                                   fml::RefPtr<OHOSNativeWindow> native_window,
+                                   double width,
+                                   double height);
+
+  void NotifyChanged(const DlISize& size);
+
+  /**
+   * @brief Update the size of the current Flutter window. This function will
+   * also synchronize the viewport size.
+   *
+   * @param width
+   * @param height
+   */
+  void UpdateDisplaySize(int width, int height);
+
+  // |PlatformView|
+  void NotifyDestroyed() override;
+
+  void SetViewportMetrics(int64_t view_id, ViewportMetrics& metrics);
+
+  // todo
+  void DispatchPlatformMessage(std::string name,
+                               void* message,
+                               int messageLenth,
+                               int reponseId);
+
+  void DispatchEmptyPlatformMessage(std::string name, int reponseId);
+
+  std::shared_ptr<OHOSExternalTexture> CreateExternalTexture(
+      int64_t texture_id);
+
+  uint64_t RegisterExternalTexture(int64_t texture_id);
+
+  void RegisterExternalTextureByPixelMap(
+      int64_t texture_id,
+      NativePixelMap* pixelMap,
+      OH_NativeBuffer* pixelMap_native_buffer);
+
+  void SetExternalTextureBackGroundPixelMap(
+      int64_t texture_id,
+      NativePixelMap* pixelMap,
+      OH_NativeBuffer* pixelMap_native_buffer);
+
+  void SetExternalTextureBackGroundColor(int64_t texture_id, uint32_t color);
+
+  void SetTextureBufferSize(int64_t texture_id, int32_t width, int32_t height);
+
+  void NotifyTextureResizing(int64_t texture_id, int32_t width, int32_t height);
+
+  bool SetExternalNativeImage(int64_t texture_id, OH_NativeImage* native_image);
+
+  void UnRegisterExternalTexture(int64_t texture_id);
+
+  uint64_t GetExternalTextureWindowId(int64_t texture_id);
+
+  uint64_t ResetExternalTexture(int64_t texture_id, bool need_surfaceId);
+
+  void EnableFrameCache(bool enable) { *enable_frame_cache_ = enable; };
+
+  // |PlatformView|
+  PointerDataDispatcherMaker GetDispatcherMaker() override;
+
+  // |PlatformView|
+  void LoadDartDeferredLibrary(
+      intptr_t loading_unit_id,
+      std::unique_ptr<const fml::Mapping> snapshot_data,
+      std::unique_ptr<const fml::Mapping> snapshot_instructions) override;
+
+  void LoadDartDeferredLibraryError(intptr_t loading_unit_id,
+                                    const std::string error_message,
+                                    bool transient) override;
+
+  // |PlatformView|
+  void UpdateAssetResolverByType(
+      std::unique_ptr<AssetResolver> updated_asset_resolver,
+      AssetResolver::AssetResolverType type) override;
+
+  const std::shared_ptr<OHOSContext>& GetOHOSContext() { return ohos_context_; }
+
+  std::shared_ptr<PlatformMessageHandler> GetPlatformMessageHandler()
+      const override {
+    return platform_message_handler_;
+  }
+
+  void OnTouchEvent(std::shared_ptr<std::string[]> touchPacketString, int size);
+
+  void OnMouseEvent(const std::shared_ptr<std::string[]>& mousePacketString,
+                    const int& size);
+
+  void OnAxisEvent(const std::shared_ptr<std::string[]>& axisPacketString,
+                   const int& size);
+
+  void RunTask(OhosThreadType type, const fml::closure& task, int64_t millis = 0);
+
+  void SetSemanticsBridge(std::shared_ptr<SemanticsBridge> bridge,
+                          std::shared_ptr<std::mutex> mutex);
+  void AccessibilityAnnounce(std::unique_ptr<char[]>& message);
+  void AccessibilityOnTap(int32_t nodeId);
+  void AccessibilityOnLongPress(int32_t nodeId);
+  void AccessibilityOnTooltip(std::unique_ptr<char[]>& message);
+  void OnAccessibilityStateChange(bool state);
+  void SetNavigation(bool isNavigation);
+  void SetAccessibleNavigation(bool isAccessibleNavigation);
+  void SetBoldText(double fontWeightScale);
+
+  void SimulateTouchEvent(SemanticsNodeExtend* node);
+
+  //--------------------------------------------------------------------------
+  /// @brief  GPU Resource Reclaim Policy APIs
+  //--------------------------------------------------------------------------
+
+  /// @brief  Called when surface is created.
+  void OnSurfaceCreated();
+
+  /// @brief Called when surface is destroyed.
+  void OnSurfaceDestroyed();
+
+  /// @brief  HCPP: registers the ArkUI overlay XComponent's native window with
+  ///         the external view embedder. Passing nullptr clears it.
+  void SetHybridCompositionOverlayWindow(void* window);
+
+  /// @brief  HCPP: clears the overlay window and tears down the overlay
+  ///         surfaces on the raster thread, blocking until done. Called from
+  ///         the platform thread when the overlay XComponent is destroyed,
+  ///         BEFORE the underlying OHNativeWindow is unreferenced — the wait
+  ///         guarantees every in-flight raster use of the window has drained,
+  ///         so the raw window pointer stays valid throughout. Mirrors the
+  ///         NotifyDestroyed latch pattern used by the texture path.
+  void ClearHybridCompositionOverlayWindowSync();
+
+  /// @brief  Whether Hybrid Composition (HCPP) is enabled for this engine.
+  bool IsHybridCompositionEnabled() const { return hybrid_composition_enabled_; }
+
+  /// @brief Updates whether the current engine is still visibly rendered in a
+  ///        same-engine PiP window while the app is backgrounded.
+  void SetPipVisible(bool visible);
+
+  /// @brief  Returns whether the frame gate is currently enabled.
+  ///         When frame gate is on, frame scheduling is blocked while
+  ///         producer queue draining is still allowed.
+  /// Thread-safe: Can be called from any thread.
+  bool IsFrameGateEnabled() const {
+    return frame_gate_enabled_.load(std::memory_order_acquire);
+  }
+
+  /// @brief After a Spawn: the platform view is created before its holder
+  ///        exists, so it starts null and is patched here.
+  void SetShellHolder(OHOSShellHolder* shell_holder) {
+    shell_holder_ = shell_holder;
+  }
+
+  /// @brief PlatformViewOHOS-typed weak pointer (base GetWeakPtr is typed
+  ///        PlatformView), for OHOS-only methods posted off-thread.
+  fml::WeakPtr<PlatformViewOHOS> GetOHOSWeakPtr() {
+    return ohos_weak_factory_.GetWeakPtr();
+  }
+
+ private:
+  const std::shared_ptr<PlatformViewOHOSNapi> napi_facade_;
+  // Holder of this view's shell (and the windowing controller); null in tests.
+  OHOSShellHolder* shell_holder_ = nullptr;
+  std::shared_ptr<OHOSContext> ohos_context_;
+
+  std::shared_ptr<OHOSSurface> ohos_surface_;
+  // Per-view OHOSSurfaces; the GPUSurfaces live in the embedder below.
+  std::unordered_map<int64_t, std::shared_ptr<OHOSSurface>> secondary_surfaces_;
+  // Multi-window embedder owning every on-screen GPUSurface; its registry is
+  // raster-thread only.
+  std::shared_ptr<OHOSWindowingViewEmbedder> external_view_embedder_;
+  // EntryAbility-reuse guard: NotifyCreated posted lazily on first attach.
+  std::atomic<bool> implicit_view_notify_posted_{false};
+  std::shared_ptr<PlatformMessageHandlerOHOS> platform_message_handler_;
+
+  std::shared_ptr<OhosSurfaceFactoryImpl> surface_factory_;
+  std::map<int64_t, std::shared_ptr<OHOSExternalTexture>> all_external_texture_;
+
+  // HCPP (Hybrid Composition) state. The embedder is only created when
+  // hybrid_composition_enabled_ is true; otherwise the external texture / TLHC
+  // path is used and CreateExternalViewEmbedder() returns nullptr.
+  bool hybrid_composition_enabled_ = false;
+  std::shared_ptr<OHOSExternalViewEmbedder> ohos_external_view_embedder_;
+  // Overlay window that arrived before CreateExternalViewEmbedder() created
+  // the HCPP embedder; pushed on embedder creation. Platform thread only
+  // (both call sites run there).
+  void* pending_overlay_window_ = nullptr;
+
+  std::shared_ptr<bool> enable_frame_cache_ = std::make_shared<bool>(true);
+
+  // viewport will use this size
+  int display_width_ = 0;
+  int display_height_ = 0;
+
+  ViewportMetrics viewport_metrics_;
+
+  bool window_is_preload_ = false;
+
+  // accessibility
+  std::queue<std::pair<flutter::SemanticsNodeUpdates,
+                       flutter::CustomAccessibilityActionUpdates>>
+      semantics_queue_;
+
+  // Views whose semantics update has been dropped with a warning (the single
+  // SemanticsTree serves the implicit view only; see UpdateSemantics).
+  std::unordered_set<int64_t> warned_semantics_views_;
+
+  std::shared_ptr<SemanticsBridge> bridge_;
+  std::shared_ptr<std::mutex> bridge_mutex_;
+  int32_t accessibility_feature_flags_ = 0;
+  bool is_accessibility_navigation_ = false;
+
+  //--------------------------------------------------------------------------
+  /// @brief  GPU Resource Reclaim Policy state
+  //--------------------------------------------------------------------------
+
+  /// Current lifecycle state
+  AppLifecycleState lifecycle_state_ = AppLifecycleState::kDetached;
+
+  /// Whether onscreen context is valid (set false after
+  /// TeardownOnScreenContext)
+  std::atomic<bool> onscreen_context_valid_{true};
+
+  /// Cached native window for rebuilding after aggressive teardown
+  fml::RefPtr<OHOSNativeWindow> cached_native_window_;
+
+  /// Current GPU reclaim level
+  GpuReclaimLevel current_reclaim_level_ = GpuReclaimLevel::kRestore;
+
+  /// Whether the same engine is still visibly rendered in PiP.
+  std::atomic<bool> pip_visible_{false};
+
+  /// Frame gate flag - when true, external texture frame updates are blocked
+  /// Thread-safety: Read from callback threads, written from platform thread,
+  /// use atomic.
+  std::atomic<bool> frame_gate_enabled_{false};
+
+  /// Generation counter for deferred aggressive cleanup tasks.
+  /// Incremented on every non-trivial reclaim decision to invalidate stale
+  /// deferred tasks.  Only accessed on the platform thread.
+  uint32_t reclaim_generation_{0};
+
+  //--------------------------------------------------------------------------
+  /// @brief  GPU Resource Reclaim Policy internal methods
+  /// Architecture:
+  ///   - EvaluateReclaimLevel: Decide action based on state transition
+  ///   - ApplyReclaimLevel:    Execute decision
+  ///   - ExecuteReclaimXxx:    Perform actual GPU resource operations
+  //--------------------------------------------------------------------------
+
+  /// @brief  Main entry point for handling application lifecycle state changes.
+  /// @param  state  The new lifecycle state string from platform layer.
+  void OnApplicationStateChange(const std::string& state);
+
+  /// @brief  Handle lifecycle platform channel messages.
+  /// @param  name  Platform channel name.
+  /// @param  message  Raw message bytes.
+  /// @param  message_length  Message size in bytes.
+  void HandleLifecyclePlatformMessage(const std::string& name,
+                                      const void* message,
+                                      int message_length);
+
+  /// @brief  Evaluates the reclaim decision for a state transition.
+  /// @param  old_state  The previous lifecycle state.
+  /// @param  new_state  The new lifecycle state.
+  /// @return The decision for how to apply reclaim.
+  GpuReclaimDecision EvaluateReclaimLevel(AppLifecycleState old_state,
+                                          AppLifecycleState new_state) const;
+
+  /// @brief  Applies the given reclaim decision.
+  /// @param  decision  The reclaim decision to apply
+  void ApplyReclaimLevel(GpuReclaimDecision decision);
+
+  /// @brief  Notifies the framework to trim image caches and schedules one
+  ///         frame so deferred disposal can run before native teardown.
+  void RequestBackgroundImageCacheCleanup();
+
+  /// @brief  Executes kRestore level actions (foreground restoration).
+  void ExecuteReclaimRestore();
+
+  /// @brief  Executes kAggressive level actions (aggressive cleanup).
+  ///         Defers actual GPU teardown briefly to allow async PiP detection
+  ///         to set pip_visible_ before resources are destroyed.
+  void ExecuteReclaimAggressive();
+
+  /// @brief  Performs the actual GPU resource teardown (called by deferred
+  ///         task after PiP check window has elapsed).
+  void ExecuteReclaimAggressiveCore();
+
+  // ======================== Helper Methods ==================================
+
+  /// @brief  Determines whether the onscreen context needs to be rebuilt.
+  /// @return true if the context should be rebuilt, false if not.
+  bool ShouldRebuildOnscreenContext() const;
+
+  /// @brief  Posts tasks to rebuild the onscreen context and surface.
+  void PostRebuildOnscreenContextTasks();
+
+  /// @brief  Runs a task on the raster thread and waits for its completion.
+  /// @param  task  The closure to run on the raster thread.
+  void RunOnRasterAndWait(fml::closure task);
+
+  /// @brief  Per-view ViewportMetrics: every view pins its constraints to
+  ///         the surface size.
+  ViewportMetrics BuildViewMetricsForView(int64_t view_id,
+                                          double physical_width,
+                                          double physical_height);
+
+  /// @brief  Attempts to free Skia GPU resources.
+  static void TryFreeSkiaGpuResources(
+      const std::shared_ptr<OHOSSurface>& surface,
+      const std::shared_ptr<OHOSContext>& context);
+
+  // |PlatformView|
+  void UpdateSemantics(
+      int64_t view_id,
+      flutter::SemanticsNodeUpdates update,
+      flutter::CustomAccessibilityActionUpdates actions) override;
+
+  // |PlatformView|
+  void HandlePlatformMessage(
+      std::unique_ptr<flutter::PlatformMessage> message) override;
+
+  // |PlatformView|
+  void OnPreEngineRestart() const override;
+
+  // |PlatformView|
+  std::unique_ptr<VsyncWaiter> CreateVSyncWaiter() override;
+
+  // |PlatformView|
+  std::unique_ptr<Surface> CreateRenderingSurface() override;
+
+  // |PlatformView|
+  std::shared_ptr<ExternalViewEmbedder> CreateExternalViewEmbedder() override;
+
+  // |PlatformView|
+  std::unique_ptr<SnapshotSurfaceProducer> CreateSnapshotSurfaceProducer()
+      override;
+
+  // |PlatformView|
+  sk_sp<GrDirectContext> CreateResourceContext() const override;
+
+  // |PlatformView|
+  void ReleaseResourceContext() const override;
+
+  // |PlatformView|
+  std::shared_ptr<impeller::Context> GetImpellerContext() const override;
+
+  // |PlatformView|
+  std::unique_ptr<std::vector<std::string>> ComputePlatformResolvedLocales(
+      const std::vector<std::string>& supported_locale_data) override;
+
+  // |PlatformView|
+  void SetApplicationLocale(std::string locale) override;
+
+  // |PlatformView|
+  void SetSemanticsTreeEnabled(bool enabled) override;
+
+  // |PlatformView|
+  void RequestDartDeferredLibrary(intptr_t loading_unit_id) override;
+
+  void InstallFirstFrameCallback(bool is_preload = false);
+
+  void FireFirstFrameCallback(bool is_preload = false);
+
+  FML_DISALLOW_COPY_AND_ASSIGN(PlatformViewOHOS);
+
+  static void OnNativeImageFrameAvailable(void* data);
+
+  // Must be the last data member: guards off-thread access to OHOS state.
+  fml::WeakPtrFactory<PlatformViewOHOS> ohos_weak_factory_;
+};
+
+}  // namespace flutter
+#endif  // FLUTTER_SHELL_PLATFORM_OHOS_PLATFORM_VIEW_OHOS_H_
