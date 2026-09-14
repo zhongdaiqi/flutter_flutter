@@ -97,6 +97,15 @@ abstract final class SystemChannels {
     'flutter/backgesture',
   );
 
+  /// A channel for controlling the status bar.
+  ///
+  /// The only method this channel receives is `handleScrollToTop`, which is sent
+  /// from iOS and OHOS when the user taps the status bar.
+  static const OptionalMethodChannel statusBar = OptionalMethodChannel(
+    'flutter/status_bar',
+    JSONMethodCodec(),
+  );
+
   /// A JSON [MethodChannel] for invoking miscellaneous platform methods.
   ///
   /// The following outgoing methods are defined for this channel (invoked using

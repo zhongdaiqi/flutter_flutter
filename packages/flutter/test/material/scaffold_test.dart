@@ -17,6 +17,17 @@ import '../widgets/semantics_tester.dart';
 // From bottom_sheet.dart.
 const Duration _bottomSheetExitDuration = Duration(milliseconds: 200);
 
+/// Simulates an OHOS status bar tap by sending the `handleScrollToTop` method
+/// on the `flutter/status_bar` channel.
+Future<void> simulateOhosStatusBarTap(WidgetTester tester) async {
+  await ServicesBinding.instance.defaultBinaryMessenger.handlePlatformMessage(
+    'flutter/status_bar',
+    const JSONMethodCodec().encodeMethodCall(const MethodCall('handleScrollToTop')),
+    (ByteData? data) {},
+  );
+  await tester.pumpAndSettle();
+}
+
 void main() {
   // Regression test for https://github.com/flutter/flutter/issues/103741
   testWidgets('extendBodyBehindAppBar change should not cause the body widget lose state', (WidgetTester tester) async {
@@ -580,6 +591,184 @@ void main() {
     await tester.pump(const Duration(seconds: 1));
     expect(scrollable.position.pixels, equals(500.0));
   }, variant: const TargetPlatformVariant(<TargetPlatform>{ TargetPlatform.android }));
+
+  // === OHOS status bar tap regression tests ===
+
+  Widget buildStackWithScaffolds({required List<ScrollController> controllers}) {
+    return MaterialApp(
+      theme: ThemeData(platform: TargetPlatform.ohos),
+      home: MediaQuery(
+        data: const MediaQueryData(padding: EdgeInsets.only(top: 25.0)),
+        child: Stack(
+          fit: StackFit.expand,
+          children: controllers
+              .map<Widget>(
+                (ScrollController c) => PrimaryScrollController(
+                  controller: c,
+                  child: Scaffold(
+                    body: CustomScrollView(
+                      slivers: <Widget>[
+                        const SliverAppBar(title: Text('Scaffold')),
+                        SliverList(
+                          delegate: SliverChildListDelegate(
+                            List<Widget>.generate(
+                              20,
+                              (int index) => SizedBox(height: 100.0, child: Text('row $index')),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              )
+              .toList(),
+        ),
+      ),
+    );
+  }
+
+  testWidgets(
+    'OHOS Regression: A1: status bar tap scrolls the foregrounded (top) Scaffold only',
+    (WidgetTester tester) async {
+      final ScrollController bgCtrl = ScrollController();
+      final ScrollController fgCtrl = ScrollController();
+      addTearDown(bgCtrl.dispose);
+      addTearDown(fgCtrl.dispose);
+
+      await tester.pumpWidget(
+        buildStackWithScaffolds(controllers: <ScrollController>[bgCtrl, fgCtrl]),
+      );
+      bgCtrl.jumpTo(800.0);
+      fgCtrl.jumpTo(500.0);
+      await tester.pump();
+
+      await simulateOhosStatusBarTap(tester);
+      await tester.pumpAndSettle();
+
+      expect(bgCtrl.offset, 800.0);
+      expect(fgCtrl.offset, 0.0);
+    },
+    variant: TargetPlatformVariant.only(TargetPlatform.ohos),
+  );
+
+  testWidgets(
+    'OHOS Regression: A2: a Scaffold covered by a positioned overlay ignores the tap',
+    (WidgetTester tester) async {
+      final ScrollController bgCtrl = ScrollController();
+      addTearDown(bgCtrl.dispose);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: ThemeData(platform: TargetPlatform.ohos),
+          home: MediaQuery(
+            data: const MediaQueryData(padding: EdgeInsets.only(top: 25.0)),
+            child: Stack(
+              fit: StackFit.expand,
+              children: <Widget>[
+                PrimaryScrollController(
+                  controller: bgCtrl,
+                  child: Scaffold(
+                    body: CustomScrollView(
+                      slivers: <Widget>[
+                        const SliverAppBar(title: Text('Hidden')),
+                        SliverList(
+                          delegate: SliverChildListDelegate(
+                            List<Widget>.generate(
+                              20,
+                              (int index) => SizedBox(height: 100.0, child: Text('row $index')),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                Positioned.fill(
+                  child: ColoredBox(color: Colors.black.withOpacity(0.5)),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+      bgCtrl.jumpTo(800.0);
+      await tester.pump();
+
+      await simulateOhosStatusBarTap(tester);
+      await tester.pumpAndSettle();
+
+      expect(bgCtrl.offset, 800.0);
+    },
+    variant: TargetPlatformVariant.only(TargetPlatform.ohos),
+  );
+
+  testWidgets(
+    'OHOS Regression: C1: status bar tap on a Scaffold without a scrollable is a safe no-op',
+    (WidgetTester tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: ThemeData(platform: TargetPlatform.ohos),
+          home: MediaQuery(
+            data: const MediaQueryData(padding: EdgeInsets.only(top: 25.0)),
+            child: Scaffold(
+              appBar: AppBar(title: const Text('No body')),
+              body: const Center(child: Text('body')),
+            ),
+          ),
+        ),
+      );
+
+      await simulateOhosStatusBarTap(tester);
+      await tester.pumpAndSettle();
+
+      expect(tester.takeException(), isNull);
+    },
+    variant: TargetPlatformVariant.only(TargetPlatform.ohos),
+  );
+
+  testWidgets(
+    'OHOS Regression: D1: Scaffold with primary:false does not respond to status bar tap',
+    (WidgetTester tester) async {
+      final ScrollController ctrl = ScrollController();
+      addTearDown(ctrl.dispose);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: ThemeData(platform: TargetPlatform.ohos),
+          home: MediaQuery(
+            data: const MediaQueryData(padding: EdgeInsets.only(top: 25.0)),
+            child: PrimaryScrollController(
+              controller: ctrl,
+              child: Scaffold(
+                primary: false,
+                body: CustomScrollView(
+                  slivers: <Widget>[
+                    const SliverAppBar(title: Text('Non-primary')),
+                    SliverList(
+                      delegate: SliverChildListDelegate(
+                        List<Widget>.generate(
+                          10,
+                          (int i) => SizedBox(height: 100.0, child: Text('row $i')),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      ctrl.jumpTo(500.0);
+      await tester.pumpAndSettle();
+
+      await simulateOhosStatusBarTap(tester);
+
+      expect(tester.takeException(), isNull);
+    },
+    variant: TargetPlatformVariant.only(TargetPlatform.ohos),
+  );
 
   testWidgets('Bottom sheet cannot overlap app bar', (WidgetTester tester) async {
     final Key sheetKey = UniqueKey();

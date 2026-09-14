@@ -1,11 +1,39 @@
 # Changelog
+<a id="version20260808"></a>
+## 3.27.4-ohos-1.0.8 - `2026-08-17`
 
-## 3.27.4-ohos-1.0.7
+### Added
+
+- flutter项目Web页面，支持鼠标拖拽调整尺寸 [!1391](https://gitcode.com/CPF-Flutter/flutter_engine/merge_requests/1391)
+- 支持密码保险箱功能 [!1430](https://gitcode.com/CPF-Flutter/flutter_engine/merge_requests/1430) [!1477](https://gitcode.com/CPF-Flutter/flutter_engine/merge_requests/1477)
+- LTPO feature is enabled by default [!1469](https://gitcode.com/CPF-Flutter/flutter_engine/merge_requests/1469)
+
+### Fixed
+
+- fix adding the webview to the rotating component makes it unclickable and unscrollable [!1434](https://gitcode.com/CPF-Flutter/flutter_engine/merge_requests/1434)
+- Fixed the issue where deleting numbers to the left would remove two at a time [!1452](https://gitcode.com/CPF-Flutter/flutter_engine/merge_requests/1452)
+- Fixed the issue of incorrect calculation of the avoidance area under the folding machine [!1454](https://gitcode.com/CPF-Flutter/flutter_engine/merge_requests/1454)
+- Fixed the issue where typing English first and then Chinese would get overwritten [!1457](https://gitcode.com/CPF-Flutter/flutter_engine/merge_requests/1457)
+- Fix the issue where entering Chinese first and then English causes the English to be duplicated [!1459](https://gitcode.com/CPF-Flutter/flutter_engine/merge_requests/1459)
+- 预加载操作执行后,将标记重置为false,避免RecreateSwapchain复用context时仍然走到预加载的判断逻辑中 [!1463](https://gitcode.com/CPF-Flutter/flutter_engine/merge_requests/1463)
+- 修改FlutterView.ets中鸿蒙原生事件调用逻辑,增加isActive状态判断 [!1465](https://gitcode.com/CPF-Flutter/flutter_engine/merge_requests/1465)
+- Fixed the issue with input status when switching input methods [!1468](https://gitcode.com/CPF-Flutter/flutter_engine/merge_requests/1468)
+- 修改EmbeddingNodeController.ets中可能出现的空指针问题 [!1472](https://gitcode.com/CPF-Flutter/flutter_engine/merge_requests/1472)
+- 同步三方库代码，解决鸿蒙化flutter框架编译执行其他平台产物crash的问题 [!1479](https://gitcode.com/CPF-Flutter/flutter_engine/merge_requests/1479)
+- Fixed: flutter drive execution failure [!1482](https://gitcode.com/CPF-Flutter/flutter_engine/merge_requests/1482)
+- 调整isActive的判断时机,修复前后台切换ets中的状态更新不及时的问题 [!1487](https://gitcode.com/CPF-Flutter/flutter_engine/merge_requests/1487)
+- fix: update comment to match pre-edit CJK merge logic [!1488](https://gitcode.com/CPF-Flutter/flutter_engine/merge_requests/1488)
+- 手势未完成清除遗留 [!1492](https://gitcode.com/CPF-Flutter/flutter_engine/merge_requests/1492)
+- 同步三方库代码，解决字体内存泄漏问题 [!1494](https://gitcode.com/CPF-Flutter/flutter_engine/merge_requests/1494)
+
+## 3.27.4-ohos-1.0.8-beta
 
 - Fix OHOS platform view active touch cancellation,([7dda026b45](https://gitcode.com/CPF-Flutter/flutter_engine/commit/7dda026b452ca8e813d3c7351e157ed40542b98b))
 - Fix the issue where Shift + left arrow can only select one character,([1d7991bc9a](https://gitcode.com/CPF-Flutter/flutter_engine/commit/1d7991bc9a22114d50a34cefcb4a0ba183c1835e))
+- 手机端支持密码保险箱功能,([2c69a7e702](https://gitcode.com/CPF-Flutter/flutter_engine/commit/2c69a7e702b1e8d7dbff521b9cfe558cfb83980b))
 - fix NavigationChannel crash,([5906f788c0](https://gitcode.com/CPF-Flutter/flutter_engine/commit/5906f788c01aea3fd05a91a87b1b6ae31fc0559b))
 - fix White screen issue when restoring after minimizing the window,([262d97978a](https://gitcode.com/CPF-Flutter/flutter_engine/commit/262d97978ab5e9eb27e5d34f48c2895d6a0e7fb9))
+- flutter项目Web页面，支持鼠标拖拽调整尺寸,([a50f111104](https://gitcode.com/CPF-Flutter/flutter_engine/commit/a50f111104e49dd68e4135a4988cbaab6b7b200b))
 - fix：修复性能雷达滑动丢帧上报字段值问题,([858da8abc3](https://gitcode.com/CPF-Flutter/flutter_engine/commit/858da8abc3231035f2a5f9025d5d850c09f2b776))
 - Fixed the issue of small mouse scroll step value,([615535ca2c](https://gitcode.com/CPF-Flutter/flutter_engine/commit/615535ca2c72c4e655fbe001d9abd8f4851e3926))
 - Fix the issue of DPI repeatedly redirecting to the same page,([8af6fe7553](https://gitcode.com/CPF-Flutter/flutter_engine/commit/8af6fe7553c3b4072f341f3d5121a5ab97dd8650))
@@ -41,30 +69,8 @@
 - Fixed the spelling error in the channel message name 'nativeVsync' within LTPO,([1fa308c12a](https://gitcode.com/CPF-Flutter/flutter_engine/commit/1fa308c12ac207fd6f02b2d310dd496ad0cc26d1))
 - pick pr1097 修复切换输入框时，软键盘类型存在安全类键盘时出现键盘无法唤起的问题,([62229184c9](https://gitcode.com/CPF-Flutter/flutter_engine/commit/62229184c99ac4c3241d300dd7ba9b3e79b2178c))
 
-## 3.27.4-ohos-1.0.6
-- fix: clamp text selection range to prevent RangeError in IME operations,([ee0cda7f4c](https://gitcode.com/openharmony-tpc/flutter_engine/commit/ee0cda7f4cb0cdaed81523000eddafdd76f32113))
-- 修复鼠标左右键按键异常,([956ecd2d62](https://gitcode.com/openharmony-tpc/flutter_engine/commit/956ecd2d625a622ce079e7904ef2f0e1bd72f170))
-- 解决旋转屏幕锁定问题,([6bb7fc0409](https://gitcode.com/openharmony-tpc/flutter_engine/commit/6bb7fc04097c1fbf695d456dcb4a1b34ff79b643))
-- 解决windowstage可能已经销毁的崩溃,([89a2d0426d](https://gitcode.com/openharmony-tpc/flutter_engine/commit/89a2d0426db6a8e79809b50019b973d4130bcc67))
-- Fixed the issue where EventChannel.endOfStream() method did not trigger the onDone event in Dart,([18c6c77f73](https://gitcode.com/openharmony-tpc/flutter_engine/commit/18c6c77f733b5d1206eaecf2f3949567d3c75845))
-- chang DefaultOnFrameAvailableWithLock,([702a1c8a70](https://gitcode.com/openharmony-tpc/flutter_engine/commit/702a1c8a70e8c71b9d5b66581fe16b6e335ea108))
-- fix ReleaseNativeWindowBuffer crash,([0fcafa4cd2](https://gitcode.com/openharmony-tpc/flutter_engine/commit/0fcafa4cd2b102337ae935342e3d3c7cb42f0152))
-- 无条件设置false，重置cached_native_window_为空,([e059fd87dc](https://gitcode.com/openharmony-tpc/flutter_engine/commit/e059fd87dc56e07dac3999be391cc39da8aabcd7))
-- 无条件设置false，重置cached_native_window_,([6897a74ad1](https://gitcode.com/openharmony-tpc/flutter_engine/commit/6897a74ad12b6d951feb3da4a38290120f625e84))
-- 修复onsurfacecreate的错误判断,([383a61ce7a](https://gitcode.com/openharmony-tpc/flutter_engine/commit/383a61ce7a4529ffe4507847ce26d2b3739f4352))
-- Avoid deleting selected text when finishing preview,([0aff17c786](https://gitcode.com/openharmony-tpc/flutter_engine/commit/0aff17c7869d99751ce739190f0785b411315a22))
-- Fixed incorrect tiltX and tiltY parameter passing in external texture scenarios,([6a0927a953](https://gitcode.com/openharmony-tpc/flutter_engine/commit/6a0927a953bdeefaf7084ce4f0ecce147a633ee5))
-- Add simple occlusion culling for impeller,([8bf201595c](https://gitcode.com/openharmony-tpc/flutter_engine/commit/8bf201595c5735474fb90636b1fb428f4fcddad6))
-- 简化 PiPVisibilityBridge 为单一全局状态 , 修复空 catch / 线程安全注释等问题,([369a320244](https://gitcode.com/openharmony-tpc/flutter_engine/commit/369a320244cfd7b25c15c1a4ea8a3cf9bba1b327))
-- 增加画中画窗口轮询策略，延迟退后台dma清理,([005d2d4502](https://gitcode.com/openharmony-tpc/flutter_engine/commit/005d2d45028fb5ee5cdf5ee824dfb75fc3de0b12))
-- 修复crash，优化ohos_image_generator.cpp代码,([e559fb6c6d](https://gitcode.com/openharmony-tpc/flutter_engine/commit/e559fb6c6d419a52637bcccbfc1a99ad86db5796))
-- Fix the issue where the PlatformView page does not refresh when switching to dark mode,([0081f72a83](https://gitcode.com/openharmony-tpc/flutter_engine/commit/0081f72a8338deb942a8f36b1ef3df3da4f820ac))
-- fix: dpi setting when navi is not working,([ea6c518455](https://gitcode.com/openharmony-tpc/flutter_engine/commit/ea6c5184553c793ed422cf01f25d5bdc2101f486))
-- Fix the issue where the keyboard collapses when the subwindow pops up,([5c27d160df](https://gitcode.com/openharmony-tpc/flutter_engine/commit/5c27d160df24a62e521d12a295c6693c2b23c9b6))
-- Fixed the spelling error in the channel message name 'nativeVsync' within LTPO,([1fa308c12a](https://gitcode.com/openharmony-tpc/flutter_engine/commit/1fa308c12ac207fd6f02b2d310dd496ad0cc26d1))
-- pick pr1097 修复切换输入框时，软键盘类型存在安全类键盘时出现键盘无法唤起的问题,([62229184c9](https://gitcode.com/openharmony-tpc/flutter_engine/commit/62229184c99ac4c3241d300dd7ba9b3e79b2178c))
-- Reduce memory usage during the preloading phase.,([7168a1d83b](https://gitcode.com/openharmony-tpc/flutter_engine/commit/7168a1d83bfc50f1d46665700d8818e074fc923a))
 ## 3.27.4-ohos-1.0.5
+
 - Addressed the issue where cropping with original dimensions in a transformed coordinate system resulted in a size mismatch.,([5ede2ebc35](https://gitcode.com/openharmony-tpc/flutter_engine/commit/5ede2ebc3590b72b47a5914e779673b4085a08ba))
 - fix: keyboard home key is not consistent,([aa08ef4b08](https://gitcode.com/openharmony-tpc/flutter_engine/commit/aa08ef4b08f5d6ccb51c4ceeb6f0a60088b058c9))
 - 修复软键盘直接弹起到界面上问题,([ff08e4b7df](https://gitcode.com/openharmony-tpc/flutter_engine/commit/ff08e4b7dfea9e9e062be6529ec108b1bda49ea6))
@@ -122,28 +128,6 @@
 - 3.27使用skia渲染模式时，image组件在部分场景下背景颜色变黑,([9b24fca096](https://gitcode.com/openharmony-tpc/flutter_engine/commit/9b24fca096a0a5d4ef75b592aab4f722b137114a))
 - LTPO默认开启逻辑错误,([0de7176766](https://gitcode.com/openharmony-tpc/flutter_engine/commit/0de71767661e2bb815e492a5d7568f656ae1bd08))
 - 修改HAR_VERSION的提示等级,([1d4f389333](https://gitcode.com/openharmony-tpc/flutter_engine/commit/1d4f389333c0a436ca2a2fb97ee2e50eb44139e1))
-## 3.27.4-ohos-1.0.3
-- 增加json5文件注释特性解析支持,([9bbadbe705](https://gitcode.com/openharmony-tpc/flutter_engine/commit/9bbadbe705f208385c0ef71664053523b3bb8cdc))
-- 解决上下分屏打开固定态软键盘后切换左右分屏页面上缩问题,([d448b3cefc](https://gitcode.com/openharmony-tpc/flutter_engine/commit/d448b3cefc79ccb451b3b1be654a04056585835e))
-- 修复输入框导致的闪动的问题,([270a83ae76](https://gitcode.com/openharmony-tpc/flutter_engine/commit/270a83ae766fbe507bceb84bc9aa2561500a3d32))
-- fix: MouseRegion onExit is not triggered when moving the cursor in and out fast,([af4c37d569](https://gitcode.com/openharmony-tpc/flutter_engine/commit/af4c37d569d5b54b72314372cec4a227e422945e))
-- LTPO增加100ms性能兜底，优化代码,([f8ecb0cb3e](https://gitcode.com/openharmony-tpc/flutter_engine/commit/f8ecb0cb3ecedc8cfa55d78cc623a5f062b38639))
-## 3.27.4-ohos-1.0.2
-- 【3.27】【性能雷达】滑动丢帧上报 ([06fa9961](https://gitcode.com/openharmony-tpc/flutter_engine/commit/06fa996109f1ebead460a62cd7c0ba7450bf18b3?ref=pr_1116&prId=1120))
-- 同步性能雷达特性到flutter3.27版本 ([428faf24](https://gitcode.com/openharmony-tpc/flutter_engine/commit/428faf242238f4e2c6abf3192a87155614381ba7?ref=hiappevent-327&prId=1116))
-- fix: preview text replace ([36fdc65c](https://gitcode.com/openharmony-tpc/flutter_engine/commit/36fdc65c717f7d76caa0fb13708c79ead88ff495?ref=text_field_preview_delete_issue&prId=1110))
-- fix: pressing TextField with preview text would delete it ([a274fbb7](https://gitcode.com/openharmony-tpc/flutter_engine/commit/a274fbb7aa9340cc7346dc63ec10461b155d046e?ref=text_field_preview_delete_issue&prId=1110))
-- 分屏时在应用间输入框焦点相互切换，切至flutter输入字符后候选词显示位置有误 ([e68aa4d1](https://gitcode.com/openharmony-tpc/flutter_engine/commit/e68aa4d19b81a75cdd1daaa4b8b62d0bd79f5420?ref=oh-3.27.4-dev&prId=1105))
-- 解决attach异步以及多输入框候选词跟随的问题 ([04e82c5a](https://gitcode.com/openharmony-tpc/flutter_engine/commit/04e82c5afd8ca702d55795cbad40ab5eb78a666f?ref=oh-3.27.4-dev&prId=1096))
-- 增加copyResource方法中的异常捕获，增加try catch及异常日志 ([b97b550d](https://gitcode.com/openharmony-tpc/flutter_engine/commit/b97b550d4d0cef9db517fd7cf42d0dd2c6f8e186?ref=oh-3.27.4-dev&prId=1091))
-- 修复多个flutterview情况下，鼠标和手势事件分发错误的问题 ([a1eeed6a](https://gitcode.com/openharmony-tpc/flutter_engine/commit/a1eeed6a9fc1f70b8e61c4caa6fc61205ff0f01b?ref=oh-3.27.4-dev&prId=1087))
-- 修改IplrVkResMgr和IplrVkFenceWait线程的优先级变动逻辑为只在OHOS_MEMORY_LEVEL_CRITICAL(可用内存极低)时提高优先级 ([e97b80d0](https://gitcode.com/openharmony-tpc/flutter_engine/commit/e97b80d082dc04a6b49b69e743c89b1c7acd2d4b?ref=oh-3.27.4-dev&prId=1076))
-- 当系统触发内存事件时，提高IplrVkFenceWait和IplrVkResMgr线程的优先级 ([c7e548d1](https://gitcode.com/openharmony-tpc/flutter_engine/commit/c7e548d1e65bdc4e4d1da59c0199ab16a602c51e?ref=oh-3.27.4-dev&prId=1072))
-- 候选词位置为光标的右下角 ([ec7eca60](https://gitcode.com/openharmony-tpc/flutter_engine/commit/ec7eca603fd097248c4f7eb8560f2729604d9489?ref=oh-3.27.4-dev&prId=1071))
-- 使用skia渲染模式时，image组件在部分场景下背景颜色变黑 ([9b24fca0](https://gitcode.com/openharmony-tpc/flutter_engine/commit/9b24fca096a0a5d4ef75b592aab4f722b137114a?ref=oh-3.27.4-dev&prId=1069))
-- 修复LTPO问题 ([568a3187](https://gitcode.com/openharmony-tpc/flutter_engine/commit/568a318775a58247685bca6663bd729e012cb77f?ref=oh-3.27.4-dev&prId=1067))
-- LTPO默认开启逻辑错误 ([0de71767](https://gitcode.com/openharmony-tpc/flutter_engine/commit/0de71767661e2bb815e492a5d7568f656ae1bd08?ref=oh-3.27.4-dev&prId=1056))
-- 修改HAR_VERSION的提示等级 ([1d4f3893](https://gitcode.com/openharmony-tpc/flutter_engine/commit/1d4f389333c0a436ca2a2fb97ee2e50eb44139e1?ref=oh-3.27.4-dev&prId=1054))
 ## 3.27.4-ohos-1.0.1
 - impeller渲染超出纹理范围图片时，不走scalePixels，加速大图渲染 ([e5d2c939](https://gitcode.com/openharmony-tpc/flutter_engine/commit/e5d2c9391b2525239397701422a36291969f4cbe?ref=oh-3.27.4-dev&prId=1052))
 - flutter输入框存在默认英文字符时，切换输入框，软键盘候选词不更新 ([8dd36b8d](https://gitcode.com/openharmony-tpc/flutter_engine/commit/8dd36b8db13392bba8504f6341bbb2853a2782ca?ref=oh-3.27.4-dev&prId=1049))
