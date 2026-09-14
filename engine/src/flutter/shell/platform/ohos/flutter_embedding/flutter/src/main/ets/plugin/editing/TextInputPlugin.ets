@@ -1209,6 +1209,9 @@ class TextInputMethodHandlerImpl implements TextInputMethodHandler {
     this.inputMethodController?.off('getLeftTextOfCursor', this.getLeftTextOfCursorCallback);
     this.inputMethodController?.off('getRightTextOfCursor', this.getRightTextOfCursorCallback);
     this.inputMethodController?.off('getTextIndexAtCursor', this.getTextIndexAtCursorCallback);
+    if (isPreviewTextSupported()) {
+      this.unregisterPreviewTextCallbacks();
+    }
     this.imcFlag = false;
   }
 
