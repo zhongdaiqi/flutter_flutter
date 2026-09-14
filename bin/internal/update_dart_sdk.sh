@@ -130,6 +130,22 @@ if [ ! -f "$ENGINE_STAMP" ] || [ "$ENGINE_VERSION" != "$(< "$ENGINE_STAMP")" ]; 
   DART_SDK_BASE_URL="${FLUTTER_STORAGE_BASE_URL:-https://storage.googleapis.com}${ENGINE_REALM:+/$ENGINE_REALM}"
   DART_SDK_URL="$DART_SDK_BASE_URL/flutter_infra_release/flutter/$ENGINE_VERSION/$DART_ZIP_NAME"
 
+  # OHOS (鸿蒙适配):仓库内置定制 dart-sdk 下载地址时,直接改用它。
+  # 官方 dart-sdk 不含 Abi.ohosArm 等成员,编译 fluttertpc_dart_native 的
+  # ohos 补丁会报 "Member not found";定制版见 dart-sdk-url.ohos(按
+  # zip 文件名分行,格式 `<DART_ZIP_NAME>:<url>`)。未发布该平台的定制版
+  # 时回退官方源并告警。
+  OHOS_SDK_URL_FILE="$FLUTTER_ROOT/bin/internal/dart-sdk-url.ohos"
+  if [ -f "$OHOS_SDK_URL_FILE" ]; then
+    OHOS_SDK_URL=$(grep "^$DART_ZIP_NAME:" "$OHOS_SDK_URL_FILE" | head -n 1 | cut -d: -f2-)
+    if [ -n "$OHOS_SDK_URL" ]; then
+      DART_SDK_URL="$OHOS_SDK_URL"
+      >&2 echo "OHOS: using customized Dart SDK ($DART_ZIP_NAME) from $DART_SDK_URL"
+    else
+      >&2 echo "WARNING: OHOS customized Dart SDK ($DART_ZIP_NAME) not published; falling back to official SDK (build may fail on Abi.ohos* members)."
+    fi
+  fi
+
   # if the sdk path exists, copy it to a temporary location
   if [ -d "$DART_SDK_PATH" ]; then
     rm -rf "$DART_SDK_PATH_OLD"

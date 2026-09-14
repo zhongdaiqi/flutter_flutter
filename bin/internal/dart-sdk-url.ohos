@@ -1,0 +1,13 @@
+# OHOS(鸿蒙适配):定制 Dart SDK 下载地址,每行一个文件,格式 `<zip名>:<url>`。
+#
+# 官方 dart-sdk 的 dart:ffi 缺少 Abi.ohosArm / ohosArm64 / ohosX64,编译
+# fluttertpc_dart_native(code_assets / hooks_runner 的 ohos 补丁)时必然报
+# "Member not found: 'ohosArm'"。本文件把 update_dart_sdk.sh 的下载源切到
+# 定制版,使 flutter bootstrap 直接拿到可用的 SDK——与旧版鸿蒙适配
+# (定制 SDK 随引擎路径发布)行为一致,用户安装后无需任何手工步骤。
+#
+# 定制版由 hxa 基于官方 3.13.3 + ohos 补丁按目标架构重新构建
+# (二进制全量重建,跨架构不可复用),发布在 hxa-flutter/flutter_flutter
+# 的 Release 附件。换新 SDK 只需更新对应条目(保持 zip 官方同结构:
+# dart-sdk/ 顶层目录)。未列出的文件回退官方源(安装阶段会告警)。
+dart-sdk-darwin-arm64.zip:https://atomgit.com/hxa-flutter/flutter_flutter/releases/download/oh-3.47.4-rc1/dart-sdk-darwin-arm64-ohos.zip
