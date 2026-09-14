@@ -3718,6 +3718,12 @@ class NavigatorState extends State<Navigator> with TickerProviderStateMixin, Res
   SplitViewNavigatorPolicy? _splitViewPolicy;
   final _History _history = _History();
 
+  /// Returns the [FocusScopeNode] that held primary focus when the
+  /// outermost active popup was pushed, or null if not applicable.
+  FocusScopeNode? getPopupPreviousFocusScope() {
+    return _splitViewPolicy?.getPopupPreviousFocusScope();
+  }
+
   /// A set for entries that are waiting to dispose until their subtrees are
   /// disposed.
   ///
@@ -4341,7 +4347,7 @@ class NavigatorState extends State<Navigator> with TickerProviderStateMixin, Res
           _preservedHomePageName = null;
         } else {
           _RouteEntry? homePageEntry;
-          for (int i = oldEntriesBottom; i <= oldEntriesTop; i++) {
+          for (var i = oldEntriesBottom; i <= oldEntriesTop; i++) {
             final _RouteEntry entry = _history[i];
             if (entry.route.settings.name == homePageNameForUpdatePages) {
               homePageEntry = entry;
@@ -4586,7 +4592,10 @@ class NavigatorState extends State<Navigator> with TickerProviderStateMixin, Res
           assert(entry.currentState == _RouteLifecycle.popping);
           canRemoveOrAdd = true;
           if (defaultTargetPlatform == TargetPlatform.ohos) {
-            final String? routeName = _getRouteBefore(index, _RouteEntry.willBePresentPredicate)?.route.settings.name;
+            final String? routeName = _getRouteBefore(
+              index,
+              _RouteEntry.willBePresentPredicate,
+            )?.route.settings.name;
             ServicesBinding.instance.reportNavigatorActivity('pop', 'start', routeName);
           }
         case _RouteLifecycle.popping:

@@ -162,7 +162,7 @@ compilation_steps:
     description: Replacing download URL in sysroot scripts
     args: ["flutter_flutter/engine/src/build/linux/sysroot_scripts/sysroots.json", "s|https://commondatastorage.googleapis.com|file:///home/tools/Flutter/repo/binary|g"]
     required: true
-  
+
   - name: Patch emsdk packages URL
     script: ci/scripts/replace_in_file.sh
     description: Replacing emsdk packages download URL with local path
@@ -228,3 +228,15 @@ compilation_steps:
     description: Publish build artifacts to cloud storage
     args: ["flutter_flutter", "flutter_flutter/engine", "3.41"]
     required: false
+
+# Test steps - executed in order
+test_steps:
+  - name: Initialize Flutter Test Environment
+    script: ci/scripts/init_flutter_test_env.sh
+    description: Initialize Flutter test environment and pre-download dependencies
+    required: true
+
+  - name: Unit Tests (Parallel Shards)
+    script: ci/scripts/run_parallel_shards.sh
+    description: Run all unit tests in parallel shard groups (single machine)
+    required: true

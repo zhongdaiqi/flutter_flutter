@@ -269,7 +269,7 @@ flutter:
       final File pubspecFile = fileSystem.file('pubspec.yaml')..createSync();
       pubspecFile.writeAsStringSync(BasicProjectWithFlutterGen().pubspec);
 
-      final GenerateLocalizationsCommand command = GenerateLocalizationsCommand(
+      final command = GenerateLocalizationsCommand(
         fileSystem: fileSystem,
         logger: logger,
         artifacts: artifacts,
@@ -285,7 +285,6 @@ flutter:
       expect(processManager, hasNoRemainingExpectations);
     },
     overrides: <Type, Generator>{
-      FeatureFlags: enableExplicitPackageDependencies,
       FileSystem: () => fileSystem,
       ProcessManager: () => FakeProcessManager.any(),
     },
@@ -395,7 +394,7 @@ format: false
 ''');
       final File pubspecFile = fileSystem.file('pubspec.yaml')..createSync();
       pubspecFile.writeAsStringSync(BasicProjectWithFlutterGen().pubspec);
-      final GenerateLocalizationsCommand command = GenerateLocalizationsCommand(
+      final command = GenerateLocalizationsCommand(
         fileSystem: fileSystem,
         logger: logger,
         artifacts: artifacts,
@@ -410,7 +409,6 @@ format: false
       expect(processManager, hasNoRemainingExpectations);
     },
     overrides: <Type, Generator>{
-      FeatureFlags: enableExplicitPackageDependencies,
       FileSystem: () => fileSystem,
       ProcessManager: () => FakeProcessManager.any(),
     },

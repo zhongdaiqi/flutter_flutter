@@ -289,6 +289,9 @@ export class FlutterView {
   private flutterEngine: FlutterEngine | null = null
   private id: string = ""
   private isActive: boolean = true
+  private pageVisible: boolean = false;
+  private areaVisible: boolean = true;
+  private hostVisible: boolean = false;
   private dVModel: DVModel =
     new DVModel("Stack", new DVModelParameters(), new DVModelEvents(), new DVModelChildren(), null);
   /** The wrapped builder for creating the view, or undefined if not set. */
@@ -528,10 +531,6 @@ export class FlutterView {
   }
   private windowSizeChangeCallback = (data: window.Size) => {
     Log.i(TAG, `windowSizeChangeCallback: width=${data.width}, height=${data.height}, lastHeight=${this.lastHeight}`);
-    if (!this.isActive) {
-      Log.d(TAG, `${this.id} is not active. Ignoring window size change.`);
-      return;
-    }
     // Only handle when height changes
     if (this.lastHeight !== data.height) {
       try {
@@ -554,7 +553,10 @@ export class FlutterView {
 
     // Update lastHeight
     this.lastHeight = data.height;
-
+    if (!this.isActive) {
+      Log.d(TAG, `${this.id} is not active. Ignoring window size change.`);
+      return;
+    }
     // Notify area change, this method handles all necessary view updates
     if (this.isAttachedToFlutterEngine()) {
       this.onAreaChange(null);
@@ -576,10 +578,6 @@ export class FlutterView {
       Log.d(TAG, "Skipping display change callback due to custom DPI setting");
       return;
     }
-    if (!this.isActive) {
-      Log.d(TAG, `${this.id} is not active. Ignoring display change.`);
-      return;
-    }
     this.displayInfo = display.getDefaultDisplaySync();
     this.flutterEngine?.getTextInputChannel()?.setDevicePixelRatio(this.displayInfo.densityPixels);
     let devicePixelRatio: number = this.displayInfo?.densityPixels;
@@ -587,29 +585,33 @@ export class FlutterView {
     if (devicePixelRatio != this.viewportMetrics.devicePixelRatio) {
       this.viewportMetrics.devicePixelRatio = devicePixelRatio;
       this.needSetViewport = true;
+      if (!this.isActive) {
+        Log.d(TAG, `${this.id} is not active. Ignoring display change.`);
+        return;
+      }
       this.onAreaChange(null);
     }
     this.flutterEngine?.getFlutterNapi()?.updateRefreshRate(this.displayInfo?.refreshRate);
   }
   private keyboardHeightChangeCallback = (data: number) => {
     Log.i(TAG, "keyboardHeightChangeCallback " + data);
+    if (this.keyboardAvoidArea) {
+      this.keyboardAvoidArea.bottomRect.height = data;
+    }
     if (!this.isActive) {
       Log.d(TAG, `${this.id} is not active. Ignoring keyboard height change.`);
       return;
-    }
-    if (this.keyboardAvoidArea) {
-      this.keyboardAvoidArea.bottomRect.height = data;
     }
     this.onAreaChange(null);
   };
   private windowRectChangeCallback = (data: window.RectChangeOptions) => {
     Log.i(TAG, "windowRectChangeCallback " + JSON.stringify(data));
+    this.windowPosition = data.rect as window.Rect;
     if (!this.isActive) {
       Log.d(TAG, `${this.id} is not active. Ignoring window rect change.`);
       return;
     }
-    this.windowPosition = data.rect as window.Rect;
-    this.flutterEngine?.getTextInputChannel()?.setWindowPosition(this.windowPosition);
+    this.flutterEngine?.getTextInputChannel()?.textInputCallback?.setCursorPosition();
   }
   private accessibilityStateChangeCallback = (data: boolean) => {
     Log.i(TAG, `subscribe accessibility state change, result: ${JSON.stringify(data)}`);
@@ -790,6 +792,42 @@ export class FlutterView {
     return this.surfaceId;
   }
   
+  private getEffectiveHostVisibility(): boolean {
+    return this.pageVisible && this.areaVisible;
+  }
+
+  private updateHostVisibility(): void {
+    const shouldBeVisible = this.getEffectiveHostVisibility();
+    if (this.hostVisible === shouldBeVisible) {
+      return;
+    }
+    this.hostVisible = shouldBeVisible;
+    if (!this.isAttachedToFlutterEngine()) {
+      return;
+    }
+    if (shouldBeVisible) {
+      this.flutterEngine?.hostDidBecomeVisible();
+    } else {
+      this.flutterEngine?.hostDidBecomeHidden();
+    }
+  }
+
+  public onPageVisibilityChanged(isVisible: boolean): void {
+    if (this.pageVisible === isVisible) {
+      return;
+    }
+    this.pageVisible = isVisible;
+    this.updateHostVisibility();
+  }
+
+  public onVisibleAreaChanged(isVisible: boolean): void {
+    if (this.areaVisible === isVisible) {
+      return;
+    }
+    this.areaVisible = isVisible;
+    this.updateHostVisibility();
+  }
+
   /**
    * Gets the embedding node controller.
    * @deprecated since 3.7
@@ -920,7 +958,9 @@ export class FlutterView {
     if (this.uiContext !== undefined && this.autofillUiContext === undefined) {
       this.applyAutofillUiContext(this.uiContext);
     }
+    this.flutterEngine.getPlatformViewsController()?.attachTextInputPlugin(this.textInputPlugin);
     this.statusBarClickChannel = new StatusBarClickChannel(flutterEngine.dartExecutor)
+    this.flutterEngine?.getTextInputChannel()?.textInputCallback?.setViewId(this.id);
     this.keyboardManager = new KeyboardManager(flutterEngine, this.textInputPlugin!);
     this.settings = new Settings(this.flutterEngine.getSettingsChannel()!);
     this.sendSettings();
@@ -940,6 +980,7 @@ export class FlutterView {
       this.ltpoSwitchState = FlutterNapi.checkLTPOSwitchState() as LTPOSwitchState;
     }
 
+    this.updateHostVisibility();
     hiTraceMeter.finishTrace("attachToFlutterEngine", 0);
   }
 
@@ -972,25 +1013,18 @@ export class FlutterView {
       this.flutterEngine!!.getFlutterNapi().xComponentDetachFlutterEngine(this.id)
       this.isXComponentAttachedToEngine = false;
     }
+    if (this.hostVisible) {
+      this.flutterEngine?.hostDidBecomeHidden();
+      this.hostVisible = false;
+    }
+    // Keep the controller -> TextInputPlugin link alive until the platform-view
+    // hierarchy has been detached. This lets late blur/teardown callbacks clear
+    // any physical PlatformView owner that is still active during shutdown.
     this.flutterEngine?.getPlatformViewsController()?.detachFromView(this);
+    this.flutterEngine?.getPlatformViewsController()?.detachTextInputPlugin();
     this.flutterEngine = null;
     this.keyboardManager = null;
     this.textInputPlugin?.destroy();
-  }
-
-  /**
-   * Safely obtains UIContext. Before loadContent completes, getUIContext() may throw on some API levels.
-   */
-  private tryGetUIContext(): UIContext | undefined {
-    if (this.mainWindow == null) {
-      return undefined;
-    }
-    try {
-      return this.mainWindow.getUIContext();
-    } catch (error) {
-      Log.w(TAG, 'tryGetUIContext failed: ' + JSON.stringify(error));
-      return undefined;
-    }
   }
 
   /**
@@ -1034,17 +1068,12 @@ export class FlutterView {
   onWindowCreated() {
     Log.d(TAG, "received onwindowCreated.");
     this.uiContext = this.tryGetUIContext();
-    if (this.uiContext !== undefined) {
-      // Listen to route navigation (Flutter navigating to HarmonyOS native), soft keyboard management
-      uiObserver.on('routerPageUpdate', this.uiContext, this.routerPageUpdateCallback);
-      uiObserver.on('densityUpdate', this.uiContext, this.densityUpdateCallback);
-      this.sendSettings();
-      if (this.autofillUiContext === undefined) {
-        this.applyAutofillUiContext(this.uiContext);
-      }
-      this.mainWindow?.on('windowTitleButtonRectChange', this.windowTitleButtonRectChangeCallback);
-      Log.d(TAG, "uiContext init and sendSettings finished.");
+    this.sendSettings();
+    this.registerAllCallbacks();
+    if (this.uiContext !== undefined && this.autofillUiContext === undefined) {
+      this.applyAutofillUiContext(this.uiContext);
     }
+    Log.d(TAG, "uiContext init and sendSettings finished.");
   }
 
   /**
