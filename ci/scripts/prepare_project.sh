@@ -23,6 +23,10 @@ prepare_project() {
         exit 1
     }
 
+    log_info "Fetching remote branches"
+    run_cmd "git fetch --all"
+    run_cmd "git branch -a"
+
     run_cmd "git log -10 --pretty=format:'%h - %s'"
     run_cmd "git status"
     run_cmd "git diff"

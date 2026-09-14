@@ -127,6 +127,27 @@ abstract mixin class WidgetsBindingObserver {
   /// predictive back feature.
   void handleCancelBackGesture() {}
 
+  /// Called when the user taps the status bar on iOS, to scroll a scroll
+  /// view to the top.
+  ///
+  /// This event should usually only be handled by at most one scroll view, so
+  /// implementer(s) of this callback must coordinate to determine the most
+  /// suitable scroll view for handling this event.
+  ///
+  /// This callback is only called on iOS. The default implementation provided by
+  /// [WidgetsBindingObserver] does nothing.
+  ///
+  /// On OHOS, the status bar tap is dispatched through the same
+  /// `flutter/status_bar` system channel, so this callback is also invoked on
+  /// OHOS when the OHOS embedder sends the `handleScrollToTop` method.
+  ///
+  /// See also:
+  ///
+  ///  * [Scaffold] and [CupertinoPageScaffold] which use this callback to implement
+  ///    iOS scroll-to-top.
+  void handleStatusBarTap() {}
+
+
   /// Called when the host tells the application to push a new route onto the
   /// navigator.
   ///
@@ -414,6 +435,7 @@ mixin WidgetsBinding on BindingBase, ServicesBinding, SchedulerBinding, GestureB
     SystemChannels.backGesture.setMethodCallHandler(
       _handleBackGestureInvocation,
     );
+    SystemChannels.statusBar.setMethodCallHandler(_handleStatusBarActions);
     assert(() {
       FlutterErrorDetails.propertiesTransformers.add(debugTransformDebugCreator);
       return true;
@@ -936,6 +958,26 @@ mixin WidgetsBinding on BindingBase, ServicesBinding, SchedulerBinding, GestureB
       'cancelBackGesture' => _handleCancelBackGesture(),
       _ => throw MissingPluginException(),
     };
+  }
+
+  Future<void> _handleStatusBarActions(MethodCall call) async {
+    if (call.method != 'handleScrollToTop') {
+      return;
+    }
+    for (final WidgetsBindingObserver observer in List<WidgetsBindingObserver>.of(_observers)) {
+      try {
+        observer.handleStatusBarTap();
+      } catch (exception, stack) {
+        final FlutterErrorDetails details = FlutterErrorDetails(
+          exception: exception,
+          stack: stack,
+          library: 'widgets library',
+          context: ErrorDescription('handling status bar action'),
+        );
+        FlutterError.reportError(details);
+        // No error widget possible here since it wouldn't have a view to render into.
+      }
+    }
   }
 
   @override
