@@ -11,14 +11,12 @@ import '../base/process.dart';
 import '../cache.dart';
 import '../dart/pub.dart';
 import '../globals.dart' as globals;
+import '../ohos/ohos_upgrade.dart';
 import '../persistent_tool_state.dart';
 import '../project.dart';
 import '../runner/flutter_command.dart';
 import '../version.dart';
 import 'channel.dart';
-
-// The official docs to install Flutter.
-const String _flutterInstallDocs = 'https://flutter.dev/docs/get-started/install';
 
 class UpgradeCommand extends FlutterCommand {
   UpgradeCommand({
@@ -72,7 +70,6 @@ class UpgradeCommand extends FlutterCommand {
 
   @override
   Future<FlutterCommandResult> runCommand() {
-    throwToolExit('It will be supported later.', exitCode: 1);
     _commandRunner.workingDirectory = stringArg('working-directory') ?? Cache.flutterRoot!;
     return _commandRunner.runCommand(
       force: boolArg('force'),
@@ -94,6 +91,9 @@ class UpgradeCommand extends FlutterCommand {
 @visibleForTesting
 class UpgradeCommandRunner {
   String? workingDirectory; // set in runCommand() above
+
+  /// Resolves the OHOS release-tag upgrade target.
+  final _ohosUpgrade = OhosUpgrade();
 
   Future<FlutterCommandResult> runCommand({
     required bool force,
@@ -140,7 +140,12 @@ class UpgradeCommandRunner {
       }
       return;
     }
-    if (!force && gitTagVersion == const GitTagVersion.unknown()) {
+    // OHOS: GitTagVersion can still be unknown (for example on a shallow
+    // clone or a checkout without tags); once the OHOS target tag has been
+    // discovered, only guard the non-OHOS case.
+    if (!force &&
+        gitTagVersion == const GitTagVersion.unknown() &&
+        _ohosUpgrade.latestTag == null) {
       // If the commit is a recognized branch and not master,
       // explain that we are avoiding potential damage.
       if (flutterVersion.channel != 'master' && kOfficialChannels.contains(flutterVersion.channel)) {
@@ -199,7 +204,13 @@ class UpgradeCommandRunner {
       environment: Map<String, String>.of(globals.platform.environment),
     );
     if (code != 0) {
-      throwToolExit(null, exitCode: code);
+      globals.printStatus('');
+      globals.printStatus(
+          'Flutter was upgraded to ${_ohosUpgrade.latestTag ?? 'the latest version'}, but the '
+          'automatic follow-up steps (precache, pub upgrade, doctor) could not '
+          'run on the new version.');
+      globals.printStatus(
+          'Run "flutter precache" and "flutter doctor" to finish.');
     }
   }
 
@@ -257,55 +268,10 @@ class UpgradeCommandRunner {
   Future<FlutterVersion> fetchLatestVersion({
     required FlutterVersion localVersion,
   }) async {
-    String revision;
-    try {
-      // Fetch upstream branch's commits and tags
-      await globals.processUtils.run(
-        <String>['git', 'fetch', '--tags'],
-        throwOnError: true,
-        workingDirectory: workingDirectory,
-      );
-      // Get the latest commit revision of the upstream
-      final RunResult result = await globals.processUtils.run(
-          <String>['git', 'rev-parse', '--verify', kGitTrackingUpstream],
-          throwOnError: true,
-          workingDirectory: workingDirectory,
-      );
-      revision = result.stdout.trim();
-    } on Exception catch (e) {
-      final String errorString = e.toString();
-      if (errorString.contains('fatal: HEAD does not point to a branch')) {
-        throwToolExit(
-          'Unable to upgrade Flutter: Your Flutter checkout is currently not '
-          'on a release branch.\n'
-          'Use "flutter channel" to switch to an official channel, and retry. '
-          'Alternatively, re-install Flutter by going to $_flutterInstallDocs.'
-        );
-      } else if (errorString.contains('fatal: no upstream configured for branch')) {
-        throwToolExit(
-          'Unable to upgrade Flutter: The current Flutter branch/channel is '
-          'not tracking any remote repository.\n'
-          'Re-install Flutter by going to $_flutterInstallDocs.'
-        );
-      } else {
-        throwToolExit(errorString);
-      }
-    }
-    // At this point the current checkout should be on HEAD of a branch having
-    // an upstream. Check whether this upstream is "standard".
-    final VersionCheckError? error = VersionUpstreamValidator(version: localVersion, platform: globals.platform).run();
-    if (error != null) {
-      throwToolExit(
-        'Unable to upgrade Flutter: '
-        '${error.message}\n'
-        'Reinstalling Flutter may fix this issue. Visit $_flutterInstallDocs '
-        'for instructions.'
-      );
-    }
-    return FlutterVersion.fromRevision(
-      flutterRoot: workingDirectory!,
-      frameworkRevision: revision,
-      fs: globals.fs,
+    // OHOS: the SDK tracks release tags instead of an upstream branch.
+    return _ohosUpgrade.fetchLatestVersion(
+      workingDirectory: workingDirectory,
+      localVersion: localVersion,
     );
   }
 
