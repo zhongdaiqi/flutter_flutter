@@ -95,7 +95,7 @@ preparation_steps:
     description: Download openharmony sdk
     args: 
       - "https://flutter-ohos-test.obs.cn-south-1.myhuaweicloud.com/tools/sdk_openharmony.tar.gz"
-      - "3427ca8619edb6561c3c4e143a26c9fc41dfced8cd072667ca2fae8897b1cb67"
+      - "50bf46025db540a55bd6189164967446d1a76c3b4a9aaaf788915268959f1a16"
     required: true
 
   - name: Check System Information
