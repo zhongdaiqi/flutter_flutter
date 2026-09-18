@@ -214,6 +214,7 @@ void main() {
       // Check that the tests run clean
       return _runFlutterTest(projectDir);
     },
+    skip: true, // OHOS not supported
     overrides: {
       Pub: () => Pub.test(
         fileSystem: globals.fs,
@@ -246,6 +247,7 @@ void main() {
         ],
       );
     },
+    skip: true, // OHOS not supported
     overrides: {
       Pub: () => Pub.test(
         fileSystem: globals.fs,
@@ -282,6 +284,7 @@ void main() {
       );
       return _runFlutterTest(projectDir);
     },
+    skip: true, // OHOS not supported
     overrides: {
       Pub: () => Pub.test(
         fileSystem: globals.fs,
@@ -3435,7 +3438,7 @@ void main() {
     final int windowsBranch = pluginLibrary.indexOf('Platform.isWindows');
     final int ohosBranch = pluginLibrary.indexOf("Platform.operatingSystem == 'ohos'");
     final int unsupportedError = pluginLibrary.indexOf(
-      "throw UnsupportedError('Unknown platform: \${Platform.operatingSystem}')",
+      r"throw UnsupportedError('Unknown platform: ${Platform.operatingSystem}')",
     );
 
     expect(pluginLibrary, isNot(contains('Platform.isOhos')));

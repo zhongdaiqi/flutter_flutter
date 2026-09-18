@@ -39,6 +39,7 @@ import { CustomTouchEvent, CustomTouchObject } from './CustomTouchEvent';
 import { NodeRenderType } from '@kit.ArkUI';
 import { PlatformViewInfo } from '../../embedding/ohos/PlatformViewInfo';
 import { EmbeddingNodeController } from '../../embedding/ohos/EmbeddingNodeController';
+import TouchEventProcessor from '../../embedding/ohos/TouchEventProcessor';
 
 /**
  * JSON representation of a DynamicView model.
@@ -200,6 +201,7 @@ export default class PlatformViewsController implements PlatformViewsHandler {
     params['down'] = false;
     params['touchEvent'] = undefined;
     params['mouseEvent'] = undefined;
+    params['mouseDownSynthesized'] = false;
     params[PLATFORM_VIEW_LAST_TOUCH_EVENT] = undefined;
     params[PLATFORM_VIEW_LAST_TOUCH_EVENT_IS_PX] = undefined;
     const activeTouches = this.getActiveTouches(params);
@@ -301,6 +303,14 @@ export default class PlatformViewsController implements PlatformViewsHandler {
       this.clearFocus(viewId);
       this.focusViewId = -1;
     }
+    // Disposal is a terminal teardown path, not a normal focus transition. If
+    // the embedded node's blur callback is missed while the view is being
+    // removed, release the matching physical PlatformView owner here so stale
+    // keyboard/focus state cannot leak into the next client. In the common
+    // path, the native blur callback has already reset ownership before dispose
+    // reaches this point, so this remains a safety net instead of becoming part
+    // of the steady-state focus handoff.
+    this.textInputPlugin?.clearPlatformViewClientForTeardown(viewId);
     this.platformViews.delete(viewId);
     this.platformViewParentInfo.delete(viewId);
     let textureId = this.viewIdWithTextureId.get(viewId);
@@ -383,8 +393,12 @@ export default class PlatformViewsController implements PlatformViewsHandler {
    * @param viewId - The ID of the platform view
    * @param top - The top offset
    * @param left - The left offset
+   * @param transform - Optional local→global affine [invScaleX, invShearY, invTx, invShearX, invScaleY, invTy]
+   *                    supplied by the framework via getTransformTo. Used to detect rotation,
+   *                    position rotated views at their visual top-left, and
+   *                    correct touch coordinates.
    */
-  offset(viewId: number, top: number, left: number): void {
+  offset(viewId: number, top: number, left: number, transform?: Array<number>): void {
     Log.i(TAG, `Offset is id${viewId}, t:${top}, l:${left}`);
 
     let viewWrapper = this.viewWrappers.get(viewId)
@@ -412,9 +426,119 @@ export default class PlatformViewsController implements PlatformViewsHandler {
           nodeController.notifyPlatformViewInvisible();
         }
       }
+      // Preserve NaN in left/top so the invisible state is detectable on
+      // subsequent frames.  Do NOT fall through to the transform branch: even
+      // if Dart sends a transform (it will be all-zeros for a singular
+      // getTransformTo), applyTransformOffset would compute non-NaN posLeft/
+      // posTop (e.g. 0,0), overwriting the NaN marker and breaking the
+      // visibility detection on later frames.
+      let paramsRecord = params! as Record<string, Any>;
+      paramsRecord['affineTransform'] = undefined;
+      this.setParams(params!, "left", left);
+      this.setParams(params!, "top", top);
+      return;
     }
-    this.setParams(params!, "left", left);
-    this.setParams(params!, "top", top);
+
+    let paramsRecord = params! as Record<string, Any>;
+    if (transform !== undefined && transform.length >= 6) {
+      // Framework supplied the local→global affine. Use it to position the
+      // native node at the rotated bounding box's visual top-left and to
+      // derive the global→local transform used for touch correction.
+      this.applyTransformOffset(top, left, params!, transform);
+    } else {
+      // No transform (old Dart side): plain offset, no rotation handling.
+      paramsRecord['affineTransform'] = undefined;
+      this.setParams(params!, "left", left);
+      this.setParams(params!, "top", top);
+    }
+  }
+
+  /**
+   * Applies the local→global affine to position the platform view and derives
+   * the global→local affine used to correct touch coordinates.
+   *
+   * transform = [scaleX, shearY, shearX, scaleY, translateX, translateY] with
+   * gx = scaleX*lx + shearY*ly + translateX, gy = shearX*lx + scaleY*ly + translateY.
+   *
+   * The native node is positioned at the visual top-left of the rotated
+   * bounding box, computed as the min of the four transformed corners. This is
+   * correct for any rotation/scale and is independent of the view's on-screen
+   * position (unlike a screen-edge heuristic). The inverse (global→local) is
+   * stored as params['affineTransform'] = [invScaleX, invShearY, invTx, invShearX, invScaleY, invTy]
+   * and applied to touch events in TouchEventProcessor.postTouchEvent / .applyAffineTransform.
+   *
+   * @param params - The layout parameters to update
+   * @param transform - The local→global affine [scaleX, shearY, shearX, scaleY, translateX, translateY]
+   */
+  private applyTransformOffset(top: number, left: number, params: DVModelParameters, transform: Array<number>): void {
+    // Local→global affine: gx = scaleX·lx + shearY·ly + translateX , gy = shearX·lx + scaleY·ly + translateY
+    let scaleX     = transform[0];
+    let shearY     = transform[1];
+    let shearX     = transform[2];
+    let scaleY     = transform[3];
+    let translateX = transform[4];
+    let translateY = transform[5];
+
+    // Guard against non-finite coefficients (NaN / Infinity) from the Dart
+    // side.  If any component is non-finite, the determinant check below
+    // would be bypassed (Math.abs(NaN) < 1e-9 === false), and every
+    // subsequent division would produce NaN, poisoning the touch transform.
+    // Clear affineTransform and fall back to the plain-offset path.
+    if (!Number.isFinite(scaleX) || !Number.isFinite(shearY) || !Number.isFinite(shearX) ||
+        !Number.isFinite(scaleY) || !Number.isFinite(translateX) || !Number.isFinite(translateY)) {
+      let paramsRecord = params as Record<string, Any>;
+      paramsRecord['affineTransform'] = undefined;
+      this.setParams(params, "left", left);
+      this.setParams(params, "top", top);
+      return;
+    }
+
+    // Check for a degenerate (singular) 2×2 part early.  When the determinant
+    // is near zero the four transformed corners collapse to a line/point, so
+    // the 4-corner min would not produce a meaningful "visual top-left" and
+    // the inverse does not exist.  Fall back to the translation component
+    // (translateX, translateY) for positioning and clear the touch transform.
+    let det = scaleX * scaleY - shearY * shearX;
+    if (Math.abs(det) < 1e-9) {
+      let paramsRecord = params as Record<string, Any>;
+      paramsRecord['affineTransform'] = undefined;
+      this.setParams(params, "left", left);
+      this.setParams(params, "top", top);
+      return;
+    }
+
+    // params width/height are in logical pixels (vp).  Despite the name,
+    // toPhysicalPixels is effectively an identity function:
+    //   Math.round(px2vp(logical * density)) = Math.round(logical)
+    // so the stored values are already in the same unit as the transform
+    // matrix (logical).  Do NOT divide by density again.
+    let viewWidth = this.getParams(params, "width");
+    let viewHeight = this.getParams(params, "height");
+    let posLeft: number;
+    let posTop: number;
+    if (!Number.isNaN(viewWidth) && !Number.isNaN(viewHeight) && viewWidth > 0 && viewHeight > 0) {
+      // Visual top-left = min over the 4 corners (0,0),(viewWidth,0),(0,viewHeight),(viewWidth,viewHeight).
+      posLeft = translateX + Math.min(0, Math.min(scaleX * viewWidth, Math.min(shearY * viewHeight, scaleX * viewWidth + shearY * viewHeight)));
+      posTop = translateY + Math.min(0, Math.min(shearX * viewWidth, Math.min(scaleY * viewHeight, shearX * viewWidth + scaleY * viewHeight)));
+    } else {
+      // Dimensions not yet known: fall back to the origin corner's position.
+      posLeft = translateX;
+      posTop = translateY;
+    }
+    this.setParams(params, "left", posLeft);
+    this.setParams(params, "top", posTop);
+
+    // Derive the global→local affine (inverse of the 2x2 rotation/scale part).
+    // localX = invScaleX·gx + invShearY·gy + invTx ; localY = invShearX·gx + invScaleY·gy + invTy
+    let paramsRecord = params as Record<string, Any>;
+    let invScaleX = scaleY / det;
+    let invShearY = -shearY / det;
+    let invTx = (shearY * translateY - scaleY * translateX) / det;
+    let invShearX = -shearX / det;
+    let invScaleY = scaleX / det;
+    let invTy = (shearX * translateX - scaleX * translateY) / det;
+    let affineTransform: Array<number> = [invScaleX, invShearY, invTx, invShearX, invScaleY, invTy];
+    paramsRecord['affineTransform'] = affineTransform;
   }
 
   /**
@@ -446,16 +570,23 @@ export default class PlatformViewsController implements PlatformViewsHandler {
       let params = dvModel.getLayoutParams() as Record<string, Any>;
       // When receiving a DOWN action
       if (touch.action === TouchEventType.ACTION_DOWN) {
+        const shouldHandoffFrameworkFocus = this.textInputPlugin?.isFrameworkTextInputActive() ?? false;
         // Set the current touch state to true
         params['down'] = true
         params[PLATFORM_VIEW_CANCEL_DRAINING] = false;
+        params['shouldHandoffFrameworkFocusOnTouch'] = shouldHandoffFrameworkFocus
         // When first receiving a touch DOWN event, dispatch all events stored in the list
         let touchEventArray: Array<CustomTouchEvent> | undefined = params['touchEvent'] as Array<CustomTouchEvent>
         if (touchEventArray !== undefined) {
           let nodeController = params['nodeController'] as EmbeddingNodeController;
+          let affineTransform = params['affineTransform'] as Array<number> | undefined;
           for (let it of touchEventArray) {
+            // Correct local coordinates for rotation/scale using the global→local
+            // affine stored at layout time (PlatformViewsController.offset).
+            TouchEventProcessor.applyAffineTransform(it, affineTransform);
             nodeController.postEvent(it)
             this.rememberPostedTouchEvent(params, it);
+            this.invokeTextInputHandoffOnTouch(touch.viewId, shouldHandoffFrameworkFocus, it.type == TouchType.Down);
           }
           // Clear the list after first dispatch
           params['touchEvent'] = undefined
@@ -480,7 +611,39 @@ export default class PlatformViewsController implements PlatformViewsHandler {
         // the final state returned is also ACTION_UP, so we use the UP state to indicate the user
         // is no longer touching the platform view
         params['down'] = false
+        params['shouldHandoffFrameworkFocusOnTouch'] = false
       }
+    }
+  }
+
+  private invokeTextInputHandoffOnTouch(
+    viewId: number,
+    shouldHandoffFrameworkFocus: boolean,
+    canInvokeViewFocused: boolean,
+  ): void {
+    const platformView = this.platformViews.get(viewId);
+    const shouldTriggerTextInputHandoff =
+      platformView?.shouldTriggerTextInputHandoffOnTouch() ?? false;
+    if (!canInvokeViewFocused) {
+      return;
+    }
+    if (!shouldHandoffFrameworkFocus) {
+      return;
+    }
+    // Query the concrete PlatformView after ArkUI receives each touch event.
+    // Composite views can consume a child-editor touch marker here, while only
+    // DOWN is allowed to invoke viewFocused. This prevents a later container tap
+    // from reusing stale state.
+    if (shouldTriggerTextInputHandoff) {
+      this.platformViewsChannel?.invokeViewFocused(viewId);
+    }
+  }
+
+  private attachTextInputHandoffOnTouch(params: Record<string, Any>, viewId: number): void {
+    params['textInputHandoffOnTouch'] = (canInvokeViewFocused: boolean = true) => {
+      const shouldHandoffFrameworkFocus =
+        (params['shouldHandoffFrameworkFocusOnTouch'] as boolean | undefined) ?? false;
+      this.invokeTextInputHandoffOnTouch(viewId, shouldHandoffFrameworkFocus, canInvokeViewFocused);
     }
   }
 
@@ -528,7 +691,10 @@ export default class PlatformViewsController implements PlatformViewsHandler {
       Log.e(TAG, "Setting direction to a null view with id: " + viewId);
       return;
     }
-    // Make the Xcomponent gain focus.
+    // clearFocus only removes focus from the wrapper/XComponent side. Releasing
+    // the text-input owner is intentionally handled by the embedded node's real
+    // onBlur callback below, so native keyboard teardown follows the actual
+    // editor lifecycle instead of controller bookkeeping.
     focusControl.requestFocus("unfocus-xcomponent-node");
   }
 
@@ -673,6 +839,16 @@ export default class PlatformViewsController implements PlatformViewsHandler {
       },
       {},
       undefined));
+    let params = dvModel.getLayoutParams() as Record<string, Any>;
+    this.attachTextInputHandoffOnTouch(params, request.viewId);
+    let events = dvModel.events as Record<string, Any>;
+    // Release the physical PlatformView owner only when the embedded native
+    // node actually loses focus. This keeps native blur/release aligned with
+    // the real editor lifecycle instead of using controller-level clearFocus as
+    // a broader proxy.
+    events.onBlur = () => {
+      this.textInputPlugin?.clearPlatformViewClient(request.viewId);
+    };
     let viewWrapper: PlatformViewWrapper = new PlatformViewWrapper();
     viewWrapper.addDvModel(dvModel);
     this.viewWrappers.set(request.viewId, viewWrapper);
@@ -763,6 +939,13 @@ export default class PlatformViewsController implements PlatformViewsHandler {
     }
     if (detachingFlutterView != undefined && this.flutterView != detachingFlutterView) {
       return;
+    }
+
+    if (this.focusViewId != -1) {
+      // View detachment happens after the live focus path has had a chance to
+      // clear ownership. Keep this as a final guard only, so page teardown does
+      // not widen the normal Flutter/native handoff behavior.
+      this.textInputPlugin?.clearPlatformViewClientForTeardown(this.focusViewId);
     }
 
     // Mirror Android's FlutterView detach semantics: remove wrapper DVModels
@@ -1008,6 +1191,8 @@ export default class PlatformViewsController implements PlatformViewsHandler {
       },
       {},
       undefined));
+    let params = dvModel.getLayoutParams() as Record<string, Any>;
+    this.attachTextInputHandoffOnTouch(params, surfaceId);
 
     let viewWrapper: PlatformViewWrapper = new PlatformViewWrapper();
     viewWrapper.addDvModel(dvModel);

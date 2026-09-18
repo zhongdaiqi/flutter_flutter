@@ -70,6 +70,8 @@ const TAG = "FlutterEngine";
  */
 export default class FlutterEngine implements EngineLifecycleListener {
   private engineLifecycleListeners = new Set<EngineLifecycleListener>();
+  // Count of attached Flutter hosts that are currently visible.
+  private visibleHostCount: number = 0;
   dartExecutor: DartExecutor;
   private flutterLoader: FlutterLoader;
   private assetManager: resourceManager.ResourceManager;
@@ -226,6 +228,45 @@ export default class FlutterEngine implements EngineLifecycleListener {
     return flutterEngine
   }
 
+  /**
+   * Spawns a new Flutter engine from this engine asynchronously.
+   * The spawned engine shares resources with the parent engine.
+   * @param context - The application context
+   * @param dartEntrypoint - The Dart entrypoint configuration
+   * @param initialRoute - The initial route for navigation
+   * @param dartEntrypointArgs - Arguments for the Dart entrypoint
+   * @param platformViewsController - The platform views controller
+   * @param waitForRestorationData - Whether to wait for restoration data
+   * @returns The spawned FlutterEngine instance
+   * @throws Error if this engine is not fully constructed
+   */
+  spawnAsync(context: common.Context,
+    dartEntrypoint: DartEntrypoint,
+    initialRoute: string,
+    dartEntrypointArgs: Array<string>,
+    platformViewsController: PlatformViewsController,
+    waitForRestorationData: boolean): Promise<FlutterEngine> {
+    if (!this.isAttachedToNapi()) {
+      return Promise.reject(new Error(
+        "Spawn can only be called on a fully constructed FlutterEngine"));
+    }
+
+    return this.flutterNapi.spawnAsync(
+      dartEntrypoint.dartEntrypointFunctionName,
+      dartEntrypoint.dartEntrypointLibrary,
+      initialRoute,
+      dartEntrypointArgs).then(newFlutterNapi => {
+      const flutterEngine = new FlutterEngine(
+        context,
+        null,
+        newFlutterNapi,
+        platformViewsController
+      );
+      flutterEngine.init(context, null, waitForRestorationData);
+      return flutterEngine;
+    });
+  }
+
   private isAttachedToNapi(): boolean {
     return this.flutterNapi.isAttached();
   }
@@ -245,6 +286,41 @@ export default class FlutterEngine implements EngineLifecycleListener {
    */
   getLifecycleChannel(): LifecycleChannel | null {
     return this.lifecycleChannel;
+  }
+
+  /**
+   * Notifies the engine that one of its host views became visible. If this is
+   * the first visible host for this engine, forwards an `appIsResumed` to
+   * Flutter.
+   */
+  hostDidBecomeVisible(): void {
+    if (this.visibleHostCount === 0) {
+      this.visibleHostCount = 1;
+      Log.d(TAG, `visibleHostCount: ${this.visibleHostCount} -> sending appIsResumed`);
+      this.lifecycleChannel?.appIsResumed();
+    } else {
+      this.visibleHostCount ++;
+      Log.d(TAG, `visibleHostCount: ${this.visibleHostCount} (already resumed)`);
+    }
+  }
+
+  /**
+   * Notifies the engine that one of its host views became hidden. When the
+   * last visible host is hidden, forwards an `appIsPaused` to Flutter.
+   */
+  hostDidBecomeHidden(): void {
+    if (this.visibleHostCount <= 0) {
+      this.visibleHostCount = 0;
+      Log.d(TAG, `hostDidBecomeHidden called but visibleHostCount already 0`);
+      return;
+    }
+    this.visibleHostCount--;
+    if (this.visibleHostCount === 0) {
+      Log.d(TAG, `visibleHostCount: 0 -> sending appIsPaused`);
+      this.lifecycleChannel?.appIsPaused();
+    } else {
+      Log.d(TAG, `visibleHostCount: ${this.visibleHostCount} (still visible hosts)`);
+    }
   }
 
   /**
@@ -409,6 +485,23 @@ export default class FlutterEngine implements EngineLifecycleListener {
     this.pluginRegistry?.destroy();
     this.dartExecutor.onDetachedFromNAPI();
     this.flutterNapi.detachFromNativeAndReleaseResources();
+  }
+
+  /**
+   * Destroys the Flutter engine and releases all resources asynchronously.
+   * Notifies listeners, detaches from ability, and cleans up all components.
+   */
+  destroyAsync(): Promise<void> {
+    Log.d(TAG, "Destroying asynchronously.");
+    this.flutterNapi?.setPipVisible(false);
+    PiPVisibilityBridge.getInstance().unregister(this.pipVisibilityListener);
+    this.engineLifecycleListeners.forEach(listener => listener.onEngineWillDestroy())
+    this.flutterNapi.removeEngineLifecycleListener(this);
+    this.pluginRegistry?.detachFromAbility();
+    this.platformViewsController?.onDetachedFromNapi();
+    this.pluginRegistry?.destroy();
+    this.dartExecutor.onDetachedFromNAPI();
+    return this.flutterNapi.detachFromNativeAndReleaseResourcesAsync();
   }
 
   /**

@@ -3183,225 +3183,232 @@ void main() {
     expect(controller.selection.extentOffset, testValue.indexOf('g'));
   });
 
-  testWidgets('Can drag handles to change selection on Apple platforms', (WidgetTester tester) async {
-    final TextEditingController controller = _textEditingController();
+  testWidgets(
+    'Can drag handles to change selection on Apple platforms',
+    (WidgetTester tester) async {
+      final TextEditingController controller = _textEditingController();
 
-    await tester.pumpWidget(
-      overlay(
-        child: TextField(
-          dragStartBehavior: DragStartBehavior.down,
-          controller: controller,
+      await tester.pumpWidget(
+        overlay(
+          child: TextField(dragStartBehavior: DragStartBehavior.down, controller: controller),
         ),
-      ),
-    );
+      );
 
-    const String testValue = 'abc def ghi';
-    await tester.enterText(find.byType(TextField), testValue);
-    await skipPastScrollingAnimation(tester);
+      const testValue = 'abc def ghi';
+      await tester.enterText(find.byType(TextField), testValue);
+      await skipPastScrollingAnimation(tester);
 
-    // Double tap the 'e' to select 'def'.
-    final Offset ePos = textOffsetToPosition(tester, testValue.indexOf('e'));
-    // The first tap.
-    TestGesture gesture = await tester.startGesture(ePos, pointer: 7);
-    await tester.pump();
-    await gesture.up();
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 200)); // skip past the frame where the opacity is zero
+      // Double tap the 'e' to select 'def'.
+      final Offset ePos = textOffsetToPosition(tester, testValue.indexOf('e'));
+      // The first tap.
+      TestGesture gesture = await tester.startGesture(ePos, pointer: 7);
+      await tester.pump();
+      await gesture.up();
+      await tester.pump();
+      await tester.pump(
+        const Duration(milliseconds: 200),
+      ); // skip past the frame where the opacity is zero
 
-    // The second tap.
-    await gesture.down(ePos);
-    await tester.pump();
-    await gesture.up();
-    await tester.pump();
+      // The second tap.
+      await gesture.down(ePos);
+      await tester.pump();
+      await gesture.up();
+      await tester.pump();
 
-    final TextSelection selection = controller.selection;
-    expect(selection.baseOffset, 4);
-    expect(selection.extentOffset, 7);
+      final TextSelection selection = controller.selection;
+      expect(selection.baseOffset, 4);
+      expect(selection.extentOffset, 7);
 
-    final RenderEditable renderEditable = findRenderEditable(tester);
-    List<TextSelectionPoint> endpoints = globalize(
-      renderEditable.getEndpointsForSelection(selection),
-      renderEditable,
-    );
-    expect(endpoints.length, 2);
+      final RenderEditable renderEditable = findRenderEditable(tester);
+      List<TextSelectionPoint> endpoints = globalize(
+        renderEditable.getEndpointsForSelection(selection),
+        renderEditable,
+      );
+      expect(endpoints.length, 2);
 
-    // Drag the right handle 2 letters to the right.
-    // We use a small offset because the endpoint is on the very corner
-    // of the handle.
-    Offset handlePos = endpoints[1].point + const Offset(1.0, 1.0);
-    Offset newHandlePos = textOffsetToPosition(tester, testValue.length);
-    gesture = await tester.startGesture(handlePos, pointer: 7);
-    await tester.pump();
-    await gesture.moveTo(newHandlePos);
-    await tester.pump();
-    await gesture.up();
-    await tester.pump();
+      // Drag the right handle 2 letters to the right.
+      // We use a small offset because the endpoint is on the very corner
+      // of the handle.
+      Offset handlePos = endpoints[1].point + const Offset(1.0, 1.0);
+      Offset newHandlePos = textOffsetToPosition(tester, testValue.length);
+      gesture = await tester.startGesture(handlePos, pointer: 7);
+      await tester.pump();
+      await gesture.moveTo(newHandlePos);
+      await tester.pump();
+      await gesture.up();
+      await tester.pump();
 
-    expect(controller.selection.baseOffset, 4);
-    expect(controller.selection.extentOffset, 11);
+      expect(controller.selection.baseOffset, 4);
+      expect(controller.selection.extentOffset, 11);
 
-    // Drag the left handle 2 letters to the left.
-    handlePos = endpoints[0].point + const Offset(-1.0, 1.0);
-    newHandlePos = textOffsetToPosition(tester, 2);
-    gesture = await tester.startGesture(handlePos, pointer: 7);
-    await tester.pump();
-    await gesture.moveTo(newHandlePos);
-    await tester.pump();
-    await gesture.up();
-    await tester.pump();
+      // Drag the left handle 2 letters to the left.
+      handlePos = endpoints[0].point + const Offset(-1.0, 1.0);
+      newHandlePos = textOffsetToPosition(tester, 2);
+      gesture = await tester.startGesture(handlePos, pointer: 7);
+      await tester.pump();
+      await gesture.moveTo(newHandlePos);
+      await tester.pump();
+      await gesture.up();
+      await tester.pump();
 
-    switch (defaultTargetPlatform) {
-      // On Apple platforms, dragging the base handle makes it the extent.
-      case TargetPlatform.iOS:
-      case TargetPlatform.macOS:
-        expect(controller.selection.baseOffset, 11);
-        expect(controller.selection.extentOffset, 2);
-      case TargetPlatform.ohos:
-      case TargetPlatform.android:
-      case TargetPlatform.fuchsia:
-      case TargetPlatform.linux:
-      case TargetPlatform.windows:
-        expect(controller.selection.baseOffset, 2);
-        expect(controller.selection.extentOffset, 11);
-    }
+      switch (defaultTargetPlatform) {
+        // On Apple platforms, dragging the base handle makes it the extent.
+        case TargetPlatform.iOS:
+        case TargetPlatform.macOS:
+          expect(controller.selection.baseOffset, 11);
+          expect(controller.selection.extentOffset, 2);
+        case TargetPlatform.ohos:
+        case TargetPlatform.android:
+        case TargetPlatform.fuchsia:
+        case TargetPlatform.linux:
+        case TargetPlatform.windows:
+          expect(controller.selection.baseOffset, 2);
+          expect(controller.selection.extentOffset, 11);
+      }
 
-    // Drag the left handle 2 letters to the left again.
-    endpoints = globalize(
-      renderEditable.getEndpointsForSelection(controller.selection),
-      renderEditable,
-    );
-    handlePos = endpoints[0].point + const Offset(-1.0, 1.0);
-    newHandlePos = textOffsetToPosition(tester, 0);
-    gesture = await tester.startGesture(handlePos, pointer: 7);
-    await tester.pump();
-    await gesture.moveTo(newHandlePos);
-    await tester.pump();
-    await gesture.up();
-    await tester.pump();
+      // Drag the left handle 2 letters to the left again.
+      endpoints = globalize(
+        renderEditable.getEndpointsForSelection(controller.selection),
+        renderEditable,
+      );
+      handlePos = endpoints[0].point + const Offset(-1.0, 1.0);
+      newHandlePos = textOffsetToPosition(tester, 0);
+      gesture = await tester.startGesture(handlePos, pointer: 7);
+      await tester.pump();
+      await gesture.moveTo(newHandlePos);
+      await tester.pump();
+      await gesture.up();
+      await tester.pump();
 
-    switch (defaultTargetPlatform) {
-      case TargetPlatform.iOS:
-      case TargetPlatform.macOS:
-        // The left handle was already the extent, and it remains so.
-        expect(controller.selection.baseOffset, 11);
-        expect(controller.selection.extentOffset, 0);
-      case TargetPlatform.ohos:
-      case TargetPlatform.android:
-      case TargetPlatform.fuchsia:
-      case TargetPlatform.linux:
-      case TargetPlatform.windows:
-        expect(controller.selection.baseOffset, 0);
-        expect(controller.selection.extentOffset, 11);
-    }
-  },
-    variant: const TargetPlatformVariant(<TargetPlatform>{ TargetPlatform.iOS, TargetPlatform.macOS }),
+      switch (defaultTargetPlatform) {
+        case TargetPlatform.iOS:
+        case TargetPlatform.macOS:
+          // The left handle was already the extent, and it remains so.
+          expect(controller.selection.baseOffset, 11);
+          expect(controller.selection.extentOffset, 0);
+        case TargetPlatform.ohos:
+        case TargetPlatform.android:
+        case TargetPlatform.fuchsia:
+        case TargetPlatform.linux:
+        case TargetPlatform.windows:
+          expect(controller.selection.baseOffset, 0);
+          expect(controller.selection.extentOffset, 11);
+      }
+    },
+    variant: const TargetPlatformVariant(<TargetPlatform>{
+      TargetPlatform.iOS,
+      TargetPlatform.macOS,
+    }),
   );
 
-  testWidgets('Can drag handles to change selection on non-Apple platforms', (WidgetTester tester) async {
-    final TextEditingController controller = _textEditingController();
+  testWidgets(
+    'Can drag handles to change selection on non-Apple platforms',
+    (WidgetTester tester) async {
+      final TextEditingController controller = _textEditingController();
 
-    await tester.pumpWidget(
-      overlay(
-        child: TextField(
-          dragStartBehavior: DragStartBehavior.down,
-          controller: controller,
+      await tester.pumpWidget(
+        overlay(
+          child: TextField(dragStartBehavior: DragStartBehavior.down, controller: controller),
         ),
-      ),
-    );
+      );
 
-    const String testValue = 'abc def ghi';
-    await tester.enterText(find.byType(TextField), testValue);
-    await skipPastScrollingAnimation(tester);
+      const testValue = 'abc def ghi';
+      await tester.enterText(find.byType(TextField), testValue);
+      await skipPastScrollingAnimation(tester);
 
-    // Long press the 'e' to select 'def'.
-    final Offset ePos = textOffsetToPosition(tester, testValue.indexOf('e'));
-    TestGesture gesture = await tester.startGesture(ePos, pointer: 7);
-    await tester.pump(const Duration(seconds: 2));
-    await gesture.up();
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 200)); // skip past the frame where the opacity is zero
+      // Long press the 'e' to select 'def'.
+      final Offset ePos = textOffsetToPosition(tester, testValue.indexOf('e'));
+      TestGesture gesture = await tester.startGesture(ePos, pointer: 7);
+      await tester.pump(const Duration(seconds: 2));
+      await gesture.up();
+      await tester.pump();
+      await tester.pump(
+        const Duration(milliseconds: 200),
+      ); // skip past the frame where the opacity is zero
 
-    final TextSelection selection = controller.selection;
-    expect(selection.baseOffset, 4);
-    expect(selection.extentOffset, 7);
+      final TextSelection selection = controller.selection;
+      expect(selection.baseOffset, 4);
+      expect(selection.extentOffset, 7);
 
-    final RenderEditable renderEditable = findRenderEditable(tester);
-    List<TextSelectionPoint> endpoints = globalize(
-      renderEditable.getEndpointsForSelection(selection),
-      renderEditable,
-    );
-    expect(endpoints.length, 2);
+      final RenderEditable renderEditable = findRenderEditable(tester);
+      List<TextSelectionPoint> endpoints = globalize(
+        renderEditable.getEndpointsForSelection(selection),
+        renderEditable,
+      );
+      expect(endpoints.length, 2);
 
-    // Drag the right handle 2 letters to the right.
-    // We use a small offset because the endpoint is on the very corner
-    // of the handle.
-    Offset handlePos = endpoints[1].point + const Offset(1.0, 1.0);
-    Offset newHandlePos = textOffsetToPosition(tester, testValue.length);
-    gesture = await tester.startGesture(handlePos, pointer: 7);
-    await tester.pump();
-    await gesture.moveTo(newHandlePos);
-    await tester.pump();
-    await gesture.up();
-    await tester.pump();
+      // Drag the right handle 2 letters to the right.
+      // We use a small offset because the endpoint is on the very corner
+      // of the handle.
+      Offset handlePos = endpoints[1].point + const Offset(1.0, 1.0);
+      Offset newHandlePos = textOffsetToPosition(tester, testValue.length);
+      gesture = await tester.startGesture(handlePos, pointer: 7);
+      await tester.pump();
+      await gesture.moveTo(newHandlePos);
+      await tester.pump();
+      await gesture.up();
+      await tester.pump();
 
-    expect(controller.selection.baseOffset, 4);
-    expect(controller.selection.extentOffset, 11);
+      expect(controller.selection.baseOffset, 4);
+      expect(controller.selection.extentOffset, 11);
 
-    // Drag the left handle 2 letters to the left.
-    handlePos = endpoints[0].point + const Offset(-1.0, 1.0);
-    newHandlePos = textOffsetToPosition(tester, 2);
-    gesture = await tester.startGesture(handlePos, pointer: 7);
-    await tester.pump();
-    await gesture.moveTo(newHandlePos);
-    await tester.pump();
-    await gesture.up();
-    await tester.pump();
+      // Drag the left handle 2 letters to the left.
+      handlePos = endpoints[0].point + const Offset(-1.0, 1.0);
+      newHandlePos = textOffsetToPosition(tester, 2);
+      gesture = await tester.startGesture(handlePos, pointer: 7);
+      await tester.pump();
+      await gesture.moveTo(newHandlePos);
+      await tester.pump();
+      await gesture.up();
+      await tester.pump();
 
-    switch (defaultTargetPlatform) {
-      // On Apple platforms, dragging the base handle makes it the extent.
-      case TargetPlatform.iOS:
-      case TargetPlatform.macOS:
-        expect(controller.selection.baseOffset, 11);
-        expect(controller.selection.extentOffset, 2);
-      case TargetPlatform.ohos:
-      case TargetPlatform.android:
-      case TargetPlatform.fuchsia:
-      case TargetPlatform.linux:
-      case TargetPlatform.windows:
-        expect(controller.selection.baseOffset, 2);
-        expect(controller.selection.extentOffset, 11);
-    }
+      switch (defaultTargetPlatform) {
+        // On Apple platforms, dragging the base handle makes it the extent.
+        case TargetPlatform.iOS:
+        case TargetPlatform.macOS:
+          expect(controller.selection.baseOffset, 11);
+          expect(controller.selection.extentOffset, 2);
+        case TargetPlatform.ohos:
+        case TargetPlatform.android:
+        case TargetPlatform.fuchsia:
+        case TargetPlatform.linux:
+        case TargetPlatform.windows:
+          expect(controller.selection.baseOffset, 2);
+          expect(controller.selection.extentOffset, 11);
+      }
 
-    // Drag the left handle 2 letters to the left again.
-    endpoints = globalize(
-      renderEditable.getEndpointsForSelection(controller.selection),
-      renderEditable,
-    );
-    handlePos = endpoints[0].point + const Offset(-1.0, 1.0);
-    newHandlePos = textOffsetToPosition(tester, 0);
-    gesture = await tester.startGesture(handlePos, pointer: 7);
-    await tester.pump();
-    await gesture.moveTo(newHandlePos);
-    await tester.pump();
-    await gesture.up();
-    await tester.pump();
+      // Drag the left handle 2 letters to the left again.
+      endpoints = globalize(
+        renderEditable.getEndpointsForSelection(controller.selection),
+        renderEditable,
+      );
+      handlePos = endpoints[0].point + const Offset(-1.0, 1.0);
+      newHandlePos = textOffsetToPosition(tester, 0);
+      gesture = await tester.startGesture(handlePos, pointer: 7);
+      await tester.pump();
+      await gesture.moveTo(newHandlePos);
+      await tester.pump();
+      await gesture.up();
+      await tester.pump();
 
-    switch (defaultTargetPlatform) {
-      case TargetPlatform.iOS:
-      case TargetPlatform.macOS:
-        // The left handle was already the extent, and it remains so.
-        expect(controller.selection.baseOffset, 11);
-        expect(controller.selection.extentOffset, 0);
-      case TargetPlatform.ohos:
-      case TargetPlatform.android:
-      case TargetPlatform.fuchsia:
-      case TargetPlatform.linux:
-      case TargetPlatform.windows:
-        expect(controller.selection.baseOffset, 0);
-        expect(controller.selection.extentOffset, 11);
-    }
-  },
-    variant: TargetPlatformVariant.all(excluding: <TargetPlatform>{ TargetPlatform.iOS, TargetPlatform.macOS }),
+      switch (defaultTargetPlatform) {
+        case TargetPlatform.iOS:
+        case TargetPlatform.macOS:
+          // The left handle was already the extent, and it remains so.
+          expect(controller.selection.baseOffset, 11);
+          expect(controller.selection.extentOffset, 0);
+        case TargetPlatform.ohos:
+        case TargetPlatform.android:
+        case TargetPlatform.fuchsia:
+        case TargetPlatform.linux:
+        case TargetPlatform.windows:
+          expect(controller.selection.baseOffset, 0);
+          expect(controller.selection.extentOffset, 11);
+      }
+    },
+    variant: TargetPlatformVariant.all(
+      excluding: <TargetPlatform>{TargetPlatform.iOS, TargetPlatform.macOS},
+    ),
   );
 
   testWidgets(
@@ -3482,6 +3489,7 @@ void main() {
         case TargetPlatform.fuchsia:
         case TargetPlatform.linux:
         case TargetPlatform.windows:
+        case TargetPlatform.ohos:
           expect(controller.selection.baseOffset, 2);
           expect(controller.selection.extentOffset, 11);
       }
@@ -3592,6 +3600,7 @@ void main() {
         case TargetPlatform.fuchsia:
         case TargetPlatform.linux:
         case TargetPlatform.windows:
+        case TargetPlatform.ohos:
           expect(controller.selection.baseOffset, 2);
           expect(controller.selection.extentOffset, 11);
       }
@@ -3620,6 +3629,7 @@ void main() {
         case TargetPlatform.fuchsia:
         case TargetPlatform.linux:
         case TargetPlatform.windows:
+        case TargetPlatform.ohos:
           expect(controller.selection.baseOffset, 0);
           expect(controller.selection.extentOffset, 11);
       }
@@ -3971,13 +3981,14 @@ void main() {
       case TargetPlatform.fuchsia:
       case TargetPlatform.linux:
       case TargetPlatform.windows:
+      case TargetPlatform.ohos:
         expect(controller.selection.baseOffset, toOffset);
         expect(controller.selection.extentOffset, testValue.length);
     }
 
     // The scroll area of text field should not move.
     expect(scrollController.offset, beforeScrollOffset);
-  });
+  }, skip: true); // OHOS not supported
 
   testWidgets('Can drag the right handle while the left handle remains off-screen', (
     WidgetTester tester,
@@ -4104,7 +4115,7 @@ void main() {
     expect(controller.selection.baseOffset, 4);
     expect(controller.selection.extentOffset, 11);
     expect(feedback.hapticCount, 2);
-  });
+  }, skip: true); // OHOS not supported
 
   testWidgets('Dragging a collapsed handle should trigger feedback.', (WidgetTester tester) async {
     final feedback = FeedbackTester();
@@ -6622,7 +6633,7 @@ void main() {
     await tester.pumpAndSettle(const Duration(seconds: 1));
     expect(feedback.clickSoundCount, 0);
     expect(feedback.hapticCount, 1);
-  });
+  }, skip: true); // OHOS not supported
 
   testWidgets('Text field drops selection color when losing focus', (WidgetTester tester) async {
     // Regression test for https://github.com/flutter/flutter/issues/103341.
@@ -12912,6 +12923,7 @@ void main() {
     variant: TargetPlatformVariant.all(
       excluding: <TargetPlatform>{TargetPlatform.iOS, TargetPlatform.macOS},
     ),
+    skip: true, // OHOS not supported
   );
 
   testWidgets(
@@ -17037,6 +17049,7 @@ void main() {
         case TargetPlatform.fuchsia:
         case TargetPlatform.linux:
         case TargetPlatform.windows:
+        case TargetPlatform.ohos:
           expect(controller.selection, const TextSelection.collapsed(offset: 8));
           expect(find.text('Cut'), findsNothing);
           expect(find.text('Copy'), findsNothing);
@@ -17598,7 +17611,11 @@ void main() {
           );
         },
         variant: TargetPlatformVariant.all(
-          excluding: <TargetPlatform>{TargetPlatform.iOS, TargetPlatform.android, TargetPlatform.ohos},
+          excluding: <TargetPlatform>{
+            TargetPlatform.iOS,
+            TargetPlatform.android,
+            TargetPlatform.ohos,
+          },
         ),
       );
     });
@@ -18897,8 +18914,6 @@ void main() {
   testWidgets('when enabled listens to onFocus events and gains focus', (
     WidgetTester tester,
   ) async {
-    final semantics = SemanticsTester(tester);
-    final SemanticsOwner semanticsOwner = tester.binding.pipelineOwner.semanticsOwner!;
     final focusNode = FocusNode();
     addTearDown(focusNode.dispose);
     await tester.pumpWidget(
@@ -18908,6 +18923,9 @@ void main() {
         ),
       ),
     );
+    await tester.pumpAndSettle();
+    final semantics = SemanticsTester(tester);
+    final SemanticsOwner semanticsOwner = tester.binding.pipelineOwner.semanticsOwner!;
     expect(
       semantics,
       hasSemantics(
@@ -18956,11 +18974,15 @@ void main() {
         ),
         ignoreRect: true,
         ignoreTransform: true,
+        ignoreId: true,
       ),
     );
 
     expect(focusNode.hasFocus, isFalse);
-    semanticsOwner.performAction(4, SemanticsAction.focus);
+    semanticsOwner.performAction(
+      tester.getSemantics(find.byType(EditableText)).id,
+      SemanticsAction.focus,
+    );
     await tester.pumpAndSettle();
     expect(focusNode.hasFocus, isTrue);
     semantics.dispose();
@@ -18969,8 +18991,6 @@ void main() {
   testWidgets(
     'when disabled does not listen to onFocus events or gain focus',
     (WidgetTester tester) async {
-      final semantics = SemanticsTester(tester);
-      final SemanticsOwner semanticsOwner = tester.binding.pipelineOwner.semanticsOwner!;
       final focusNode = FocusNode();
       addTearDown(focusNode.dispose);
       await tester.pumpWidget(
@@ -18980,6 +19000,9 @@ void main() {
           ),
         ),
       );
+      await tester.pumpAndSettle();
+      final semantics = SemanticsTester(tester);
+      final SemanticsOwner semanticsOwner = tester.binding.pipelineOwner.semanticsOwner!;
       expect(
         semantics,
         hasSemantics(
@@ -19027,11 +19050,15 @@ void main() {
           ),
           ignoreRect: true,
           ignoreTransform: true,
+          ignoreId: true,
         ),
       );
 
       expect(focusNode.hasFocus, isFalse);
-      semanticsOwner.performAction(4, SemanticsAction.focus);
+      semanticsOwner.performAction(
+        tester.getSemantics(find.byType(EditableText)).id,
+        SemanticsAction.focus,
+      );
       await tester.pumpAndSettle();
       expect(focusNode.hasFocus, isFalse);
       semantics.dispose();
@@ -19042,8 +19069,6 @@ void main() {
   testWidgets(
     'when receives SemanticsAction.focus while already focused, shows keyboard',
     (WidgetTester tester) async {
-      final semantics = SemanticsTester(tester);
-      final SemanticsOwner semanticsOwner = tester.binding.pipelineOwner.semanticsOwner!;
       final focusNode = FocusNode();
       addTearDown(focusNode.dispose);
       await tester.pumpWidget(
@@ -19055,13 +19080,21 @@ void main() {
       );
       focusNode.requestFocus();
       await tester.pumpAndSettle();
+      final semantics = SemanticsTester(tester);
+      final SemanticsOwner semanticsOwner = tester.binding.pipelineOwner.semanticsOwner!;
 
       tester.testTextInput.log.clear();
       expect(focusNode.hasFocus, isTrue);
-      semanticsOwner.performAction(4, SemanticsAction.focus);
+      semanticsOwner.performAction(
+        tester.getSemantics(find.byType(EditableText)).id,
+        SemanticsAction.focus,
+      );
       await tester.pumpAndSettle();
       expect(focusNode.hasFocus, isTrue);
-      expect(tester.testTextInput.log.single.method, 'TextInput.show');
+      expect(
+        tester.testTextInput.log.where((MethodCall call) => call.method == 'TextInput.show'),
+        hasLength(1),
+      );
 
       semantics.dispose();
     },
@@ -19071,8 +19104,6 @@ void main() {
   testWidgets(
     'when receives SemanticsAction.focus while focused but read-only, does not show keyboard',
     (WidgetTester tester) async {
-      final semantics = SemanticsTester(tester);
-      final SemanticsOwner semanticsOwner = tester.binding.pipelineOwner.semanticsOwner!;
       final focusNode = FocusNode();
       addTearDown(focusNode.dispose);
       await tester.pumpWidget(
@@ -19084,10 +19115,15 @@ void main() {
       );
       focusNode.requestFocus();
       await tester.pumpAndSettle();
+      final semantics = SemanticsTester(tester);
+      final SemanticsOwner semanticsOwner = tester.binding.pipelineOwner.semanticsOwner!;
 
       tester.testTextInput.log.clear();
       expect(focusNode.hasFocus, isTrue);
-      semanticsOwner.performAction(4, SemanticsAction.focus);
+      semanticsOwner.performAction(
+        tester.getSemantics(find.byType(EditableText)).id,
+        SemanticsAction.focus,
+      );
       await tester.pumpAndSettle();
       expect(focusNode.hasFocus, isTrue);
       expect(tester.testTextInput.log, isEmpty);
@@ -19182,6 +19218,7 @@ void main() {
         case TargetPlatform.iOS:
           expect(find.byType(SystemContextMenu), findsOneWidget);
         case TargetPlatform.macOS:
+        case TargetPlatform.ohos:
         case TargetPlatform.android:
         case TargetPlatform.fuchsia:
         case TargetPlatform.linux:

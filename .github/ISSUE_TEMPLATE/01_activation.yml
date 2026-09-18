@@ -17,11 +17,9 @@ body:
   - type: markdown
     attributes:
       value: |
-
         填写表单前，请确认以下事项：
         - 已搜索[已有的 Issue](https://gitcode.com/CPF-Flutter/flutter_flutter/issues)
         - 已阅读[提交 Bug 指南](https://docs.flutter.dev/resources/bug-reports)
-        
   - type: textarea
     attributes:
       label: 复现步骤

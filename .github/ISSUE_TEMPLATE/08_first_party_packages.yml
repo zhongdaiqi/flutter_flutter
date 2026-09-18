@@ -16,11 +16,9 @@ body:
   - type: markdown
     attributes:
       value: |
-
         填写表单前，请确认以下事项：
         - 已搜索[已有的插件 Issue](https://gitcode.com/CPF-Flutter/flutter_packages/issues)
         - 已阅读[提交 Bug 指南](https://docs.flutter.dev/resources/bug-reports)
-
   - type: dropdown
     id: packages
     attributes:
@@ -43,6 +41,7 @@ body:
         - go_router
         - go_router_builder
         - google_adsense
+        - google_fonts
         - google_identity_services_web
         - google_maps_flutter
         - google_sign_in
