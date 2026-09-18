@@ -13,7 +13,6 @@ import 'dart:math' as math;
 import 'package:flutter/foundation.dart' show clampDouble, precisionErrorTolerance;
 import 'package:flutter/gestures.dart' show DragStartBehavior;
 import 'package:flutter/rendering.dart';
-import 'dart:async';
 
 import 'basic.dart';
 import 'debug.dart';
@@ -33,7 +32,6 @@ import 'scroll_view.dart';
 import 'scrollable.dart';
 import 'sliver_fill.dart';
 import 'viewport.dart';
- import 'statusBar.dart';
 
 /// A controller for [PageView].
 ///
@@ -892,27 +890,11 @@ class _PageViewState extends State<PageView> {
 
   late PageController _controller;
 
-  StreamSubscription? _subscription;
-
   @override
   void initState() {
     super.initState();
     _initController();
     _lastReportedPage = _controller.initialPage;
-    if (widget.scrollDirection == Axis.vertical) {
-      ChannelMessageHandler.init();
-      _subscription = ChannelMessageHandler.messageStream.listen((message) {
-        try {
-          _controller.animateToPage(
-            0,
-            duration: const Duration(milliseconds: 1000),
-            curve: Curves.easeOutCirc,
-          );
-        } catch(err) {
-          print(err);
-        };
-      });
-    }
   }
 
   @override
@@ -920,8 +902,6 @@ class _PageViewState extends State<PageView> {
     if (widget.controller == null) {
       _controller.dispose();
     }
-    _subscription?.cancel();
-    _subscription = null;
     super.dispose();
   }
 

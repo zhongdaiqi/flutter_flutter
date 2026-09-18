@@ -169,7 +169,6 @@ class Plugin {
         name,
         platformsYaml[OhosPlugin.kConfigKey] as YamlMap,
         path,
-        fileSystem,
       );
     }
 

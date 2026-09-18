@@ -252,6 +252,7 @@ class FlutterSdk extends EngineCachedArtifact {
     : _platform = platform,
       super('flutter_sdk', cache, DevelopmentArtifact.universal);
 
+  // ignore: unused_field
   final Platform _platform;
 
   @override
@@ -260,7 +261,6 @@ class FlutterSdk extends EngineCachedArtifact {
   @override
   List<List<String>> getBinaryDirs() {
     // Linux and Windows both support arm64 and x64.
-    final String arch = cache.getHostPlatformArchName();
     return <List<String>>[
       <String>['common', 'flutter_patched_sdk.zip'],
       <String>['common', 'flutter_patched_sdk_product.zip'],
@@ -272,14 +272,9 @@ class FlutterSdk extends EngineCachedArtifact {
 }
 
 class FlutterSdkOhos extends EngineCachedArtifact {
-  FlutterSdkOhos(Cache cache, {
-    required Platform platform,
-  }) : _platform = platform,
-      super(
-        'flutter_sdk_ohos',
-        cache,
-        DevelopmentArtifact.universal,
-      );
+  FlutterSdkOhos(Cache cache, {required Platform platform})
+    : _platform = platform,
+      super('flutter_sdk_ohos', cache, DevelopmentArtifact.universal);
 
   final Platform _platform;
 
@@ -307,7 +302,7 @@ class FlutterSdkOhos extends EngineCachedArtifact {
   @override
   List<String> getLicenseDirs() => const <String>[];
 
-    @override
+  @override
   String get storageBaseUrl => cache.ohosStorageBaseUrl;
 
   @override
@@ -542,14 +537,9 @@ class IOSEngineArtifacts extends EngineCachedArtifact {
 
 /// The artifact used to generate snapshots for Ohos builds.
 class OHOSGenSnapshotArtifacts extends EngineCachedArtifact {
-  OHOSGenSnapshotArtifacts(Cache cache, {
-    required Platform platform,
-  }) : _platform = platform,
-        super(
-        'ohos-sdk',
-        cache,
-        DevelopmentArtifact.ohosGenSnapshot,
-      );
+  OHOSGenSnapshotArtifacts(Cache cache, {required Platform platform})
+    : _platform = platform,
+      super('ohos-sdk', cache, DevelopmentArtifact.ohosGenSnapshot);
 
   final Platform _platform;
 
@@ -563,7 +553,7 @@ class OHOSGenSnapshotArtifacts extends EngineCachedArtifact {
         ..._osxBinaryDirsForOhos,
         ..._linuxBinaryDirsForOhos,
         ..._windowsBinaryDirsForOhos,
-        ..._dartSdks
+        ..._dartSdks,
       ] else if (_platform.isWindows)
         ..._windowsBinaryDirsForOhos
       else if (_platform.isMacOS)
@@ -586,11 +576,8 @@ class OHOSGenSnapshotArtifacts extends EngineCachedArtifact {
 }
 
 class OHOSInternalBuildArtifacts extends EngineCachedArtifact {
-  OHOSInternalBuildArtifacts(Cache cache) : super(
-    'ohos-internal-build-artifacts',
-    cache,
-    DevelopmentArtifact.ohosInternalBuild,
-  );
+  OHOSInternalBuildArtifacts(Cache cache)
+    : super('ohos-internal-build-artifacts', cache, DevelopmentArtifact.ohosInternalBuild);
 
   @override
   List<String> getPackageDirs() => const <String>[];

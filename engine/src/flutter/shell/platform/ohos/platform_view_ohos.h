@@ -163,7 +163,9 @@ class PlatformViewOHOS final : public PlatformView {
   void OnAxisEvent(const std::shared_ptr<std::string[]>& axisPacketString,
                    const int& size);
 
-  void RunTask(OhosThreadType type, const fml::closure& task, int64_t millis = 0);
+  void RunTask(OhosThreadType type,
+               const fml::closure& task,
+               int64_t millis = 0);
 
   void SetSemanticsBridge(std::shared_ptr<SemanticsBridge> bridge,
                           std::shared_ptr<std::mutex> mutex);
@@ -290,6 +292,10 @@ class PlatformViewOHOS final : public PlatformView {
   /// @brief  Applies the given reclaim decision.
   /// @param  decision  The reclaim decision to apply
   void ApplyReclaimLevel(GpuReclaimDecision decision);
+
+  /// @brief  Notifies the framework to trim image caches and schedules one
+  ///         frame so deferred disposal can run before native teardown.
+  void RequestBackgroundImageCacheCleanup();
 
   /// @brief  Executes kRestore level actions (foreground restoration).
   void ExecuteReclaimRestore();

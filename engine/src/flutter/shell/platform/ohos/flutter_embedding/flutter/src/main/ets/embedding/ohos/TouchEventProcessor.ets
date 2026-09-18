@@ -439,7 +439,7 @@ export default class TouchEventProcessor {
         } as AxisEvent;
 
         let nodeController = params['nodeController'] as EmbeddingNodeController;
-        nodeController.postAxisEvent(axisEvent)
+        nodeController.postAxisEvent(axisEvent);
       }      
     });
   }
@@ -467,8 +467,11 @@ export default class TouchEventProcessor {
         if (down) {
           //如果flutter端判断当前platformView是可点击的，则将事件分发出去
           let touchEvent: CustomTouchEvent = TouchEventProcessor.getInstance().constructCustomTouchEvent(strings, top, left);
+          // Correct local coordinates for rotation/scale using the global→local
+          // affine stored at layout time (PlatformViewsController.offset).
+          TouchEventProcessor.applyAffineTransform(touchEvent, params['affineTransform'] as Array<number> | undefined);
           let nodeController = params['nodeController'] as EmbeddingNodeController;
-          nodeController.postEvent(touchEvent)
+          nodeController.postEvent(touchEvent);
           // Keep the text-input handoff check on the same path that delivers
           // touch events to ArkUI. postTouchEvent can run more than once for a
           // gesture, so non-DOWN events also consume stale child-editor markers
@@ -539,6 +542,8 @@ export default class TouchEventProcessor {
       screenY: mousePacket.screenY,
       x: mousePacket.x,
       y: mousePacket.y,
+      source: SourceType.Mouse,
+      sourceTool: SourceTool.MOUSE,
       stopPropagation: () => {},
       timestamp: mousePacket.timestamp,
       pressure: 0,
@@ -579,17 +584,49 @@ export default class TouchEventProcessor {
         const left = params['left'] as number ?? 0;
         const top = params['top'] as number ?? 0;
         let down = params['down'] as boolean ?? false;
+        // 跨区域拖入时合成的 Press 标志，独立于 Dart 管理的 params['down']
+        let synthesized = params['mouseDownSynthesized'] as boolean ?? false;
         let mouseEvent: MouseEvent = TouchEventProcessor.getInstance().constructMouseEvent(strings, top, left);
 
-        if (mouseEvent.action != MouseAction.Press && mouseEvent.action != MouseAction.Release && params["hover"]) {
+        if (synthesized) {
+          // 已合成 Press，Release 直接分发；Move 仅在 view 内分发，避免离开时边界外坐标误触发 mouseleave
+          if (mouseEvent.action == MouseAction.Release ||
+            (mouseEvent.action == MouseAction.Move && this.checkHitPlatformViewByLocal(mouseEvent, params))) {
+            let nodeController = params['nodeController'] as EmbeddingNodeController;
+            nodeController.postMouseEvent(mouseEvent);
+          }
+          if (mouseEvent.action == MouseAction.Release) {
+            // 手势结束清除标志（Dart 跨区域时不发 onTouch UP）
+            params['mouseDownSynthesized'] = false;
+            params['mouseEvent'] = undefined;
+          }
+          break;
+        } else if (mouseEvent.action != MouseAction.Press && mouseEvent.action != MouseAction.Release && params["hover"]) {
           // 如果鼠标事件不是OH_NATIVEXCOMPONENT_MOUSE_PRESS类型或OH_NATIVEXCOMPONENT_MOUSE_RELEASE类型，则
           // 直接分发出去
           let nodeController = params['nodeController'] as EmbeddingNodeController;
-          nodeController.postMouseEvent(mouseEvent)
+          nodeController.postMouseEvent(mouseEvent);
         } else if (down) {
           // 如果flutter端判断当前platformView是可点击的，则将事件分发出去,并结束分发
           let nodeController = params['nodeController'] as EmbeddingNodeController;
-          nodeController.postMouseEvent(mouseEvent)
+          nodeController.postMouseEvent(mouseEvent);
+          break;
+        } else if (mouseEvent.button != 0 && mouseEvent.action != MouseAction.Press &&
+          this.checkHitPlatformViewByLocal(mouseEvent, params)) {
+          // 跨区域按键拖入：down 恒为 false，webview 未收到 Press 会拒绝 Release。
+          // 拖入瞬间合成 Press 补发，置 synthesized=true 使后续 Release 正常分发。
+          // 排除 action==Press：区域内直接点击应走缓存分支由 Dart drain，避免双发 Press。
+          let nodeController = params['nodeController'] as EmbeddingNodeController;
+          let originalAction = mouseEvent.action;
+          mouseEvent.action = MouseAction.Press;
+          nodeController.postMouseEvent(mouseEvent);
+          mouseEvent.action = originalAction;
+          params['mouseDownSynthesized'] = true;
+          params['mouseEvent'] = undefined;
+          nodeController.postMouseEvent(mouseEvent);
+          if (mouseEvent.action == MouseAction.Release) {
+            params['mouseDownSynthesized'] = false;
+          }
           break;
         } else {
           // 如果鼠标事件为OH_NATIVEXCOMPONENT_MOUSE_PRESS，说明是下一次点击了，这时候需要清空上一次的数据
@@ -613,6 +650,90 @@ export default class TouchEventProcessor {
       return true;
     } else {
       return false;
+    }
+  }
+
+  /**
+   * Checks whether the mouse cursor is within the PlatformView bounds.
+   * mouseEvent.x/y are local px; params['width'/'height'] are vp, converted via vp2px.
+   */
+  private checkHitPlatformViewByLocal(mouseEvent: MouseEvent, params: Record<string, ESObject>): boolean {
+    const viewWidth = params['width'] as number ?? 0;
+    const viewHeight = params['height'] as number ?? 0;
+    if (viewWidth <= 0 || viewHeight <= 0) {
+      return false;
+    }
+    return mouseEvent.x >= 0 && mouseEvent.x <= vp2px(viewWidth) &&
+      mouseEvent.y >= 0 && mouseEvent.y <= vp2px(viewHeight);
+  }
+
+  /**
+   * Corrects the local coordinates of a touch event using the global→local
+   * affine derived in PlatformViewsController.applyTransformOffset.
+   *
+   * affineTransform = [invScaleX, invShearY, invTx, invShearX, invScaleY, invTy] with
+   *   localX = invScaleX*gx + invShearY*gy + invTx ; localY = invShearX*gx + invScaleY*gy + invTy
+   * where (gx, gy) is the raw screen coordinate (stored identically in the
+   * touch object's displayX/displayY/windowX/windowY/screenX/screenY) and
+   * (x, y) is the platform-view local coordinate.
+   *
+   * For an unrotated view at offset (left, top) this reduces to localX = gx −
+   * left, matching decodeTouchPacket's existing computation, so non-rotated
+   * behaviour is unchanged. Rotated/scaled views (e.g. WebView inside a
+   * RotatedBox) get the correctly transformed local coordinate instead.
+   *
+   * This must be applied exactly once per event, on the dispatch path
+   * (postTouchEvent immediate branch, or onTouch flush of buffered events).
+   *
+   * @param event - The touch event whose touch points need correction
+   * @param affineTransform - The global→local affine [invScaleX, invShearY, invTx, invShearX, invScaleY, invTy]
+   */
+  public static applyAffineTransform(event: CustomTouchEvent, affineTransform: Array<number> | undefined): void {
+    if (affineTransform == undefined || affineTransform.length < 6) {
+      return;
+    }
+    let invScaleX = affineTransform[0];
+    let invShearY = affineTransform[1];
+    let invTx     = affineTransform[2];
+    let invShearX = affineTransform[3];
+    let invScaleY = affineTransform[4];
+    let invTy     = affineTransform[5];
+
+    // Guard against non-finite coefficients (NaN / Infinity).  Although
+    // applyTransformOffset validates the source matrix before storing it,
+    // this is a defensive check at the consumption site to ensure that
+    // stale or corrupted data never produces non-finite touch coordinates.
+    if (!Number.isFinite(invScaleX) || !Number.isFinite(invShearY) || !Number.isFinite(invTx) ||
+        !Number.isFinite(invShearX) || !Number.isFinite(invScaleY) || !Number.isFinite(invTy)) {
+      return;
+    }
+
+    TouchEventProcessor.applyAffineToObjects(event.changedTouches, invScaleX, invShearY, invTx, invShearX, invScaleY, invTy);
+    TouchEventProcessor.applyAffineToObjects(event.touches, invScaleX, invShearY, invTx, invShearX, invScaleY, invTy);
+  }
+
+  // Apply the global→local affine to the touch coordinates.
+  // Only x/y (local coordinates) are overwritten; displayX/displayY/windowX/
+  // windowY/screenX/screenY intentionally remain as the original screen
+  // coordinates — they represent the global touch position, while x/y
+  // represent the position relative to the component.  This matches the
+  // OHOS TouchObject contract and the Android MotionEvent convention
+  // (getX/getY = local, getRawX/getRawY = screen).
+  private static applyAffineToObjects(objects: CustomTouchObject[], invScaleX: number, invShearY: number, invTx: number,
+    invShearX: number, invScaleY: number, invTy: number): void {
+    for (let i = 0; i < objects.length; i++) {
+      let obj = objects[i];
+      let gx = obj.displayX;
+      let gy = obj.displayY;
+      let lx = invScaleX * gx + invShearY * gy + invTx;
+      let ly = invShearX * gx + invScaleY * gy + invTy;
+
+      if (Number.isFinite(lx)) {
+        obj.x = lx;
+      }
+      if (Number.isFinite(ly)) {
+        obj.y = ly;
+      }
     }
   }
 }

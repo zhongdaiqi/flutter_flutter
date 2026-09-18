@@ -26,7 +26,6 @@ import 'actions.dart';
 import 'basic.dart';
 import 'binding.dart';
 import 'display_feature_sub_screen.dart';
-import 'media_query.dart';
 import 'focus_manager.dart';
 import 'focus_scope.dart';
 import 'focus_traversal.dart';
@@ -346,16 +345,12 @@ abstract class TransitionRoute<T> extends OverlayRoute<T> implements PredictiveB
     // Navigator to rebuild on every keyboard show/hide.
     if (_maxScreenDimension == null) {
       try {
-        final ui.PlatformDispatcher dispatcher =
-            WidgetsBinding.instance?.platformDispatcher ?? ui.PlatformDispatcher.instance;
+        final ui.PlatformDispatcher dispatcher = WidgetsBinding.instance.platformDispatcher;
         final ui.FlutterView? view = dispatcher.implicitView ?? dispatcher.views.firstOrNull;
         if (view != null && view.devicePixelRatio > 0.0) {
           final Size physicalSize = view.physicalSize;
           final double dpr = view.devicePixelRatio;
-          final Size logicalSize = Size(
-            physicalSize.width / dpr,
-            physicalSize.height / dpr,
-          );
+          final Size logicalSize = Size(physicalSize.width / dpr, physicalSize.height / dpr);
           _maxScreenDimension = logicalSize.width > logicalSize.height
               ? logicalSize.width
               : logicalSize.height;
@@ -371,8 +366,9 @@ abstract class TransitionRoute<T> extends OverlayRoute<T> implements PredictiveB
 
     if (_lastFrameTime != null) {
       // The unit of the variable dt is seconds
-      final double dt = now.difference(_lastFrameTime!).inMicroseconds.toDouble()
-        / Duration.microsecondsPerSecond;
+      final double dt =
+          now.difference(_lastFrameTime!).inMicroseconds.toDouble() /
+          Duration.microsecondsPerSecond;
       if (dt > 0 && dt < 0.1) {
         // Use cached screen dimension to avoid MediaQuery lookup on every frame.
         // Screen size doesn't change during a transition.
@@ -397,7 +393,7 @@ abstract class TransitionRoute<T> extends OverlayRoute<T> implements PredictiveB
         if (pixelVelocity > 0) {
           // Build route identifier info
           final String routeName = settings.name ?? runtimeType.toString();
-          final String routeInfo = debugLabel != null ? '$routeName($debugLabel)' : routeName;
+          final String routeInfo = '$routeName($debugLabel)';
           WidgetsBinding.instance.recordTranslateVelocity(
             velocity: pixelVelocity,
             source: TranslateAnimationSource.pageTransition,
@@ -1244,6 +1240,18 @@ class _ModalScopeState<T> extends State<_ModalScope<T>> {
   // and route.offstage.
   void _routeSetState(VoidCallback fn) {
     if (widget.route.isCurrent && !_shouldIgnoreFocusRequest && _shouldRequestFocus) {
+      // In split-view mode, redirect focus to the pre-popup location captured
+      // when the outermost popup was pushed. Only redirect when this route is
+      // NOT itself a PopupRoute (popup-to-popup transitions use default focus).
+      if (widget.route is! PopupRoute) {
+        final FocusScopeNode? popupPreviousScope = widget.route.navigator
+            ?.getPopupPreviousFocusScope();
+        if (popupPreviousScope != null) {
+          popupPreviousScope.requestFocus();
+          setState(fn);
+          return;
+        }
+      }
       widget.route.navigator!.focusNode.enclosingScope?.setFirstFocus(focusScopeNode);
     }
     setState(fn);

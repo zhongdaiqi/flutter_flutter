@@ -190,8 +190,7 @@ def engineConfig(buildInfo, args):
       "--ohos-cpu %s " % buildInfo.targetArch + "--runtime-mode %s " % buildInfo.buildType + OPT +
       LTO + unixCommand + "--no-goma " + "--no-prebuilt-dart-sdk " + "--full-dart-sdk " +
       "--embedder-for-target " + "--disable-desktop-embeddings " + "--no-build-embedder-examples " +
-      "--ohos-api-int %s " % args.ohos_api_int + "--verbose " +
-      UNUSE_BISHENG +
+      "--ohos-api-int %s " % args.ohos_api_int + "--verbose " + UNUSE_BISHENG +
       args.gn_extra_param.replace("\\", ""),
       checkCode=False,
       timeout=600,
@@ -203,6 +202,8 @@ def engineCompile(buildInfo):
   command = "ninja -C %s default " % os.path.join("src", "out", getOutput(buildInfo))
   if IS_WINDOWS and buildInfo.buildType != "debug":
     command += "flutter/build/archives:archive_win_gen_snapshot "
+  if not IS_WINDOWS:
+    command += "flutter/shell/platform/ohos:flutter_ohos_unittests "
   runCommand(command)
 
 
@@ -327,7 +328,9 @@ def addParseParam(parser):
   )
   parser.add_argument("--host-cpu", type=str, choices=['x64', 'arm64'], default="x64")
   parser.add_argument("--unoptimized", action="store_true", help="Build unoptimized version.")
-  parser.add_argument("--unuse-bisheng", action="store_true", help="Build without BiSheng compiler.")
+  parser.add_argument(
+      "--unuse-bisheng", action="store_true", help="Build without BiSheng compiler."
+  )
 
 
 def updateCode(args):

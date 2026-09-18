@@ -8,9 +8,9 @@
 #include <functional>
 #include <mutex>
 
+#include "flutter/fml/logging.h"
 #include "flutter/fml/make_copyable.h"
 #include "flutter/fml/memory/weak_ptr.h"
-#include "flutter/fml/logging.h"
 #include "flutter/fml/trace_event.h"
 
 namespace fml {
@@ -39,7 +39,8 @@ class FlutterWatchdog : public std::enable_shared_from_this<FlutterWatchdog> {
 
 FlutterWatchdog::FlutterWatchdog(fml::RefPtr<fml::TaskRunner> ui)
     : m_ui(std::move(ui)) {
-  FML_DLOG(INFO) << "FlutterWatchdog::FlutterWatchdog Thread Id = " <<m_ui->GetTaskQueueId();
+  FML_DLOG(INFO) << "FlutterWatchdog::FlutterWatchdog Thread Id = "
+                 << m_ui->GetTaskQueueId();
 }
 
 void FlutterWatchdog::handleFlutterUiThreadAliveNotification() {
@@ -82,7 +83,7 @@ void FlutterWatchdog::runHiCollieStuckDetectionTask() {
 void FlutterWatchdog::reportStuckEvent() {
   auto now = std::chrono::steady_clock::now();
   auto timeDelta = now - m_lastWatchTime;
-  //假设timeDelta大于6s或小于1.5s则表示上报出现异常，会重新进行上报
+  // 假设timeDelta大于6s或小于1.5s则表示上报出现异常，会重新进行上报
   if (timeDelta / resetRatio > checkIntervalTime ||
       timeDelta < checkIntervalTime / resetRatio) {
     FML_LOG(ERROR)
@@ -93,12 +94,11 @@ void FlutterWatchdog::reportStuckEvent() {
         << ", lastTime: "
         << std::chrono::duration<double>(m_lastWatchTime.time_since_epoch())
                .count()
-        << "Thread Id:" 
-        << m_ui->GetTaskQueueId();
+        << "Thread Id:" << m_ui->GetTaskQueueId();
     return;
   }
 
-  //m_need_report不为true时代表应用已被杀死，则不需要再上报
+  // m_need_report不为true时代表应用已被杀死，则不需要再上报
   if (!m_need_report) {
     return;
   }
@@ -108,16 +108,15 @@ void FlutterWatchdog::reportStuckEvent() {
   }
 
   FML_LOG(WARNING) << "FlutterWatchdog: calling OH_HiCollie_Report(), "
-                    "m_issSixSecondEvent = "
-                 << m_is_six_second_event;
+                      "m_issSixSecondEvent = "
+                   << m_is_six_second_event;
 
   // 如果卡住6秒，则为true。如果卡住3秒，则为False。此时传入的m_is_six_second_event若为false，传入OH_HiCollie_Report接口后
   // 会将m_is_six_second_event置为true，传入为true时则会进行卡死上报。
   HiCollie_ErrorCode reportRes = OH_HiCollie_Report(&m_is_six_second_event);
   if (reportRes == HICOLLIE_SUCCESS) {
     FML_LOG(INFO) << "FlutterWatchdog: OH_HiCollie_Report() success, "
-                  << "m_isSixSecondEvent = "
-                  << m_is_six_second_event;
+                  << "m_isSixSecondEvent = " << m_is_six_second_event;
   } else {
     FML_LOG(ERROR) << "FlutterWatchdog: OH_HiCollie_Report() failed with code "
                    << static_cast<int>(reportRes);
@@ -139,7 +138,6 @@ size_t RunWithFlutterWatchdogSharedPtr(
 
 std::pair<size_t, std::function<void(size_t)>> MakeWatchdog(
     const fml::RefPtr<fml::TaskRunner>& ui) {
-
   // 创建指向FlutterWatchdog对象的智能指针，并返回其所在vector中的下标
   size_t curSize =
       RunWithFlutterWatchdogSharedPtr([ui](auto& flutterWatchdogVec) {
@@ -177,10 +175,11 @@ std::pair<size_t, std::function<void(size_t)>> MakeWatchdog(
       if (flutterWatchdogVec.size() < curSize) {
         return;
       }
-      flutterWatchdogVec[curSize].reset();
+      flutterWatchdogVec[curSize - 1].reset();
     });
-    FML_LOG(ERROR) << "FlutterWatchdog: OH_HiCollie_Init_StuckDetection() failed with code "
-                    << static_cast<int>(structDetectionInitRes);
+    FML_LOG(ERROR) << "FlutterWatchdog: OH_HiCollie_Init_StuckDetection() "
+                      "failed with code "
+                   << static_cast<int>(structDetectionInitRes);
 
     curSize = 0;
   }

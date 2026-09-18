@@ -189,6 +189,30 @@ abstract final class SystemChannels {
   /// Currently supported on Android only.
   static const MethodChannel processText = OptionalMethodChannel('flutter/processtext');
 
+  /// An unidirectional JSON [MethodChannel] for receiving status bar related
+  /// events from iOS and OHOS.
+  ///
+  /// The only method this channel receives is `handleScrollToTop` which
+  /// is called on iOS when the user taps the status bar to scroll a scroll view
+  /// to the top.
+  ///
+  /// On OHOS, the embedder sends the same method when the system reports a
+  /// status bar tap (for example via `usual.event.CLICK_STATUSBAR`), so that
+  /// [WidgetsBindingObserver.handleStatusBarTap] behaves consistently with iOS.
+  ///
+  /// Typically you should not subscribe to this channel directly. The events are
+  /// dispatched to registered [WidgetsBindingObserver]s via the
+  /// [WidgetsBindingObserver.handleStatusBarTap] callback.
+  ///
+  /// See also:
+  ///
+  ///  * [WidgetsBindingObserver.handleStatusBarTap], the widgets library callback
+  ///    for dispatching the status bar tap event to the widget tree.
+  static const OptionalMethodChannel statusBar = OptionalMethodChannel(
+    'flutter/status_bar',
+    JSONMethodCodec(),
+  );
+
   /// A JSON [MethodChannel] for handling text input.
   ///
   /// This channel exposes a system text input control for interacting with IMEs
@@ -428,6 +452,7 @@ abstract final class SystemChannels {
   ///    device to a system cursor. The parameters are
   ///    integer `device`, and string `kind`.
   static const MethodChannel mouseCursor = OptionalMethodChannel('flutter/mousecursor');
+
   /// A [MethodChannel] for handling flex overflow in the UI.
   ///
   /// The following outgoing methods are defined for this channel (invoked using
@@ -435,9 +460,7 @@ abstract final class SystemChannels {
   ///
   ///  * `updateDpiScale`: Request to update the DPI scale factor to handle flex
   ///    overflow. The parameter is a double `dpiScale` representing the scale factor.
-  static const MethodChannel displayMetrics = OptionalMethodChannel(
-    'flutter/displaymetrics',
-  );
+  static const MethodChannel displayMetrics = OptionalMethodChannel('flutter/displaymetrics');
 
   /// A [MethodChannel] for synchronizing restoration data with the engine.
   ///
@@ -605,7 +628,6 @@ abstract final class SystemChannels {
   ///     device.
   static const MethodChannel sensitiveContent = OptionalMethodChannel('flutter/sensitivecontent');
 
-  static const MethodChannel nativeVsync = MethodChannel(
-    'flutter/nativevsync'
-  );
+  /// Channel for native vsync requests used by the OHOS LTPO feature.
+  static const MethodChannel nativeVsync = MethodChannel('flutter/nativevsync');
 }

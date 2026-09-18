@@ -50,11 +50,11 @@ def upload_file_via_archive(file_path: str, target_path: str) -> bool:
     file_name = os.path.basename(file_path)
     Logger.info(f"Uploading: {file_name} -> {target_path}")
 
-    cmd = ['archive', 'cp', file_path, target_path]
-    print(f"$ {' '.join(cmd)}")
+    cmd = f'archive cp "{file_path}" "{target_path}"'
+    print(f"$ {cmd}")
 
     try:
-        result = subprocess.run(cmd, check=True)
+        result = subprocess.run(cmd, shell=True, check=True)
         return result.returncode == 0
     except subprocess.CalledProcessError as e:
         Logger.error(f"Failed to upload {file_name}: {e}")

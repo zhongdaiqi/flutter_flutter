@@ -63,6 +63,11 @@ class SplitViewNavigatorPolicy with WidgetsBindingObserver {
   final Map<Route<dynamic>, MirrorBarrierInfo> _mirrorBarrierRoutes =
       <Route<dynamic>, MirrorBarrierInfo>{};
 
+  /// The [FocusScopeNode] that held primary focus when the outermost popup
+  /// was pushed. Shared across all active barriers so that chained dialogs
+  /// always restore focus to the original pre-popup location.
+  FocusScopeNode? _popupPreviousFocusScope;
+
   bool _isSplitViewActive = false;
   bool _splitViewVisible = false;
   bool _homePageReady = false;
@@ -87,7 +92,7 @@ class SplitViewNavigatorPolicy with WidgetsBindingObserver {
 
     _isSplitViewActive = _checkScreenSizeAndSetSplitScreen();
     SplitViewManager().setSplitViewActive(_isSplitViewActive);
-    final manager = SplitViewManager();
+    final SplitViewManager manager = SplitViewManager();
     _splitViewVisible =
         !manager.isForceFullscreen &&
         !(manager.isForcedLandscape && SplitViewConfig().supportLandscapeFullscreen) &&
@@ -103,6 +108,7 @@ class SplitViewNavigatorPolicy with WidgetsBindingObserver {
       info.mirrorBarrier.remove();
     }
     _mirrorBarrierRoutes.clear();
+    _popupPreviousFocusScope = null;
   }
 
   /// Resets the overlay keys.
@@ -166,11 +172,26 @@ class SplitViewNavigatorPolicy with WidgetsBindingObserver {
   }
 
   /// Disposes the mirror barrier for the given entry if it is a [PopupRoute].
+  // ignore: library_private_types_in_public_api
   void disposeMirrorBarrierFor(_RouteEntry entry) {
     if (entry.route is PopupRoute && _mirrorBarrierRoutes.containsKey(entry.route)) {
       final MirrorBarrierInfo mirrorInfo = _mirrorBarrierRoutes.remove(entry.route)!;
+      if (_mirrorBarrierRoutes.isEmpty) {
+        _popupPreviousFocusScope = null;
+      }
       mirrorInfo.mirrorBarrier.remove();
     }
+  }
+
+  /// Returns the shared pre-popup [FocusScopeNode], or null if no popup is
+  /// active or the captured scope has been disposed (e.g. its route was
+  /// removed from the navigation stack while the popup was still visible).
+  FocusScopeNode? getPopupPreviousFocusScope() {
+    final FocusScopeNode? scope = _popupPreviousFocusScope;
+    if (scope == null || scope.parent == null || !scope.canRequestFocus) {
+      return null;
+    }
+    return scope;
   }
 
   /// Returns the home page name if split-view is active and home page is ready.
@@ -182,6 +203,7 @@ class SplitViewNavigatorPolicy with WidgetsBindingObserver {
   /// Whether the given entry is the home page and effective routes should be skipped.
   /// In split-view mode when the home page is on top of the left side,
   /// we skip setting effectiveNextRoute for it.
+  // ignore: library_private_types_in_public_api
   bool shouldSkipEffectiveRoutesForEntry(_RouteEntry entry) {
     return _isHomePageTopOnLeft && entry == _cachedHomePageEntry;
   }
@@ -194,7 +216,7 @@ class SplitViewNavigatorPolicy with WidgetsBindingObserver {
   /// **Scenario A — Home page is at the top of the stack (e.g. after
   /// `deduplicateRouteStack` moved it up):**
   /// - If there is another home page entry deeper in the stack, the pop
-  ///   is **not blocked** — the top home page is simply removed, and
+  ///   is **not blocked** — the top home page is removed directly, and
   ///   the deeper home page naturally takes its place on the left side.
   /// - If the sole home page handles pop internally
   ///   ([Route.willHandlePopInternally] is true), the pop is **not
@@ -297,12 +319,17 @@ class SplitViewNavigatorPolicy with WidgetsBindingObserver {
   /// the right, the popup should appear on the right side without clearing
   /// the detail pages. The [MirrorBarrier] mechanism ensures the popup's
   /// barrier covers the left side while the popup content displays on right.
+  // ignore: library_private_types_in_public_api
   bool shouldClearRightStackOnPushByRoute(_RouteEntry entry) {
-    if (!_isPushFromHomePage()) return false;
+    if (!_isPushFromHomePage()) {
+      return false;
+    }
     // Popup routes should overlay the current layout without clearing
     // the right side. When a popup is pushed from home, it should appear
     // on the right with MirrorBarrier covering the left.
-    if (entry.route is PopupRoute) return false;
+    if (entry.route is PopupRoute) {
+      return false;
+    }
     return true;
   }
 
@@ -326,6 +353,7 @@ class SplitViewNavigatorPolicy with WidgetsBindingObserver {
   /// Returns true only when:
   /// - The home page is ready.
   /// - The target entry's route name matches the home page name.
+  // ignore: library_private_types_in_public_api
   bool shouldClearAllStackOnPushByRoute(_RouteEntry entry) {
     if (!_homePageReady) {
       return false;
@@ -351,7 +379,7 @@ class SplitViewNavigatorPolicy with WidgetsBindingObserver {
     if (homePageEntry == null) {
       return;
     }
-    var pastHomePage = false;
+    bool pastHomePage = false;
     for (final _RouteEntry entry in _navigator._history) {
       if (entry == homePageEntry) {
         pastHomePage = true;
@@ -377,14 +405,14 @@ class SplitViewNavigatorPolicy with WidgetsBindingObserver {
     // the new home page becomes the sole entry displayed on the left side.
     for (final _RouteEntry entry in _navigator._history) {
       if (_RouteEntry.isPresentPredicate(entry) && entry.route is! PopupRoute) {
-        entry.complete<dynamic>(null, isReplaced: false);
+        entry.complete<dynamic>(null);
       }
     }
   }
 
   /// Updates the force fullscreen state based on the given route settings.
   void updateForceFullscreen(RouteSettings? routeSettings) {
-    final config = SplitViewConfig();
+    final SplitViewConfig config = SplitViewConfig();
     final bool isForceFullscreen = config.isForceFullscreenRoute(routeSettings?.name);
     SplitViewManager().setForceFullscreen(isForceFullscreen);
     final bool isForcedLandscape =
@@ -455,7 +483,7 @@ class SplitViewNavigatorPolicy with WidgetsBindingObserver {
 
     final double widthToHeightRatio = logicalWidth / logicalHeight;
     final double heightToWidthRatio = logicalHeight / logicalWidth;
-    final config = SplitViewConfig();
+    final SplitViewConfig config = SplitViewConfig();
 
     if (widthToHeightRatio <= 1.2 && heightToWidthRatio <= 1.2) {
       return config.enableSquareWindowSplit;
@@ -472,12 +500,13 @@ class SplitViewNavigatorPolicy with WidgetsBindingObserver {
     final bool newActive = _checkScreenSizeAndSetSplitScreen();
     SplitViewManager().setSplitViewActive(newActive);
 
-    final manager = SplitViewManager();
+    final SplitViewManager manager = SplitViewManager();
     final bool isForceFullscreen = manager.isForceFullscreen;
     final bool isForcedLandscape =
         manager.isForcedLandscape && SplitViewConfig().supportLandscapeFullscreen;
     final bool newVisible = !isForceFullscreen && !isForcedLandscape && newActive;
     if (_isSplitViewActive != newActive || _splitViewVisible != newVisible) {
+      // ignore: invalid_use_of_protected_member
       _navigator.setState(() {
         _isSplitViewActive = newActive;
         _splitViewVisible = newVisible;
@@ -493,21 +522,27 @@ class SplitViewNavigatorPolicy with WidgetsBindingObserver {
   }
 
   bool _isPushFromHomePage() {
-    if (!_homePageReady) return false;
+    if (!_homePageReady) {
+      return false;
+    }
     final _RouteEntry? homePageEntry = _cachedHomePageEntry;
-    if (_callerRoute == null || homePageEntry == null) return false;
+    if (_callerRoute == null || homePageEntry == null) {
+      return false;
+    }
     return _callerRoute == homePageEntry.route;
   }
 
   bool get _isHomePageTopOnLeft {
-    if (_homePageReady) return true;
+    if (_homePageReady) {
+      return true;
+    }
     return _cachedHomePageEntry != null &&
         _cachedHomePageEntry ==
             _navigator._lastRouteEntryWhereOrNull(_RouteEntry.isPresentPredicate);
   }
 
   bool _hasDetailEntriesAfterHomePage(_RouteEntry homePageEntry) {
-    var pastHomePage = false;
+    bool pastHomePage = false;
     for (final _RouteEntry entry in _navigator._history) {
       if (entry == homePageEntry) {
         pastHomePage = true;
@@ -521,13 +556,18 @@ class SplitViewNavigatorPolicy with WidgetsBindingObserver {
   }
 
   ({List<OverlayEntry> left, List<OverlayEntry> right}) _splitOverlayEntries() {
-    final left = <OverlayEntry>[];
-    final right = <OverlayEntry>[];
+    final List<OverlayEntry> left = <OverlayEntry>[];
+    final List<OverlayEntry> right = <OverlayEntry>[];
 
     if (!_homePageReady) {
       for (final _RouteEntry entry in _navigator._history) {
         if (entry.route is PopupRoute) {
-          _assignPopupRouteEntries(entry.route as PopupRoute, left, right, popupOnLeft: true);
+          _assignPopupRouteEntries(
+            entry.route as PopupRoute<dynamic>,
+            left,
+            right,
+            popupOnLeft: true,
+          );
         } else {
           left.addAll(entry.route.overlayEntries);
         }
@@ -541,7 +581,12 @@ class SplitViewNavigatorPolicy with WidgetsBindingObserver {
       // Put all entries on the left overlay as a safe default.
       for (final _RouteEntry entry in _navigator._history) {
         if (entry.route is PopupRoute) {
-          _assignPopupRouteEntries(entry.route as PopupRoute, left, right, popupOnLeft: true);
+          _assignPopupRouteEntries(
+            entry.route as PopupRoute<dynamic>,
+            left,
+            right,
+            popupOnLeft: true,
+          );
         } else {
           left.addAll(entry.route.overlayEntries);
         }
@@ -551,14 +596,19 @@ class SplitViewNavigatorPolicy with WidgetsBindingObserver {
 
     final bool rightHasDetail = _hasDetailEntriesAfterHomePage(homePageEntry);
 
-    var pastHomePage = false;
+    bool pastHomePage = false;
     for (final _RouteEntry entry in _navigator._history) {
       if (entry == homePageEntry) {
         left.addAll(entry.route.overlayEntries);
         pastHomePage = true;
       } else if (entry.route is PopupRoute) {
         final bool popupOnLeft = !rightHasDetail;
-        _assignPopupRouteEntries(entry.route as PopupRoute, left, right, popupOnLeft: popupOnLeft);
+        _assignPopupRouteEntries(
+          entry.route as PopupRoute<dynamic>,
+          left,
+          right,
+          popupOnLeft: popupOnLeft,
+        );
       } else if (!pastHomePage) {
         left.addAll(entry.route.overlayEntries);
       } else if (pastHomePage && entry.route.overlayEntries.isNotEmpty) {
@@ -591,7 +641,7 @@ class SplitViewNavigatorPolicy with WidgetsBindingObserver {
     if (!_mirrorBarrierRoutes.containsKey(popupRoute)) {
       final Color? barrierColor = popupRoute.barrierColor;
       final String? barrierLabel = popupRoute.barrierLabel;
-      final mirrorBarrier = OverlayEntry(
+      final OverlayEntry mirrorBarrier = OverlayEntry(
         builder: (BuildContext context) {
           Widget barrier;
           if (barrierColor != null && barrierColor.alpha != 0) {
@@ -617,6 +667,15 @@ class SplitViewNavigatorPolicy with WidgetsBindingObserver {
           return barrier;
         },
       );
+      // Capture the current primary focus scope when the first barrier is
+      // created. Shared by all subsequent barriers.
+      //
+      // nearestScope returns the FocusScopeNode itself when primaryFocus is
+      // a scope, so the captured scope's focusedChildren only contains
+      // healthy page subtrees and never the popup's scope.
+      if (_mirrorBarrierRoutes.isEmpty) {
+        _popupPreviousFocusScope = FocusManager.instance.primaryFocus?.nearestScope;
+      }
       _mirrorBarrierRoutes[popupRoute] = MirrorBarrierInfo(mirrorBarrier: mirrorBarrier);
     }
 

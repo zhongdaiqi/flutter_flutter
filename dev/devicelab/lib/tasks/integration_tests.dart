@@ -220,6 +220,20 @@ TaskFunction createWindowsStartupDriverTest({String? deviceIdOverride}) {
   ).call;
 }
 
+TaskFunction createDeferredComponentsTest() {
+  return DriverTest(
+    '${flutterDirectory.path}/dev/integration_tests/deferred_components_test',
+    'lib/main.dart',
+  ).call;
+}
+
+TaskFunction createReleaseSmokeTest() {
+  return IntegrationTest(
+    '${flutterDirectory.path}/dev/integration_tests/release_smoke_test',
+    'test_adapter/hello_world_test.dart',
+  ).call;
+}
+
 TaskFunction createWideGamutTest() {
   return IntegrationTest(
     '${flutterDirectory.path}/dev/integration_tests/wide_gamut_test',

@@ -444,7 +444,7 @@ class FakeFlutterManifest extends Fake implements FlutterManifest {
 
 class FakeOhosProject extends Fake implements OhosProject {
   @override
-  final String pluginConfigKey = 'ohos';
+  final pluginConfigKey = 'ohos';
 
   @override
   bool existsSync() => false;

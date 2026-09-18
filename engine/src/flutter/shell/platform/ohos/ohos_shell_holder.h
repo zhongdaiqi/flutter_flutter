@@ -24,9 +24,9 @@
 #include "accessibility/ohos_semantics_bridge.h"
 #include "flutter/assets/asset_resolver.h"
 #include "flutter/common/settings.h"
+#include "flutter/fml/platform/ohos/watchdog/ohos_watchdog.h"
 #include "flutter/shell/platform/ohos/napi/platform_view_ohos_napi.h"
 #include "flutter/shell/platform/ohos/platform_view_ohos.h"
-#include "flutter/fml/platform/ohos/watchdog/ohos_watchdog.h"
 
 #include "napi_common.h"
 #include "ohos_asset_provider.h"
@@ -55,6 +55,13 @@ class OHOSShellHolder {
               const std::vector<std::string>& entrypoint_args);
 
   std::unique_ptr<OHOSShellHolder> Spawn(
+      std::shared_ptr<PlatformViewOHOSNapi> napi_facade,
+      const std::string& entrypoint,
+      const std::string& libraryUrl,
+      const std::string& initial_route,
+      const std::vector<std::string>& entrypoint_args) const;
+
+  std::unique_ptr<OHOSShellHolder> SpawnAsync(
       std::shared_ptr<PlatformViewOHOSNapi> napi_facade,
       const std::string& entrypoint,
       const std::string& libraryUrl,
@@ -106,7 +113,8 @@ class OHOSShellHolder {
   RuntimeController::DartHeapUsage GetDartHeapMemoryUsage();
 
  private:
-  static constexpr int64_t kDartHeapMemoryThresholdBytes = 1536LL * 1024 * 1024;  // 1.5GB
+  static constexpr int64_t kDartHeapMemoryThresholdBytes =
+      1536LL * 1024 * 1024;  // 1.5GB
   static constexpr int kMemoryMonitorIntervalSeconds = 10;
   std::optional<RunConfiguration> BuildRunConfiguration(
       const std::string& entrypoint,

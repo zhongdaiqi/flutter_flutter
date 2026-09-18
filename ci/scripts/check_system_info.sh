@@ -10,6 +10,7 @@ check_system_info() {
     run_cmd "uname -a"
     run_cmd "cat /etc/os-release"
     run_cmd "id -un"
+    run_cmd "set"
 }
 
 check_system_info
