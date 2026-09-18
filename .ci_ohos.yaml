@@ -38,9 +38,9 @@ preparation_steps:
   - name: Prepare openharmony SDK
     script: ci/scripts/prepare_openharmony_sdk.sh
     description: Download openharmony sdk
-    args: 
+    args:
       - "https://flutter-ohos-test.obs.cn-south-1.myhuaweicloud.com/tools/sdk_openharmony.tar.gz"
-      - "3427ca8619edb6561c3c4e143a26c9fc41dfced8cd072667ca2fae8897b1cb67"
+      - "50bf46025db540a55bd6189164967446d1a76c3b4a9aaaf788915268959f1a16"
     required: true
 
   - name: Check System Information
@@ -86,4 +86,19 @@ compilation_steps:
   - name: Compile Tester
     script: ci/scripts/compile_tester.sh
     description: Compiling Tester
+    args: ["flutter_flutter/engine"]
+    required: true
+
+  - name: Dev Tests
+    script: ci/scripts/run_dev_tests.sh
+    args:
+      - dev/customer_testing,dart test,Customer Testing
+      - dev/a11y_assessments,flutter test,A11y Assessments
+      - dev/tracing_tests,flutter test --enable-vmservice,Tracing Tests
+      - dev/snippets,dart test,Snippets
+      - dev/tools,dart test,Tools
+      - dev/tools/vitool,flutter test,Vitool
+      - dev/tools/gen_defaults,dart test,Gen Defaults
+      - dev/tools/gen_keycodes,dart test,Gen Keycodes
+    description: Run all development tests
     required: true
