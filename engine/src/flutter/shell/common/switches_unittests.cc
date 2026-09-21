@@ -132,22 +132,6 @@ TEST(SwitchesTest, EnableAsserts) {
 }
 #endif
 
-TEST(SwitchesTest, EnableGlyphRasterParallelization) {
-  {
-    fml::CommandLine command_line = fml::CommandLineFromInitializerList(
-        {"command", "--enable-glyph-raster-parallelization"});
-    EXPECT_TRUE(command_line.HasOption("enable-glyph-raster-parallelization"));
-    Settings settings = SettingsFromCommandLine(command_line);
-    EXPECT_EQ(settings.enable_glyph_raster_parallelization, true);
-  }
-  {
-    fml::CommandLine command_line =
-        fml::CommandLineFromInitializerList({"command"});
-    Settings settings = SettingsFromCommandLine(command_line);
-    EXPECT_EQ(settings.enable_glyph_raster_parallelization, false);
-  }
-}
-
 }  // namespace testing
 }  // namespace flutter
 

@@ -247,9 +247,6 @@ struct Settings {
   // An experimental mode that antialiases lines.
   bool impeller_antialiased_lines = false;
 
-  // Whether to enable parallel glyph rasterization on multiple worker threads.
-  bool enable_glyph_raster_parallelization = false;
-
   // Log a warning during shell initialization if Impeller is not enabled.
   bool warn_on_impeller_opt_out = false;
 

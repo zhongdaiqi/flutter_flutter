@@ -53,8 +53,7 @@ std::unique_ptr<Surface> OHOSSurfaceVulkanImpeller::CreateGPUSurface(
   }
 
   std::unique_ptr<GPUSurfaceVulkanImpeller> gpu_surface =
-      std::make_unique<GPUSurfaceVulkanImpeller>(
-          nullptr, surface_context_vk_, ohos_context_->GetImpellerFlags());
+      std::make_unique<GPUSurfaceVulkanImpeller>(nullptr, surface_context_vk_);
 
   if (!gpu_surface->IsValid()) {
     return nullptr;
@@ -146,7 +145,7 @@ bool OHOSSurfaceVulkanImpeller::PrepareOffscreenWindow(int32_t width,
   if (!preload_gpu_surface_ && !is_surface_preload_) {
     is_surface_preload_ = true;
     preload_gpu_surface_ = std::make_unique<GPUSurfaceVulkanImpeller>(
-        nullptr, surface_context_vk_, ohos_context_->GetImpellerFlags());
+        nullptr, surface_context_vk_);
   }
   // return false means that it will not invoke PlatformView::NotifyCreated().
   // return false;
@@ -161,7 +160,7 @@ void OHOSSurfaceVulkanImpeller::PrepareGpuSurface() {
   if (!preload_gpu_surface_ && !is_surface_preload_) {
     is_surface_preload_ = true;
     preload_gpu_surface_ = std::make_unique<GPUSurfaceVulkanImpeller>(
-        nullptr, surface_context_vk_, ohos_context_->GetImpellerFlags());
+        nullptr, surface_context_vk_);
   }
 }
 
@@ -183,10 +182,10 @@ bool OHOSSurfaceVulkanImpeller::SetPresentInfo(
         << damage_rect.right() << "," << damage_rect.bottom() << ">";
     std::string damage_rect_str = oss.str();
     TRACE_EVENT1("flutter", "OHOSSurfaceVulkanImpeller::SetPresentInfo",
-                 "frame_damage", damage_rect_str.c_str());
+                  "frame_damage", damage_rect_str.c_str());
   } else {
     TRACE_EVENT1("flutter", "OHOSSurfaceVulkanImpeller::SetPresentInfo",
-                 "frame_damage", "no frame_damage");
+                  "frame_damage", "no frame_damage");
   }
 
   // pts upload

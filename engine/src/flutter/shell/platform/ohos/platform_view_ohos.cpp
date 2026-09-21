@@ -13,7 +13,6 @@
 #include <string>
 #include "flutter/common/constants.h"
 #include "flutter/fml/make_copyable.h"
-#include "flutter/impeller/base/flags.h"
 #include "flutter/impeller/renderer/backend/vulkan/context_vk.h"
 #include "flutter/lib/ui/window/viewport_metrics.h"
 #include "flutter/shell/common/shell_io_manager.h"
@@ -118,12 +117,6 @@ PlatformViewOHOS::PlatformViewOHOS(
           napi_facade,
           task_runners_.GetPlatformTaskRunner())) {
   if (ohos_context_) {
-    impeller::Flags impeller_flags;
-    impeller_flags.glyph_raster_parallelization =
-        delegate.OnPlatformViewGetSettings()
-            .enable_glyph_raster_parallelization;
-    ohos_context_->SetImpellerFlags(impeller_flags);
-
     FML_CHECK(ohos_context_->IsValid())
         << "Could not create surface from invalid HarmonyOS context.";
     surface_factory_ = std::make_shared<OhosSurfaceFactoryImpl>(ohos_context_);
@@ -861,9 +854,7 @@ void PlatformViewOHOS::OnAxisEvent(
   return napi_facade_->FlutterViewOnAxisEvent(axisPacketString, size);
 }
 
-void PlatformViewOHOS::RunTask(OhosThreadType type,
-                               const fml::closure& task,
-                               int64_t millis) {
+void PlatformViewOHOS::RunTask(OhosThreadType type, const fml::closure& task, int64_t millis) {
   fml::RefPtr<fml::TaskRunner> TaskRunnerPtr = nullptr;
   switch (type) {
     case OhosThreadType::kPlatform:

@@ -76,7 +76,6 @@ impeller_component("impeller_unittests") {
       "playground",
       "renderer:renderer_unittests",
       "typographer:typographer_unittests",
-      "typographer/backends/skia:glyph_raster_worker_unittests",
     ]
   }
 

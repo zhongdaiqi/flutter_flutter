@@ -705,7 +705,8 @@ TEST_P(AiksTest, DifferenceClipsMustRenderIdenticallyAcrossBackends) {
 }
 
 TEST_P(AiksTest, TextContentsMismatchedTransformTest) {
-  AiksContext aiks_context(GetContext(), TypographerContextSkia::Make());
+  AiksContext aiks_context(GetContext(),
+                           std::make_shared<TypographerContextSkia>());
 
   // Verifies that TextContents only use the scale/transform that is
   // computed during preroll.
@@ -776,7 +777,8 @@ TEST_P(AiksTest, TextWithShadowCache) {
   paint.setColor(DlColor::ARGB(1, 0.1, 0.1, 0.1));
   builder.DrawPaint(paint);
 
-  AiksContext aiks_context(GetContext(), TypographerContextSkia::Make());
+  AiksContext aiks_context(GetContext(),
+                           std::make_shared<TypographerContextSkia>());
   // Cache empty
   EXPECT_EQ(aiks_context.GetContentContext()
                 .GetTextShadowCache()
@@ -805,7 +807,8 @@ TEST_P(AiksTest, MultipleTextWithShadowCache) {
   paint.setColor(DlColor::ARGB(1, 0.1, 0.1, 0.1));
   builder.DrawPaint(paint);
 
-  AiksContext aiks_context(GetContext(), TypographerContextSkia::Make());
+  AiksContext aiks_context(GetContext(),
+                           std::make_shared<TypographerContextSkia>());
   // Cache empty
   EXPECT_EQ(aiks_context.GetContentContext()
                 .GetTextShadowCache()
@@ -837,7 +840,8 @@ TEST_P(AiksTest, SingleIconShadowTest) {
   paint.setColor(DlColor::ARGB(1, 0.1, 0.1, 0.1));
   builder.DrawPaint(paint);
 
-  AiksContext aiks_context(GetContext(), TypographerContextSkia::Make());
+  AiksContext aiks_context(GetContext(),
+                           std::make_shared<TypographerContextSkia>());
   // Cache empty
   EXPECT_EQ(aiks_context.GetContentContext()
                 .GetTextShadowCache()
