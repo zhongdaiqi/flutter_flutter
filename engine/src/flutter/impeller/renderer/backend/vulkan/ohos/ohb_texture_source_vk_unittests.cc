@@ -261,4 +261,82 @@ TEST(OHBTextureSourceVKTest, CanImportYUVFormat) {
   context->Shutdown();
 }
 
+TEST(OHBTextureSourceVKTest, CanImportRGBX8888) {
+  auto context = CreateContext();
+  ASSERT_TRUE(context);
+
+  OH_NativeBuffer* native_buffer =
+      AllocNativeBuffer(16, 16, NATIVEBUFFER_PIXEL_FMT_RGBX_8888);
+  if (native_buffer == nullptr) {
+    GTEST_SKIP() << "Device does not support RGBX_8888 native buffers.";
+  }
+  OHNativeWindowBuffer* window_buffer =
+      OH_NativeWindow_CreateNativeWindowBufferFromNativeBuffer(native_buffer);
+  ASSERT_NE(window_buffer, nullptr);
+
+  OHBTextureSourceVK source(context, window_buffer, TextureColorSpace::kSRGB);
+  EXPECT_TRUE(source.IsValid()) << "RGBX_8888 buffer should be importable";
+  EXPECT_EQ(source.GetYUVConversion(), nullptr);
+  EXPECT_NE(source.GetImage(), vk::Image{});
+  EXPECT_NE(source.GetImageView(), vk::ImageView{});
+  EXPECT_NE(source.GetRenderTargetView(), vk::ImageView{});
+
+  OH_NativeWindow_DestroyNativeWindowBuffer(window_buffer);
+  OH_NativeBuffer_Unreference(native_buffer);
+  context->Shutdown();
+}
+
+TEST(OHBTextureSourceVKTest, ImportWithoutHwRenderUsage) {
+  auto context = CreateContext();
+  ASSERT_TRUE(context);
+
+  OH_NativeBuffer_Config config{};
+  config.width = 8;
+  config.height = 8;
+  config.format = NATIVEBUFFER_PIXEL_FMT_RGBA_8888;
+  config.usage = NATIVEBUFFER_USAGE_CPU_READ | NATIVEBUFFER_USAGE_CPU_WRITE;
+  config.stride = 0;
+  OH_NativeBuffer* native_buffer = OH_NativeBuffer_Alloc(&config);
+  if (native_buffer == nullptr) {
+    GTEST_SKIP() << "Device rejected CPU-only native buffer usage.";
+  }
+  OHNativeWindowBuffer* window_buffer =
+      OH_NativeWindow_CreateNativeWindowBufferFromNativeBuffer(native_buffer);
+  ASSERT_NE(window_buffer, nullptr);
+
+  OHBTextureSourceVK source(context, window_buffer, TextureColorSpace::kSRGB);
+  EXPECT_TRUE(source.IsValid());
+
+  OH_NativeWindow_DestroyNativeWindowBuffer(window_buffer);
+  OH_NativeBuffer_Unreference(native_buffer);
+  context->Shutdown();
+}
+
+TEST(OHBTextureSourceVKTest, ImportUnknownNativeBufferFormat) {
+  auto context = CreateContext();
+  ASSERT_TRUE(context);
+
+  OH_NativeBuffer_Config config{};
+  config.width = 8;
+  config.height = 8;
+  config.format = NATIVEBUFFER_PIXEL_FMT_RGBA_1010102 + 8;
+  config.usage = NATIVEBUFFER_USAGE_HW_RENDER | NATIVEBUFFER_USAGE_CPU_READ |
+                 NATIVEBUFFER_USAGE_CPU_WRITE;
+  config.stride = 0;
+  OH_NativeBuffer* native_buffer = OH_NativeBuffer_Alloc(&config);
+  if (native_buffer == nullptr) {
+    GTEST_SKIP() << "Device rejected unknown native buffer format.";
+  }
+  OHNativeWindowBuffer* window_buffer =
+      OH_NativeWindow_CreateNativeWindowBufferFromNativeBuffer(native_buffer);
+  ASSERT_NE(window_buffer, nullptr);
+
+  OHBTextureSourceVK source(context, window_buffer, TextureColorSpace::kSRGB);
+  EXPECT_NO_FATAL_FAILURE((void)source.IsValid());
+
+  OH_NativeWindow_DestroyNativeWindowBuffer(window_buffer);
+  OH_NativeBuffer_Unreference(native_buffer);
+  context->Shutdown();
+}
+
 }  // namespace impeller::ohos::testing

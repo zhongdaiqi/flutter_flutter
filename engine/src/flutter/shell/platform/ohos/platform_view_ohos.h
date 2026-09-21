@@ -86,6 +86,24 @@ class PlatformViewOHOS final : public PlatformView {
    */
   void UpdateDisplaySize(int width, int height);
 
+  /**
+   * @brief Scale factor converting physical screen pixels into the ArkUI
+   * layout-pixel space that embedded platform views use.
+   *
+   * The ArkTS embedding decodes platform-view touch packets with the system
+   * display density (vp2px), while the platform-view nodes are laid out from
+   * Flutter logical dimensions and are composited at
+   * flutter_dpr / system_density of their layout size. When a custom DPI
+   * scale (flutter/displaymetrics 'updateDpiScale') makes the Flutter DPR
+   * diverge from the system density, raw screen pixels no longer match the
+   * node layout space and pointer coordinates must be mapped before being
+   * forwarded to the ArkTS embedding.
+   *
+   * @return system_density / flutter_dpr, or 1.0 when they are equal or
+   *         either value is unavailable.
+   */
+  double GetScreenToPlatformViewLayoutScale() const;
+
   // |PlatformView|
   void NotifyDestroyed() override;
 

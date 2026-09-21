@@ -5,6 +5,16 @@ import SendableBinaryMessageHandler from '../../../../../main/ets/plugin/common/
 import MethodCodec from '../../../../../main/ets/plugin/common/MethodCodec';
 import MethodCall from '../../../../../main/ets/plugin/common/MethodCall';
 import Any from '../../../../../main/ets/plugin/common/Any';
+import FlutterException from '../../../../../main/ets/plugin/common/FlutterException';
+
+class FakeJavaError extends Error {
+  constructor(msg: string) {
+    super(msg);
+  }
+  getMessage(): string {
+    return this.message;
+  }
+}
 
 class FakeTaskQueue implements TaskQueue {}
 
@@ -49,16 +59,31 @@ class FakeStreamHandler implements StreamHandler {
     this.listenCalled = true;
     this.capturedSink = events;
     if (this.shouldThrow) {
-      throw new Error('stream handler error');
+      throw new FakeJavaError('stream handler error');
     }
   }
 
+  throwOnCancel: boolean = false;
   onCancel(args: Any): void {
     this.cancelCalled = true;
+    if (this.throwOnCancel) {
+      throw new FakeJavaError('cancel handler error');
+    }
+  }
+}
+
+class FlutterThrowingStreamHandler implements StreamHandler {
+  onListen(args: Any, events: EventSink): void {
+    throw new FlutterException('invalid_args', 'bad stream argument', 'extra');
+  }
+
+  onCancel(args: Any): void {
   }
 }
 
 class FakeMethodCodec implements MethodCodec {
+  capturedErrMsg: string = '';
+
   encodeMethodCall(methodCall: MethodCall): ArrayBuffer {
     const method: string = methodCall.method;
     const buffer: ArrayBuffer = new ArrayBuffer(method.length + 1);
@@ -88,6 +113,7 @@ class FakeMethodCodec implements MethodCodec {
   }
 
   encodeErrorEnvelope(errorCode: string, errorMessage: string, errorDetails: Any): ArrayBuffer {
+    this.capturedErrMsg = errorMessage;
     const buffer: ArrayBuffer = new ArrayBuffer(1);
     const view: Uint8Array = new Uint8Array(buffer);
     view[0] = 1;
@@ -263,6 +289,93 @@ export default function eventChannelTest() {
       messenger.sendCount = 0;
       sink.error('ERR', 'error message', 'details');
       expect(messenger.sendCount).assertEqual(1);
+    });
+
+    it('setStreamHandler null unregisters handler', Level.LEVEL1, () => {
+      const messenger = new FakeMessenger();
+      const channel = new EventChannel(messenger, 'test_channel', codec);
+      channel.setStreamHandler(new FakeStreamHandler());
+      channel.setStreamHandler(null as Any as StreamHandler);
+      expect(messenger.capturedHandler).assertNull();
+    });
+
+    it('second listen cancels previous sink', Level.LEVEL1, () => {
+      const messenger = new FakeMessenger();
+      const streamHandler = new FakeStreamHandler();
+      const channel = new EventChannel(messenger, 'test_channel', codec);
+      channel.setStreamHandler(streamHandler);
+      const handler: BinaryMessageHandler = messenger.capturedHandler as BinaryMessageHandler;
+      handler.onMessage(codec.encodeMethodCall(new MethodCall('listen', null)), new FakeReply());
+      const firstSink: EventSink = streamHandler.capturedSink!;
+      handler.onMessage(codec.encodeMethodCall(new MethodCall('listen', null)), new FakeReply());
+      expect(streamHandler.cancelCalled).assertEqual(true);
+      messenger.sendCount = 0;
+      firstSink.success('stale');
+      firstSink.error('E', 'm', null);
+      firstSink.endOfStream();
+      expect(messenger.sendCount).assertEqual(0);
+    });
+
+    it('listen throw replies with error envelope', Level.LEVEL1, () => {
+      const messenger = new FakeMessenger();
+      const streamHandler = new FakeStreamHandler();
+      streamHandler.shouldThrow = true;
+      const channel = new EventChannel(messenger, 'test_channel', codec);
+      channel.setStreamHandler(streamHandler);
+      const handler: BinaryMessageHandler = messenger.capturedHandler as BinaryMessageHandler;
+      const reply = new FakeReply();
+      handler.onMessage(codec.encodeMethodCall(new MethodCall('listen', null)), reply);
+      expect(reply.replyData).not().assertNull();
+    });
+
+    it('listen throw FlutterException replies with real message', Level.LEVEL1, () => {
+      const messenger = new FakeMessenger();
+      const streamHandler = new FlutterThrowingStreamHandler();
+      const channel = new EventChannel(messenger, 'test_channel', codec);
+      channel.setStreamHandler(streamHandler);
+      const handler: BinaryMessageHandler = messenger.capturedHandler as BinaryMessageHandler;
+      const reply = new FakeReply();
+      handler.onMessage(codec.encodeMethodCall(new MethodCall('listen', null)), reply);
+      expect(reply.replyData).not().assertNull();
+      expect(codec.capturedErrMsg).assertEqual('bad stream argument');
+    });
+
+    it('cancel without listen replies with error', Level.LEVEL1, () => {
+      const messenger = new FakeMessenger();
+      const streamHandler = new FakeStreamHandler();
+      const channel = new EventChannel(messenger, 'test_channel', codec);
+      channel.setStreamHandler(streamHandler);
+      const handler: BinaryMessageHandler = messenger.capturedHandler as BinaryMessageHandler;
+      const reply = new FakeReply();
+      handler.onMessage(codec.encodeMethodCall(new MethodCall('cancel', null)), reply);
+      expect(reply.replyData).not().assertNull();
+    });
+
+    it('cancel throw replies with error envelope', Level.LEVEL1, () => {
+      const messenger = new FakeMessenger();
+      const streamHandler = new FakeStreamHandler();
+      streamHandler.throwOnCancel = true;
+      const channel = new EventChannel(messenger, 'test_channel', codec);
+      channel.setStreamHandler(streamHandler);
+      const handler: BinaryMessageHandler = messenger.capturedHandler as BinaryMessageHandler;
+      handler.onMessage(codec.encodeMethodCall(new MethodCall('listen', null)), new FakeReply());
+      const reply = new FakeReply();
+      handler.onMessage(codec.encodeMethodCall(new MethodCall('cancel', null)), reply);
+      expect(reply.replyData).not().assertNull();
+    });
+
+    it('error after endOfStream is ignored', Level.LEVEL1, () => {
+      const messenger = new FakeMessenger();
+      const streamHandler = new FakeStreamHandler();
+      const channel = new EventChannel(messenger, 'test_channel', codec);
+      channel.setStreamHandler(streamHandler);
+      const handler: BinaryMessageHandler = messenger.capturedHandler as BinaryMessageHandler;
+      handler.onMessage(codec.encodeMethodCall(new MethodCall('listen', null)), new FakeReply());
+      const sink: EventSink = streamHandler.capturedSink!;
+      sink.endOfStream();
+      messenger.sendCount = 0;
+      sink.error('E', 'm', null);
+      expect(messenger.sendCount).assertEqual(0);
     });
   });
 }

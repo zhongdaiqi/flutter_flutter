@@ -55,12 +55,14 @@ GPUSurfaceVulkanImpeller::GPUSurfaceVulkanImpeller(
     std::shared_ptr<impeller::Context> context)
     : delegate_(delegate) {
   if (!context || !context->IsValid()) {
+    FML_LOG(ERROR) << "GPUSurfaceVulkanImpeller context invalid";
     return;
   }
 
   auto aiks_context = std::make_shared<impeller::AiksContext>(
       context, impeller::TypographerContextSkia::Make());
   if (!aiks_context->IsValid()) {
+    FML_LOG(ERROR) << "GPUSurfaceVulkanImpeller aiks_context invalid";
     return;
   }
 
@@ -172,7 +174,8 @@ std::unique_ptr<SurfaceFrame> GPUSurfaceVulkanImpeller::AcquireFrame(
         context_vk.SetRenderArea(std::nullopt);
       }
 
-      SkIRect sk_cull_rect = SkIRect::MakeWH(cull_rect.GetWidth(), cull_rect.GetHeight());
+      SkIRect sk_cull_rect =
+          SkIRect::MakeWH(cull_rect.GetWidth(), cull_rect.GetHeight());
       return impeller::RenderToTarget(
           aiks_context->GetContentContext(),                                //
           render_target,                                                    //

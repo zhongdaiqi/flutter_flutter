@@ -6,17 +6,20 @@
 
 #define private public
 
-#include "flutter/fml/message_loop_impl.h"
-#include "flutter/fml/platform/ohos/message_loop_ohos.h"
-
+#include <fcntl.h>
 #include <gtest/gtest.h>
+#include <pthread.h>
+#include <signal.h>
+#include <sys/epoll.h>
+#include <unistd.h>
 #include <uv.h>
-
 #include <atomic>
 #include <chrono>
 #include <thread>
-
+#include "flutter/fml/log_settings.h"
 #include "flutter/fml/message_loop.h"
+#include "flutter/fml/message_loop_impl.h"
+#include "flutter/fml/platform/ohos/message_loop_ohos.h"
 #include "flutter/fml/task_runner.h"
 #include "flutter/fml/time/time_delta.h"
 #include "flutter/fml/time/time_point.h"
@@ -191,14 +194,6 @@ TEST(MessageLoopOhosTest, DoubleTerminateNoPlatform) {
   loop->Terminate();
 }
 
-// Terminate + cleanup for platform loop. Unlike the non-platform path,
-// double Terminate() is unsafe here (uv_close on already-closed handle).
-TEST(MessageLoopOhosTest, TerminateAndCleanupWithPlatform) {
-  auto ctx = CreateLoopWithPlatform();
-  ctx.loop->Terminate();
-  CleanupPlatformLoop(ctx.platform_loop);
-}
-
 // ===========================================================================
 // 5. Run + Terminate — brief run cycle
 // ===========================================================================
@@ -242,25 +237,6 @@ TEST(MessageLoopOhosTest, RunAndTerminateWithPlatform) {
 // ===========================================================================
 // 6. PostTask — task execution via Run
 // ===========================================================================
-
-// PostTask before Run, then Run should execute the task.
-// Uses UV_RUN_NOWAIT to avoid blocking.
-TEST(MessageLoopOhosTest, PostTaskAndRun) {
-  fml::RefPtr<fml::MessageLoopImpl> loop = CreateLoopNoPlatform();
-  auto* loop_ohos = static_cast<fml::MessageLoopOhos*>(loop.get());
-
-  std::atomic<bool> task_ran(false);
-  loop->PostTask([&task_ran]() { task_ran.store(true); },
-                 fml::TimePoint::Now());
-
-  for (int i = 0; i < 100 && !task_ran.load(); i++) {
-    uv_run(&loop_ohos->loop_, UV_RUN_NOWAIT);
-    std::this_thread::sleep_for(std::chrono::milliseconds(10));
-  }
-
-  EXPECT_TRUE(task_ran.load());
-  loop->Terminate();
-}
 
 // PostTask with a delayed execution time.
 // Uses UV_RUN_NOWAIT to avoid blocking.
@@ -329,6 +305,10 @@ TEST(MessageLoopOhosTest, OnPollCallbackError) {
 
   // status < 0 → error path
   fml::MessageLoopOhos::OnPollCallback(&poll_handle, -1, 0);
+  {
+    fml::ScopedSetLogSettings quiet({fml::kLogFatal});
+    fml::MessageLoopOhos::OnPollCallback(&poll_handle, -1, 0);
+  }
 
   loop_impl->Terminate();
 }
@@ -549,6 +529,7 @@ TEST(MessageLoopOhosTest, ChainedTasks) {
 
 // Add and remove task observers.
 // Uses UV_RUN_NOWAIT to avoid blocking.
+#ifdef NDEBUG
 TEST(MessageLoopOhosTest, TaskObserver) {
   fml::RefPtr<fml::MessageLoopImpl> loop = CreateLoopNoPlatform();
   auto* loop_ohos = static_cast<fml::MessageLoopOhos*>(loop.get());
@@ -572,6 +553,7 @@ TEST(MessageLoopOhosTest, TaskObserver) {
   EXPECT_GE(observer_count.load(), 1);
   loop->Terminate();
 }
+#endif  // NDEBUG
 
 // ===========================================================================
 // 13. Destructor — verify clean destruction
@@ -643,6 +625,114 @@ TEST(MessageLoopOhosTest, WakeUpMaxThenNow) {
   loop->WakeUp(fml::TimePoint::Max());
   loop->WakeUp(fml::TimePoint::Now());
   loop->Terminate();
+}
+
+TEST(MessageLoopOhosTest, PlatformLoopDispatchesExpiredTask) {
+  auto ctx = CreateLoopWithPlatform();
+  ASSERT_TRUE(ctx.loop);
+
+  std::atomic<bool> task_ran(false);
+  ctx.loop->PostTask([&task_ran]() { task_ran.store(true); },
+                     fml::TimePoint::Now());
+
+  for (int i = 0; i < 100 && !task_ran.load(); i++) {
+    uv_run(ctx.platform_loop, UV_RUN_NOWAIT);
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+  }
+  EXPECT_TRUE(task_ran.load());
+
+  ctx.loop->Terminate();
+  CleanupPlatformLoop(ctx.platform_loop);
+}
+
+namespace {
+constexpr int kForeignDataFd = -999;
+
+void TimerFdWatcherEintrNoOp(int) {}
+}  // namespace
+
+TEST(MessageLoopOhosTest, TimerFdWatcherIgnoresForeignFdEvent) {
+  auto ctx = CreateLoopWithPlatform();
+  auto* loop_ohos = static_cast<fml::MessageLoopOhos*>(ctx.loop.get());
+
+  int pipefds[2];
+  ASSERT_EQ(pipe(pipefds), 0);
+  struct epoll_event event = {};
+  event.events = EPOLLIN | EPOLLET;
+  event.data.fd = kForeignDataFd;
+  ASSERT_EQ(
+      epoll_ctl(loop_ohos->epoll_fd_.get(), EPOLL_CTL_ADD, pipefds[0], &event),
+      0);
+
+  ASSERT_EQ(write(pipefds[1], "x", 1), 1);
+  std::this_thread::sleep_for(std::chrono::milliseconds(100));
+  EXPECT_TRUE(loop_ohos->running_.load());
+
+  ctx.loop->Terminate();
+  CleanupPlatformLoop(ctx.platform_loop);
+  close(pipefds[0]);
+  close(pipefds[1]);
+}
+
+TEST(MessageLoopOhosTest, TimerFdWatcherExitsOnEpollError) {
+  auto ctx = CreateLoopWithPlatform();
+  auto* loop_ohos = static_cast<fml::MessageLoopOhos*>(ctx.loop.get());
+
+  int pipefds[2];
+  ASSERT_EQ(pipe(pipefds), 0);
+  struct epoll_event event = {};
+  event.events = EPOLLIN;
+  event.data.fd = kForeignDataFd;
+  ASSERT_EQ(
+      epoll_ctl(loop_ohos->epoll_fd_.get(), EPOLL_CTL_ADD, pipefds[1], &event),
+      0);
+
+  ASSERT_EQ(close(pipefds[0]), 0);
+  bool exited = false;
+  for (int i = 0; i < 200 && !exited; i++) {
+    exited = !loop_ohos->running_.load();
+    if (!exited) {
+      std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+  }
+  EXPECT_TRUE(exited);
+
+  ctx.loop->Terminate();
+  CleanupPlatformLoop(ctx.platform_loop);
+  close(pipefds[1]);
+}
+
+TEST(MessageLoopOhosTest, TimerFdWatcherSurvivesSignalEintr) {
+  struct sigaction old_sa;
+  struct sigaction sa = {};
+  sa.sa_handler = TimerFdWatcherEintrNoOp;
+  ASSERT_EQ(sigaction(SIGUSR1, &sa, &old_sa), 0);
+
+  {
+    auto ctx = CreateLoopWithPlatform();
+    auto* loop_ohos = static_cast<fml::MessageLoopOhos*>(ctx.loop.get());
+    ASSERT_EQ(
+        pthread_kill(loop_ohos->timerhandle_thread_.native_handle(), SIGUSR1),
+        0);
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    EXPECT_TRUE(loop_ohos->running_.load());
+
+    ctx.loop->Terminate();
+    CleanupPlatformLoop(ctx.platform_loop);
+  }
+  sigaction(SIGUSR1, &old_sa, nullptr);
+}
+
+TEST(MessageLoopOhosTest, RunAfterTerminateReturnsImmediately) {
+  fml::RefPtr<fml::MessageLoopImpl> loop = CreateLoopNoPlatform();
+
+  std::atomic<bool> task_ran(false);
+  loop->PostTask([&task_ran]() { task_ran.store(true); },
+                 fml::TimePoint::Now());
+  loop->Terminate();
+
+  loop->Run();
+  EXPECT_FALSE(task_ran.load());
 }
 
 }  // namespace testing

@@ -47,8 +47,12 @@
 #include "flutter/fml/logging.h"
 
 #ifdef FML_OS_OHOS
-#include "flutter/fml/platform/ohos/hisysevent_c.h"
+#include <hilog/log.h>
 #include "flutter/fml/platform/ohos/hiappevent/ohos_hiappevent.h"
+#include "flutter/fml/platform/ohos/hisysevent_c.h"
+#define OHOS_LOGI(...)                                                \
+  ((void)OH_LOG_Print(LOG_APP, LOG_INFO, 0x0000, "XComFlutterEngine", \
+                      __VA_ARGS__))
 #endif
 
 namespace flutter {
@@ -87,6 +91,9 @@ void Rasterizer::SetImpellerContext(
 
 void Rasterizer::Setup(std::unique_ptr<Surface> surface) {
   surface_ = std::move(surface);
+#ifdef FML_OS_OHOS
+  OHOS_LOGI("Rasterizer::Setup done.");
+#endif
 
   if (max_cache_bytes_.has_value()) {
     SetResourceCacheMaxBytes(max_cache_bytes_.value(),
@@ -490,6 +497,11 @@ Rasterizer::DoDrawResult Rasterizer::DoDraw(
     return DoDrawResult{DoDrawStatus::kDone};
   }
   if (!surface_) {
+    static bool logged = false;
+    if (!logged) {
+      FML_LOG(ERROR) << "rasterizer no surface, frame dropped (kNotSetUp)";
+      logged = true;
+    }
     return DoDrawResult{DoDrawStatus::kNotSetUp};
   }
 
@@ -528,13 +540,14 @@ Rasterizer::DoDrawResult Rasterizer::DoDraw(
   fml::TimePoint frame_target_time =
       frame_timings_recorder->GetVsyncTargetTime();
 
-  #ifdef FML_OS_OHOS
-    // Frame number of current frame
-    const uint64_t frame_number = frame_timings_recorder->GetFrameNumber();
-    fml::hiappevent::OhosHiappEventDDL::GetInstance()->UpdateLastFrameNumber(frame_number);
-  #endif
-      
-  // Log SceneDisplayLag trace event if we missed the frame target.    
+#ifdef FML_OS_OHOS
+  // Frame number of current frame
+  const uint64_t frame_number = frame_timings_recorder->GetFrameNumber();
+  fml::hiappevent::OhosHiappEventDDL::GetInstance()->UpdateLastFrameNumber(
+      frame_number);
+#endif
+
+  // Log SceneDisplayLag trace event if we missed the frame target.
   if (raster_finish_time > frame_target_time) {
     fml::TimePoint latest_frame_target_time =
         delegate_.GetLatestFrameTargetTime();
@@ -560,84 +573,93 @@ Rasterizer::DoDrawResult Rasterizer::DoDraw(
         vsync_transitions_missed      // arg_val_3
     );
 
-
 #ifdef FML_OS_OHOS
-  auto now = std::chrono::system_clock::now(); // Get the current UTC time
-  auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()); // The duration from 1970-01-01 UTC to now(expressed in milliseconds)
-  const int64_t now_ms_int64 = static_cast<int64_t>(duration.count());
+    auto now = std::chrono::system_clock::now();  // Get the current UTC time
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(
+        now.time_since_epoch());  // The duration from 1970-01-01 UTC to
+                                  // now(expressed in milliseconds)
+    const int64_t now_ms_int64 = static_cast<int64_t>(duration.count());
 
-  // Frame start time (wall time)
-  const fml::TimePoint vsync_start_time =
-    frame_timings_recorder->GetVsyncStartTime();
-  const int64_t vsync_start_time_micros =
-    vsync_start_time.ToEpochDelta().ToMicroseconds();
+    // Frame start time (wall time)
+    const fml::TimePoint vsync_start_time =
+        frame_timings_recorder->GetVsyncStartTime();
+    const int64_t vsync_start_time_micros =
+        vsync_start_time.ToEpochDelta().ToMicroseconds();
 
-  // 帧期望时间，绝对时间，wall time
-  const fml::TimePoint vsync_target_time =
-      frame_timings_recorder->GetVsyncTargetTime();
-  const int64_t vsync_target_time_micros =
-    vsync_target_time.ToEpochDelta().ToMicroseconds();
+    // 帧期望时间，绝对时间，wall time
+    const fml::TimePoint vsync_target_time =
+        frame_timings_recorder->GetVsyncTargetTime();
+    const int64_t vsync_target_time_micros =
+        vsync_target_time.ToEpochDelta().ToMicroseconds();
 
-  // 最后一次的帧期望时间，绝对时间，wall time
-  const int64_t latest_frame_target_time_micros =
-    latest_frame_target_time.ToEpochDelta().ToMicroseconds();
+    // 最后一次的帧期望时间，绝对时间，wall time
+    const int64_t latest_frame_target_time_micros =
+        latest_frame_target_time.ToEpochDelta().ToMicroseconds();
 
-  // 当前帧完成的时间，绝对时间，wall time
-  const int64_t raster_finish_time_micros =
-    raster_finish_time.ToEpochDelta().ToMicroseconds();
+    // 当前帧完成的时间，绝对时间，wall time
+    const int64_t raster_finish_time_micros =
+        raster_finish_time.ToEpochDelta().ToMicroseconds();
 
-  // 丢帧时长，绝对时间，wall time
-  const int64_t frame_duration_micros =
-    raster_finish_time_micros - vsync_start_time_micros;
+    // 丢帧时长，绝对时间，wall time
+    const int64_t frame_duration_micros =
+        raster_finish_time_micros - vsync_start_time_micros;
 
-  // 当前帧间隔
-  const int64_t frame_budget_time_micros =
-    fml::TimeDelta::FromMillisecondsF(frame_budget_millis).ToMicroseconds();
+    // 当前帧间隔
+    const int64_t frame_budget_time_micros =
+        fml::TimeDelta::FromMillisecondsF(frame_budget_millis).ToMicroseconds();
 
-  fml::hiappevent::MissedFrameInfo missed_frame_info;
-  // The event occurrence time (UTC ms) can be approximately regarded as the raster completion time.
-  missed_frame_info.utc_time_stamp_millis = now_ms_int64; 
-  missed_frame_info.vsync_start_time_micros = vsync_start_time_micros; // Start time of frame jank(epoch us)
-  missed_frame_info.vsync_target_time_micros = vsync_target_time_micros; // Expected time of the frame(epoch us)
-  missed_frame_info.latest_vsync_target_time_micros = latest_frame_target_time_micros; // The final expected time of the frame(epoch us)
-  missed_frame_info.frame_duration_micros = frame_duration_micros; // Duration of frame jank (duration us)
-  missed_frame_info.raster_finish_time_micros = raster_finish_time_micros; // The actual raster time of the frame(epoch us)
-  missed_frame_info.frame_budget_time_micros = frame_budget_time_micros; // Frame interval (duration us)
-  missed_frame_info.frame_number = frame_timings_recorder->GetFrameNumber(); // Frame number
-  missed_frame_info.vsync_transitions_missed = round(frame_duration_micros / frame_budget_time_micros); 
+    fml::hiappevent::MissedFrameInfo missed_frame_info;
+    // The event occurrence time (UTC ms) can be approximately regarded as the
+    // raster completion time.
+    missed_frame_info.utc_time_stamp_millis = now_ms_int64;
+    missed_frame_info.vsync_start_time_micros =
+        vsync_start_time_micros;  // Start time of frame jank(epoch us)
+    missed_frame_info.vsync_target_time_micros =
+        vsync_target_time_micros;  // Expected time of the frame(epoch us)
+    missed_frame_info.latest_vsync_target_time_micros =
+        latest_frame_target_time_micros;  // The final expected time of the
+                                          // frame(epoch us)
+    missed_frame_info.frame_duration_micros =
+        frame_duration_micros;  // Duration of frame jank (duration us)
+    missed_frame_info.raster_finish_time_micros =
+        raster_finish_time_micros;  // The actual raster time of the frame(epoch
+                                    // us)
+    missed_frame_info.frame_budget_time_micros =
+        frame_budget_time_micros;  // Frame interval (duration us)
+    missed_frame_info.frame_number =
+        frame_timings_recorder->GetFrameNumber();  // Frame number
+    missed_frame_info.vsync_transitions_missed =
+        round(frame_duration_micros / frame_budget_time_micros);
 
-  // 判断上报丢帧事件类型
-  const int scroll_status =
-    fml::hiappevent::ScrollStatus.load();
+    // 判断上报丢帧事件类型
+    const int scroll_status = fml::hiappevent::ScrollStatus.load();
 
-  // 当前是否在滑动
-  const bool is_scrolling =
-    scroll_status == static_cast<int>(fml::hiappevent::ScrollingStatus::kScrollStart);
+    // 当前是否在滑动
+    const bool is_scrolling =
+        scroll_status ==
+        static_cast<int>(fml::hiappevent::ScrollingStatus::kScrollStart);
 
-  auto io_runner = delegate_.GetTaskRunners().GetIOTaskRunner();
+    auto io_runner = delegate_.GetTaskRunners().GetIOTaskRunner();
 
-  if (is_scrolling) {
-    FML_LOG(INFO) << "Scroll hiappevent ReportScrollJANKEvent PostTask to IO thread";
-    fml::TaskRunner::RunNowOrPostTask(
-        io_runner,
-        [missed_frame_info] {
-          FML_LOG(INFO) << "Hiappevent ReportScrollJANKEvent";
-          fml::hiappevent::OhosHiappEventDDL::GetInstance()
-              ->ReportScrollJANKEvent(missed_frame_info);
-        });
-  } else {
-    FML_LOG(INFO) << "General hiappevent ReportJANKEvent PostTask to IO thread";
-    fml::TaskRunner::RunNowOrPostTask(
-        io_runner,
-        [missed_frame_info] {
-          FML_LOG(INFO) << "Hiappevent ReportJANKEvent";
-          fml::hiappevent::OhosHiappEventDDL::GetInstance()
-              ->ReportJANKEvent(missed_frame_info);
-        });
-  }
+    if (is_scrolling) {
+      FML_LOG(INFO)
+          << "Scroll hiappevent ReportScrollJANKEvent PostTask to IO thread";
+      fml::TaskRunner::RunNowOrPostTask(io_runner, [missed_frame_info] {
+        FML_LOG(INFO) << "Hiappevent ReportScrollJANKEvent";
+        fml::hiappevent::OhosHiappEventDDL::GetInstance()
+            ->ReportScrollJANKEvent(missed_frame_info);
+      });
+    } else {
+      FML_LOG(INFO)
+          << "General hiappevent ReportJANKEvent PostTask to IO thread";
+      fml::TaskRunner::RunNowOrPostTask(io_runner, [missed_frame_info] {
+        FML_LOG(INFO) << "Hiappevent ReportJANKEvent";
+        fml::hiappevent::OhosHiappEventDDL::GetInstance()->ReportJANKEvent(
+            missed_frame_info);
+      });
+    }
 
 #endif
-
   }
 #endif
 
@@ -688,6 +710,7 @@ Rasterizer::DoDrawResult Rasterizer::DrawToSurfaces(
         fml::SyncSwitch::Handlers()
             .SetIfTrue([&] {
               result.status = DoDrawStatus::kGpuUnavailable;
+              FML_LOG(ERROR) << "GPU unavailable (sync switch), frame dropped";
               frame_timings_recorder.RecordRasterStart(fml::TimePoint::Now());
               frame_timings_recorder.RecordRasterEnd();
             })
@@ -807,7 +830,8 @@ DrawSurfaceStatus Rasterizer::DrawToSurfaceUnsafe(
   }
 
   if (ShouldSkipNoDamageLayerTree(layer_tree, view_id)) {
-    FML_LOG(INFO) << "Skipping frame rendering: computed dirty region is empty.";
+    FML_LOG(INFO)
+        << "Skipping frame rendering: computed dirty region is empty.";
     TRACE_EVENT0("flutter", "Rasterizer::DrawToSurfaceUnsafe FrameDamageEmpty");
     return DrawSurfaceStatus::kDamageEmptySkip;
   }
@@ -818,6 +842,7 @@ DrawSurfaceStatus Rasterizer::DrawToSurfaceUnsafe(
   // frame after calling `BeginFrame` as this operation resets the GL context.
   auto frame = surface_->AcquireFrame(ToSkISize(layer_tree.frame_size()));
   if (frame == nullptr) {
+    FML_LOG(ERROR) << "AcquireFrame returned null.";
     return DrawSurfaceStatus::kFailed;
   }
 
@@ -840,104 +865,108 @@ DrawSurfaceStatus Rasterizer::DrawToSurfaceUnsafe(
       raster_thread_merger_,            // thread merger
       surface_->GetAiksContext().get()  // aiks context
   );
-  if (compositor_frame) {
-    NOT_SLIMPELLER(compositor_context_->raster_cache().BeginFrame());
+  if (!compositor_frame) {
+    FML_LOG(ERROR) << "compositor AcquireFrame failed";
+    return DrawSurfaceStatus::kFailed;
+  }
+  NOT_SLIMPELLER(compositor_context_->raster_cache().BeginFrame());
 
-    std::unique_ptr<FrameDamage> damage;
-    // when leaf layer tracing is enabled we wish to repaint the whole frame
-    // for accurate performance metrics.
-    if (frame->framebuffer_info().supports_partial_repaint) {
-      // Disable partial repaint if external_view_embedder_ SubmitFlutterView is
-      // involved - ExternalViewEmbedder unconditionally clears the entire
-      // surface and also partial repaint with platform view present is
-      // something that still need to be figured out.
-      bool force_full_repaint =
-          external_view_embedder_ &&
-          (!raster_thread_merger_ || raster_thread_merger_->IsMerged());
+  std::unique_ptr<FrameDamage> damage;
+  // when leaf layer tracing is enabled we wish to repaint the whole frame
+  // for accurate performance metrics.
+  if (frame->framebuffer_info().supports_partial_repaint) {
+    // Disable partial repaint if external_view_embedder_ SubmitFlutterView is
+    // involved - ExternalViewEmbedder unconditionally clears the entire
+    // surface and also partial repaint with platform view present is
+    // something that still need to be figured out.
+    bool force_full_repaint =
+        external_view_embedder_ &&
+        (!raster_thread_merger_ || raster_thread_merger_->IsMerged());
 
-      damage = std::make_unique<FrameDamage>();
-      auto existing_damage = frame->framebuffer_info().existing_damage;
-      if (existing_damage.has_value() && !force_full_repaint) {
+    damage = std::make_unique<FrameDamage>();
+    auto existing_damage = frame->framebuffer_info().existing_damage;
+    if (existing_damage.has_value() && !force_full_repaint) {
 #ifdef __OHOS__
-        if (use_last_layer_tree_) {
-          damage->SetPreviousLayerTree(&layer_tree);
-        } else {
-          damage->SetPreviousLayerTree(GetLastLayerTree(view_id));
-        }
-#else
+      if (use_last_layer_tree_) {
+        damage->SetPreviousLayerTree(&layer_tree);
+      } else {
         damage->SetPreviousLayerTree(GetLastLayerTree(view_id));
-#endif
-        damage->AddAdditionalDamage(ToDlIRect(existing_damage.value()));
-        damage->SetClipAlignment(
-            frame->framebuffer_info().horizontal_clip_alignment,
-            frame->framebuffer_info().vertical_clip_alignment);
       }
+#else
+      damage->SetPreviousLayerTree(GetLastLayerTree(view_id));
+#endif
+      damage->AddAdditionalDamage(ToDlIRect(existing_damage.value()));
+      damage->SetClipAlignment(
+          frame->framebuffer_info().horizontal_clip_alignment,
+          frame->framebuffer_info().vertical_clip_alignment);
     }
+  }
 
-    bool ignore_raster_cache = true;
-    if (surface_->EnableRasterCache()) {
-      ignore_raster_cache = false;
-    }
+  bool ignore_raster_cache = true;
+  if (surface_->EnableRasterCache()) {
+    ignore_raster_cache = false;
+  }
 
-    RasterStatus frame_status =
-        compositor_frame->Raster(layer_tree,           // layer tree
-                                 ignore_raster_cache,  // ignore raster cache
-                                 damage.get()          // frame damage
-        );
-    if (frame_status == RasterStatus::kSkipAndRetry) {
-      return DrawSurfaceStatus::kRetry;
-    }
+  RasterStatus frame_status =
+      compositor_frame->Raster(layer_tree,           // layer tree
+                               ignore_raster_cache,  // ignore raster cache
+                               damage.get()          // frame damage
+      );
+  if (frame_status == RasterStatus::kSkipAndRetry) {
+    return DrawSurfaceStatus::kRetry;
+  }
 
-    SurfaceFrame::SubmitInfo submit_info;
-    submit_info.presentation_time = presentation_time;
-    if (damage) {
-      submit_info.frame_damage = ToOptSkIRect(damage->GetFrameDamage());
-      submit_info.buffer_damage = ToOptSkIRect(damage->GetBufferDamage());
-    }
+  SurfaceFrame::SubmitInfo submit_info;
+  submit_info.presentation_time = presentation_time;
+  if (damage) {
+    submit_info.frame_damage = ToOptSkIRect(damage->GetFrameDamage());
+    submit_info.buffer_damage = ToOptSkIRect(damage->GetBufferDamage());
+  }
 
-    frame->set_submit_info(submit_info);
+  frame->set_submit_info(submit_info);
 
-    if (external_view_embedder_ &&
-        (!raster_thread_merger_ || raster_thread_merger_->IsMerged())) {
-      FML_DCHECK(!frame->IsSubmitted());
-      external_view_embedder_->SubmitFlutterView(
-          view_id, surface_->GetContext(), surface_->GetAiksContext(),
-          std::move(frame));
-    } else {
-      frame->Submit();
-    }
+  if (external_view_embedder_ &&
+      (!raster_thread_merger_ || raster_thread_merger_->IsMerged())) {
+    FML_DCHECK(!frame->IsSubmitted());
+    external_view_embedder_->SubmitFlutterView(view_id, surface_->GetContext(),
+                                               surface_->GetAiksContext(),
+                                               std::move(frame));
+  } else {
+    frame->Submit();
+  }
 
 #if !SLIMPELLER
-    // Do not update raster cache metrics for kResubmit because that status
-    // indicates that the frame was not actually painted.
-    if (frame_status != RasterStatus::kResubmit) {
-      compositor_context_->raster_cache().EndFrame();
-    }
+  // Do not update raster cache metrics for kResubmit because that status
+  // indicates that the frame was not actually painted.
+  if (frame_status != RasterStatus::kResubmit) {
+    compositor_context_->raster_cache().EndFrame();
+  }
 #endif  //  !SLIMPELLER
 
-    if (frame_status == RasterStatus::kResubmit) {
-      return DrawSurfaceStatus::kRetry;
-    } else {
-      FML_CHECK(frame_status == RasterStatus::kSuccess);
-      return DrawSurfaceStatus::kSuccess;
-    }
+  if (frame_status == RasterStatus::kResubmit) {
+    return DrawSurfaceStatus::kRetry;
+  } else {
+    FML_CHECK(frame_status == RasterStatus::kSuccess);
+    return DrawSurfaceStatus::kSuccess;
   }
 
   return DrawSurfaceStatus::kFailed;
 }
 
-
 // When all historical dirty regions in the surface are 0,
 // the dirty region area of ​​the layer_tree is calculated in advance.
 // If the dirty region is empty after calculation, return true.
-bool Rasterizer::ShouldSkipNoDamageLayerTree(flutter::LayerTree& layer_tree, int64_t view_id) {
+bool Rasterizer::ShouldSkipNoDamageLayerTree(flutter::LayerTree& layer_tree,
+                                             int64_t view_id) {
   if (external_view_embedder_ &&
-          (!raster_thread_merger_ || raster_thread_merger_->IsMerged())) {
-    // When external_view_embedder_ SubmitFlutterView is involved, the dirty region calculation is not performed.
+      (!raster_thread_merger_ || raster_thread_merger_->IsMerged())) {
+    // When external_view_embedder_ SubmitFlutterView is involved, the dirty
+    // region calculation is not performed.
     return false;
   }
   auto surface_damage = surface_->GetSurfaceDamageData();
-  if (surface_damage.supports_partial_repaint && surface_damage.all_damage_rects_empty) {
+  if (surface_damage.supports_partial_repaint &&
+      surface_damage.all_damage_rects_empty) {
     FrameDamage frame_damage = FrameDamage();
 #ifdef __OHOS__
     if (use_last_layer_tree_) {
@@ -948,10 +977,12 @@ bool Rasterizer::ShouldSkipNoDamageLayerTree(flutter::LayerTree& layer_tree, int
 #else
     frame_damage.SetPreviousLayerTree(GetLastLayerTree(view_id));
 #endif
-    frame_damage.SetClipAlignment(surface_damage.horizontal_clip_alignment, surface_damage.vertical_clip_alignment);
-    auto clip_rect = frame_damage.ComputeClipRect(layer_tree,
-      surface_->EnableRasterCache(), // has_raster_cache
-      !surface_->GetContext()); // impeller_enabled
+    frame_damage.SetClipAlignment(surface_damage.horizontal_clip_alignment,
+                                  surface_damage.vertical_clip_alignment);
+    auto clip_rect = frame_damage.ComputeClipRect(
+        layer_tree,
+        surface_->EnableRasterCache(),  // has_raster_cache
+        !surface_->GetContext());       // impeller_enabled
     if (clip_rect.has_value() && clip_rect->IsEmpty()) {
       return true;
     }
@@ -1051,7 +1082,7 @@ Rasterizer::ScreenshotFormat ToScreenshotFormat(impeller::PixelFormat format) {
     case impeller::PixelFormat::kR16G16B16A16Float:
       return Rasterizer::ScreenshotFormat::kR16G16B16A16Float;
     case impeller::PixelFormat::kB10G10R10A2UNorm:
- 	       return Rasterizer::ScreenshotFormat::kR8G8B8A8UNormInt;
+      return Rasterizer::ScreenshotFormat::kR8G8B8A8UNormInt;
   }
 }
 

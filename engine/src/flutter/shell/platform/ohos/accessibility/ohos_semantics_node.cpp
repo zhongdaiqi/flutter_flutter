@@ -6,6 +6,7 @@
 
 #include "ohos_semantics_node.h"
 #include <arkui/native_interface_accessibility.h>
+#include <dlfcn.h>
 #include <cassert>
 #include <cstddef>
 #include <vector>
@@ -13,6 +14,36 @@
 #include "ohos_semantics_tree.h"
 
 namespace flutter {
+namespace {
+
+// ArkUI's component identifier API accepts at most 1024 bytes.
+constexpr size_t K_ARK_UI_COMPONENT_IDENTIFIER_MAX_BYTES = 1024;
+
+using SetComponentIdentifier =
+    int32_t (*)(ArkUI_AccessibilityElementInfo* elementInfo,
+                const char* identifier);
+
+SetComponentIdentifier GetSetComponentIdentifier() {
+  static const SetComponentIdentifier setComponentIdentifier = [] {
+    void* const handle = dlopen("libace_ndk.z.so", RTLD_NOW | RTLD_LOCAL);
+    if (handle == nullptr) {
+      FML_LOG(WARNING) << "Failed to load libace_ndk.z.so for component "
+                       << "identifier support: " << dlerror();
+      return static_cast<SetComponentIdentifier>(nullptr);
+    }
+    const auto setter = reinterpret_cast<SetComponentIdentifier>(dlsym(
+        handle, "OH_ArkUI_AccessibilityElementInfoSetComponentIdentifier"));
+    if (setter == nullptr) {
+      FML_LOG(WARNING) << "Component identifier API is unavailable: "
+                       << dlerror();
+    }
+    return setter;
+  }();
+  return setComponentIdentifier;
+}
+
+}  // namespace
+
 void SemanticsNodeExtend::FillElementInfo(
     ArkUI_AccessibilityElementInfo* info,
     bool accessibility_focus_maps_to_native_focused) {
@@ -21,8 +52,7 @@ void SemanticsNodeExtend::FillElementInfo(
   }
 
   FillElementInfoWithId(info);
-  FillElementInfoWithProperty(info,
-                              accessibility_focus_maps_to_native_focused);
+  FillElementInfoWithProperty(info, accessibility_focus_maps_to_native_focused);
   FillElementInfoWithContent(info);
   FillElementInfoWithChildren(info);
   FillElementInfoWithParent(info);
@@ -91,9 +121,9 @@ void SemanticsNodeExtend::FillElementInfoWithProperty(
   OH_ArkUI_AccessibilityElementInfoSetClickable(info, IsClickable());
 
   OH_ArkUI_AccessibilityElementInfoSetEnabled(info, IsEnabled());
-  const bool native_focused =
-      accessibility_focus_maps_to_native_focused ? isAccessibilityFocued
-                                                 : IsFocused();
+  const bool native_focused = accessibility_focus_maps_to_native_focused
+                                  ? isAccessibilityFocued
+                                  : IsFocused();
   OH_ArkUI_AccessibilityElementInfoSetFocused(info, native_focused);
   OH_ArkUI_AccessibilityElementInfoSetIsPassword(info, IsPassword());
   OH_ArkUI_AccessibilityElementInfoSetCheckable(info, IsCheckable());
@@ -117,12 +147,32 @@ void SemanticsNodeExtend::FillElementInfoWithContent(
     std::string hintText = GetHintText();
     std::string result = value.empty() ? hintText : "";
     OH_ArkUI_AccessibilityElementInfoSetAccessibilityText(info, result.c_str());
+    OH_ArkUI_AccessibilityElementInfoSetHintText(info, hintText.c_str());
     OH_ArkUI_AccessibilityElementInfoSetContents(info, value.c_str());
   } else {
     contentString = GetAccessibilityText();
     OH_ArkUI_AccessibilityElementInfoSetAccessibilityText(
         info, contentString.c_str());
     OH_ArkUI_AccessibilityElementInfoSetContents(info, contentString.c_str());
+    OH_ArkUI_AccessibilityElementInfoSetHintText(info, "");
+  }
+
+  const auto setComponentIdentifier = GetSetComponentIdentifier();
+  if (setComponentIdentifier) {
+    const char* componentIdentifier =
+        identifier.size() <= K_ARK_UI_COMPONENT_IDENTIFIER_MAX_BYTES
+            ? identifier.c_str()
+            : "";
+    const int32_t result = setComponentIdentifier(info, componentIdentifier);
+    if (result != ARKUI_ACCESSIBILITY_NATIVE_RESULT_SUCCESSFUL) {
+      if (!componentIdentifierWriteFailed) {
+        FML_LOG(WARNING) << "Failed to update component identifier, result: "
+                         << result;
+      }
+      componentIdentifierWriteFailed = true;
+    } else {
+      componentIdentifierWriteFailed = false;
+    }
   }
 }
 
@@ -430,6 +480,48 @@ void SemanticsNodeExtend::UpdateSelfRecursively(
   }
 }
 
+void SemanticsNodeExtend::UpdateContentWithNode(flutter::SemanticsNode& node) {
+  // tooltip may use for componentType
+  previousLabel = label;
+  const bool identifierChanged = identifier != node.identifier;
+  const bool identifierTooLong =
+      identifierChanged &&
+      node.identifier.size() > K_ARK_UI_COMPONENT_IDENTIFIER_MAX_BYTES;
+  const bool textFieldChanged = flags.isTextField != node.flags.isTextField;
+  if (value != node.value || label != node.label || hint != node.hint ||
+      tooltip != node.tooltip || identifierChanged || textFieldChanged) {
+    value = std::move(node.value);
+    label = std::move(node.label);
+    hint = std::move(node.hint);
+    tooltip = std::move(node.tooltip);
+    identifier = std::move(node.identifier);
+    if (identifierTooLong) {
+      FML_LOG(WARNING) << "Cleared component identifier exceeding "
+                       << K_ARK_UI_COMPONENT_IDENTIFIER_MAX_BYTES
+                       << " bytes; received " << identifier.size() << " bytes.";
+    }
+    if ((!label.empty() || !tooltip.empty() || !hint.empty()) &&
+        componentType == OHWidgetName::kOtherWidgetName) {
+      componentType = OHWidgetName::kTextWidgetName;
+    }
+    contentChanged = true;
+  }
+}
+
+void SemanticsNodeExtend::UpdateScrollWithNode(flutter::SemanticsNode& node) {
+  previousScrollPosition = scrollPosition;
+  if (scrollIndex != node.scrollIndex ||
+      scrollChildren != node.scrollChildren) {
+    scrollPosition = node.scrollPosition;
+    scrollExtentMax = node.scrollExtentMax;
+    scrollExtentMin = node.scrollExtentMin;
+    scrollIndex = node.scrollIndex;
+    scrollChildren = node.scrollChildren;
+    scrollChanged = true;
+    // we need visible children num to update info.
+  }
+}
+
 void SemanticsNodeExtend::UpdateWithNode(flutter::SemanticsNode& node) {
   isExist = true;
 
@@ -438,57 +530,45 @@ void SemanticsNodeExtend::UpdateWithNode(flutter::SemanticsNode& node) {
     idChanged = true;
   }
 
-  // tooltip may use for componentType
-  previousLabel = label;
-  if (value != node.value || label != node.label || hint != node.hint ||
-      tooltip != node.tooltip) {
-    value = std::move(node.value);
-    label = std::move(node.label);
-    hint = std::move(node.hint);
-    tooltip = std::move(node.tooltip);
-    if ((!label.empty() || !tooltip.empty() || !hint.empty()) &&
-        componentType == OHWidgetName::kOtherWidgetName) {
-      componentType = OHWidgetName::kTextWidgetName;
-    }
-    contentChanged = true;
-  }
+  UpdateContentWithNode(node);
 
   // Check if any flag has changed by comparing each field
-  bool flagsChanged = (previousFlags.hasCheckedState != flags.hasCheckedState ||
-                       previousFlags.isChecked != flags.isChecked ||
-                       previousFlags.isSelected != flags.isSelected ||
-                       previousFlags.isButton != flags.isButton ||
-                       previousFlags.isTextField != flags.isTextField ||
-                       previousFlags.isFocused != flags.isFocused ||
-                       previousFlags.hasEnabledState != flags.hasEnabledState ||
-                       previousFlags.isEnabled != flags.isEnabled ||
-                       previousFlags.isInMutuallyExclusiveGroup != flags.isInMutuallyExclusiveGroup ||
-                       previousFlags.isHeader != flags.isHeader ||
-                       previousFlags.isObscured != flags.isObscured ||
-                       previousFlags.scopesRoute != flags.scopesRoute ||
-                       previousFlags.namesRoute != flags.namesRoute ||
-                       previousFlags.isHidden != flags.isHidden ||
-                       previousFlags.isImage != flags.isImage ||
-                       previousFlags.isLiveRegion != flags.isLiveRegion ||
-                       previousFlags.hasToggledState != flags.hasToggledState ||
-                       previousFlags.isToggled != flags.isToggled ||
-                       previousFlags.hasImplicitScrolling != flags.hasImplicitScrolling ||
-                       previousFlags.isMultiline != flags.isMultiline ||
-                       previousFlags.isReadOnly != flags.isReadOnly ||
-                       previousFlags.isFocusable != flags.isFocusable ||
-                       previousFlags.isLink != flags.isLink ||
-                       previousFlags.isSlider != flags.isSlider ||
-                       previousFlags.isKeyboardKey != flags.isKeyboardKey ||
-                       previousFlags.isCheckStateMixed != flags.isCheckStateMixed ||
-                       previousFlags.hasExpandedState != flags.hasExpandedState ||
-                       previousFlags.isExpanded != flags.isExpanded ||
-                       previousFlags.hasSelectedState != flags.hasSelectedState ||
-                       previousFlags.hasRequiredState != flags.hasRequiredState ||
-                       previousFlags.isRequired != flags.isRequired);
-  
+  bool flagsChanged =
+      (previousFlags.hasCheckedState != flags.hasCheckedState ||
+       previousFlags.isChecked != flags.isChecked ||
+       previousFlags.isSelected != flags.isSelected ||
+       previousFlags.isButton != flags.isButton ||
+       previousFlags.isTextField != flags.isTextField ||
+       previousFlags.isFocused != flags.isFocused ||
+       previousFlags.hasEnabledState != flags.hasEnabledState ||
+       previousFlags.isEnabled != flags.isEnabled ||
+       previousFlags.isInMutuallyExclusiveGroup !=
+           flags.isInMutuallyExclusiveGroup ||
+       previousFlags.isHeader != flags.isHeader ||
+       previousFlags.isObscured != flags.isObscured ||
+       previousFlags.scopesRoute != flags.scopesRoute ||
+       previousFlags.namesRoute != flags.namesRoute ||
+       previousFlags.isHidden != flags.isHidden ||
+       previousFlags.isImage != flags.isImage ||
+       previousFlags.isLiveRegion != flags.isLiveRegion ||
+       previousFlags.hasToggledState != flags.hasToggledState ||
+       previousFlags.isToggled != flags.isToggled ||
+       previousFlags.hasImplicitScrolling != flags.hasImplicitScrolling ||
+       previousFlags.isMultiline != flags.isMultiline ||
+       previousFlags.isReadOnly != flags.isReadOnly ||
+       previousFlags.isFocusable != flags.isFocusable ||
+       previousFlags.isLink != flags.isLink ||
+       previousFlags.isSlider != flags.isSlider ||
+       previousFlags.isKeyboardKey != flags.isKeyboardKey ||
+       previousFlags.isCheckStateMixed != flags.isCheckStateMixed ||
+       previousFlags.hasExpandedState != flags.hasExpandedState ||
+       previousFlags.isExpanded != flags.isExpanded ||
+       previousFlags.hasSelectedState != flags.hasSelectedState ||
+       previousFlags.hasRequiredState != flags.hasRequiredState ||
+       previousFlags.isRequired != flags.isRequired);
+
   previousFlags = flags;
-  if (flagsChanged || 
-      flags.hasCheckedState != node.flags.hasCheckedState ||
+  if (flagsChanged || flags.hasCheckedState != node.flags.hasCheckedState ||
       flags.isChecked != node.flags.isChecked ||
       flags.isSelected != node.flags.isSelected ||
       flags.isButton != node.flags.isButton ||
@@ -496,7 +576,8 @@ void SemanticsNodeExtend::UpdateWithNode(flutter::SemanticsNode& node) {
       flags.isFocused != node.flags.isFocused ||
       flags.hasEnabledState != node.flags.hasEnabledState ||
       flags.isEnabled != node.flags.isEnabled ||
-      flags.isInMutuallyExclusiveGroup != node.flags.isInMutuallyExclusiveGroup ||
+      flags.isInMutuallyExclusiveGroup !=
+          node.flags.isInMutuallyExclusiveGroup ||
       flags.isHeader != node.flags.isHeader ||
       flags.isObscured != node.flags.isObscured ||
       flags.scopesRoute != node.flags.scopesRoute ||
@@ -538,17 +619,7 @@ void SemanticsNodeExtend::UpdateWithNode(flutter::SemanticsNode& node) {
     selectChanged = true;
   }
 
-  previousScrollPosition = scrollPosition;
-  if (scrollIndex != node.scrollIndex ||
-      scrollChildren != node.scrollChildren) {
-    scrollPosition = node.scrollPosition;
-    scrollExtentMax = node.scrollExtentMax;
-    scrollExtentMin = node.scrollExtentMin;
-    scrollIndex = node.scrollIndex;
-    scrollChildren = node.scrollChildren;
-    scrollChanged = true;
-    // we need visible children num to update info.
-  }
+  UpdateScrollWithNode(node);
 
   // childrenChanged is check in UpdateSelfRecursively
   // we need know which node is not exist
@@ -581,7 +652,6 @@ void SemanticsNodeExtend::UpdateWithNode(flutter::SemanticsNode& node) {
   textDirection = node.textDirection;
   childrenInHitTestOrder = std::move(node.childrenInHitTestOrder);
   customAccessibilityActions = std::move(node.customAccessibilityActions);
-  identifier = std::move(node.identifier);
 }
 
 }  // namespace flutter

@@ -4,9 +4,13 @@
  * found in the LICENSE_HW file.
  */
 
+#define private public
 #include "flutter/shell/platform/ohos/image_lru.h"
+#undef private
 
 #include "display_list/image/dl_image.h"
+#include "flutter/fml/log_settings.h"
+#include "fml/time/time_point.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "third_party/skia/include/core/SkImage.h"
@@ -242,6 +246,28 @@ TEST_F(ImageLruTest, ReaddingSameKeyDoesNotGrowCache) {
   EXPECT_EQ(lru_.AddImage(image, default_config_, 2), 0u);
   // The original key 1 should still be present.
   EXPECT_EQ(lru_.FindImage(1, default_config_, nullptr), image);
+}
+
+TEST_F(ImageLruTest, TryDeleteOldestOnEmptyReturnsZero) {
+  EXPECT_EQ(lru_.TryDeleteOldest(1), 0u);
+}
+
+TEST_F(ImageLruTest, TryDeleteOldestEvictsExpiredTimestamp) {
+  auto image = MakeTestImage();
+  ASSERT_EQ(lru_.AddImage(image, default_config_, 7), 0u);
+  ASSERT_FALSE(lru_.image_lists_.empty());
+  lru_.image_lists_.back().timestamp = 0;
+  const int64_t now = fml::TimePoint::Now().ToEpochDelta().ToMilliseconds();
+  EXPECT_EQ(lru_.TryDeleteOldest(now), 7u);
+  EXPECT_EQ(lru_.FindImage(7, default_config_, nullptr), nullptr);
+
+  ASSERT_EQ(lru_.AddImage(image, default_config_, 8), 0u);
+  ASSERT_FALSE(lru_.image_lists_.empty());
+  lru_.image_lists_.back().timestamp = 0;
+  {
+    fml::ScopedSetLogSettings quiet({fml::kLogFatal});
+    EXPECT_EQ(lru_.TryDeleteOldest(now), 8u);
+  }
 }
 
 }  // namespace testing

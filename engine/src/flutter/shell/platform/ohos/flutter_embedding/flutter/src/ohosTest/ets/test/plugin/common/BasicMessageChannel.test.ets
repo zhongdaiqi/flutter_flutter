@@ -217,4 +217,14 @@ export default function basicMessageChannelTest() {
       expect(replyValue).assertEqual('');
     });
   });
+
+  describe('BasicMessageChannel.resizeChannelBuffer', () => {
+    it('resizeChannelBuffer does not throw', Level.LEVEL1, () => {
+      const messenger = new FakeMessenger();
+      const channel = new BasicMessageChannel<string>(messenger, 'test_channel', codec);
+      let threw = false;
+      try { channel.resizeChannelBuffer(64); } catch (e) { threw = true; }
+      expect(threw).assertEqual(false);
+    });
+  });
 }
