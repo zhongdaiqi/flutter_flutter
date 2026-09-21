@@ -137,26 +137,11 @@ class GlyphAtlas {
   /// @param[in]  font  The font
   /// @param[in]  scale The scale
   ///
-  /// @return     A pointer to a FontGlyphAtlas, which may be an empty atlas
-  ///             if the font and scale are not yet available in the atlas.
-  ///             The pointer is only valid for the lifetime of the GlyphAtlas.
-  ///
-  FontGlyphAtlas* GetOrCreateFontGlyphAtlas(const ScaledFont& scaled_font);
-
-  //----------------------------------------------------------------------------
-  /// @brief      Obtain an interface for querying the location of glyphs in the
-  ///             atlas for the given font and scale if such a font atlas
-  ///             already exists.  This provides a more efficient way to look
-  ///             up an existing run of glyphs in the same font.
-  ///
-  /// @param[in]  font  The font
-  /// @param[in]  scale The scale
-  ///
   /// @return     A pointer to a FontGlyphAtlas, or nullptr if the font and
   ///             scale are not available in the atlas.  The pointer is only
   ///             valid for the lifetime of the GlyphAtlas.
   ///
-  const FontGlyphAtlas* GetFontGlyphAtlas(const ScaledFont& scaled_font) const;
+  FontGlyphAtlas* GetOrCreateFontGlyphAtlas(const ScaledFont& scaled_font);
 
   //----------------------------------------------------------------------------
   /// @brief      Retrieve the generation id for this glyph atlas.
@@ -262,10 +247,6 @@ class FontGlyphAtlas {
   ///             This may indicate a placeholder glyph location to be replaced
   ///             at a later time, as indicated by FrameBounds.placeholder.
   void AppendGlyph(const SubpixelGlyph& glyph, const FrameBounds& frame_bounds);
-
-  //----------------------------------------------------------------------------
-  /// @brief      Get the number of glyphs in this font atlas.
-  size_t GetSize() const { return positions_.size(); }
 
  private:
   friend class GlyphAtlas;
