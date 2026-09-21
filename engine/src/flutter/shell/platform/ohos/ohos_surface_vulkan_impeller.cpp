@@ -182,10 +182,10 @@ bool OHOSSurfaceVulkanImpeller::SetPresentInfo(
         << damage_rect.right() << "," << damage_rect.bottom() << ">";
     std::string damage_rect_str = oss.str();
     TRACE_EVENT1("flutter", "OHOSSurfaceVulkanImpeller::SetPresentInfo",
-                  "frame_damage", damage_rect_str.c_str());
+                 "frame_damage", damage_rect_str.c_str());
   } else {
     TRACE_EVENT1("flutter", "OHOSSurfaceVulkanImpeller::SetPresentInfo",
-                  "frame_damage", "no frame_damage");
+                 "frame_damage", "no frame_damage");
   }
 
   // pts upload

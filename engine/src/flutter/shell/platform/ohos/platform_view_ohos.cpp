@@ -854,7 +854,9 @@ void PlatformViewOHOS::OnAxisEvent(
   return napi_facade_->FlutterViewOnAxisEvent(axisPacketString, size);
 }
 
-void PlatformViewOHOS::RunTask(OhosThreadType type, const fml::closure& task, int64_t millis) {
+void PlatformViewOHOS::RunTask(OhosThreadType type,
+                               const fml::closure& task,
+                               int64_t millis) {
   fml::RefPtr<fml::TaskRunner> TaskRunnerPtr = nullptr;
   switch (type) {
     case OhosThreadType::kPlatform:
