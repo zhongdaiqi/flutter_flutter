@@ -26,7 +26,6 @@
 #include "flutter/fml/time/time_delta.h"
 #include "flutter/fml/time/time_point.h"
 #if IMPELLER_SUPPORTS_RENDERING
-#include "impeller/base/flags.h"                 // nogncheck
 #include "impeller/core/formats.h"               // nogncheck
 #include "impeller/display_list/aiks_context.h"  // nogncheck
 #include "impeller/renderer/context.h"           // nogncheck
@@ -699,11 +698,8 @@ class Rasterizer final : public SnapshotDelegate,
       return surface_->GetAiksContext();
     }
     if (auto context = impeller_context_->GetContext()) {
-      impeller::Flags flags;
-      flags.glyph_raster_parallelization =
-          delegate_.GetSettings().enable_glyph_raster_parallelization;
       return std::make_shared<impeller::AiksContext>(
-          context, impeller::TypographerContextSkia::Make(flags));
+          context, impeller::TypographerContextSkia::Make());
     }
 #endif
     return nullptr;

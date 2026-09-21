@@ -10,7 +10,6 @@
 
 #include "common/settings.h"
 #include "flutter/fml/macros.h"
-#include "flutter/impeller/base/flags.h"
 #include "flutter/impeller/renderer/context.h"
 #include "third_party/skia/include/gpu/ganesh/GrDirectContext.h"
 
@@ -36,10 +35,6 @@ class OHOSContext {
   ///
   std::shared_ptr<impeller::Context> GetImpellerContext() const;
 
-  const impeller::Flags& GetImpellerFlags() const;
-
-  void SetImpellerFlags(const impeller::Flags& flags);
-
  protected:
   /// Intended to be called from a subclass constructor after setup work for the
   /// context has completed.
@@ -58,8 +53,6 @@ class OHOSContext {
   sk_sp<GrDirectContext> main_context_;
 
   std::shared_ptr<impeller::Context> impeller_context_;
-
-  impeller::Flags impeller_flags_;
 
   FML_DISALLOW_COPY_AND_ASSIGN(OHOSContext);
 };
