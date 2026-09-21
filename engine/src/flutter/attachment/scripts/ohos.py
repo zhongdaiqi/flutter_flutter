@@ -204,6 +204,7 @@ def engineCompile(buildInfo):
     command += "flutter/build/archives:archive_win_gen_snapshot "
   if not IS_WINDOWS:
     command += "flutter/shell/platform/ohos:flutter_ohos_unittests "
+    command += "flutter/shell/platform/ohos:flutter_ohos_app_test "
   runCommand(command)
 
 

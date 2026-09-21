@@ -7,6 +7,7 @@
 #include "flutter/fml/platform/ohos/paths_ohos.h"
 
 #include <gtest/gtest.h>
+#include "flutter/shell/platform/ohos/test_stubs/libc_wrapper_stub.h"
 
 #include "flutter/fml/unique_fd.h"
 
@@ -22,7 +23,10 @@ TEST(PathsOhosTest, GetExecutablePathReturnsFalseAndEmpty) {
 
 // After initializing caches path, GetCachesDirectory should return a valid FD
 TEST(PathsOhosTest, InitializeCachesPathAndGetDirectory) {
-  fml::paths::InitializeOhosCachesPath("/data/local/tmp");
+  // GetUtTmpDir() resolves the app temp dir via the NDK
+  // ApplicationContext inside app processes and falls back to
+  // /data/local/tmp for the shell runner.
+  fml::paths::InitializeOhosCachesPath(GetUtTmpDir());
   fml::UniqueFD fd = fml::paths::GetCachesDirectory();
   EXPECT_TRUE(fd.is_valid());
 }

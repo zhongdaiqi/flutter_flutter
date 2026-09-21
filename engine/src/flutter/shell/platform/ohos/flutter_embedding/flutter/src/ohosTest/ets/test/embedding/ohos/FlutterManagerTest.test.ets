@@ -14,7 +14,9 @@
  */
 import { beforeAll, describe, expect, it } from '@ohos/hypium';
 import { window } from '@kit.ArkUI';
-import FlutterManager, { FullScreenListener } from '../../../../../main/ets/embedding/ohos/FlutterManager';
+import common from '@ohos.app.ability.common';
+import { Context } from '@kit.AbilityKit';
+import FlutterManager, { FullScreenListener, DragDropCallback, DefaultFullScreenListener } from '../../../../../main/ets/embedding/ohos/FlutterManager';
 
 function sleep(time: number) {
   return new Promise<void>((resolve: Function) => setTimeout(resolve, time));
@@ -26,6 +28,12 @@ const uiAbility = flutterManager.getUIAbility(getContext());
 export default function FlutterManagerTest() {
   describe('FlutterManagerTest', () => {
     beforeAll(async () => {
+      // Skip beforeAll setup in JsUnit env (uiAbility is null when not in
+      // a UIAbility lifecycle). The it() tests below don't depend on
+      // beforeAll setup succeeding.
+      if (uiAbility === null || uiAbility === undefined) {
+        return;
+      }
       const windowStage = flutterManager.getWindowStage(uiAbility);
       await sleep(1000);
       flutterManager.pushWindowStage(uiAbility, windowStage);
@@ -124,5 +132,165 @@ export default function FlutterManagerTest() {
       expect(result === true || result === false).assertTrue();
       done();
     })
+
+    it('TestDragCallbacksAccessors', 0, async (done: Function) => {
+      const enterCbs = flutterManager.getDragEnterCbs();
+      const moveCbs = flutterManager.getDragMoveCbs();
+      const leaveCbs = flutterManager.getDragLeaveCbs();
+      const dropCbs = flutterManager.getDropCbs();
+      expect(enterCbs).not().assertNull();
+      expect(moveCbs).not().assertNull();
+      expect(leaveCbs).not().assertNull();
+      expect(dropCbs).not().assertNull();
+      done();
+    })
+
+    it('TestAddRemoveDragCallbacks', 0, async (done: Function) => {
+      const cb: DragDropCallback = new DragDropCallbackImpl();
+      const enterId = flutterManager.addDragEnterCb(cb);
+      const moveId = flutterManager.addDragMoveCb(cb);
+      const leaveId = flutterManager.addDragLeaveCb(cb);
+      const dropId = flutterManager.addDropCb(cb);
+      flutterManager.removeDragEnterCb(enterId);
+      flutterManager.removeDragMoveCb(moveId);
+      flutterManager.removeDragLeaveCb(leaveId);
+      flutterManager.removeDropCb(dropId);
+      done();
+    })
+
+    it('TestHasFlutterView', 0, async (done: Function) => {
+      const result = flutterManager.hasFlutterView('non-existent-view');
+      expect(result).assertFalse();
+      done();
+    })
+
+    it('TestGetFlutterViewById', 0, async (done: Function) => {
+      const view = flutterManager.getFlutterView('non-existent-view');
+      expect(view).assertNull();
+      done();
+    })
+
+    it('TestDeleteFlutterView', 0, async (done: Function) => {
+      let threw = false;
+      try { flutterManager.deleteFlutterView('non-existent'); } catch (e) { threw = true; }
+      expect(threw).assertEqual(false);
+      done();
+    })
+
+    it('TestGetUIAbility with no context', 0, () => {
+      const ability = flutterManager.getUIAbility();
+      expect(ability).not().assertNull();
+    })
+
+    it('TestGetUIAbility with context', 0, () => {
+      const ctx = getContext();
+      const ability = flutterManager.getUIAbility(ctx);
+      expect(ability).not().assertNull();
+    })
+
+    it('TestGetWindowId does not throw', 0, () => {
+      const ctx = getContext();
+      let threw = false;
+      try { flutterManager.getWindowId(getContext()); } catch (e) { threw = true; }
+      expect(threw).assertEqual(false);
+    })
+
+    it('TestGetFlutterViewList is not null', 0, () => {
+      const list = flutterManager.getFlutterViewList();
+      expect(list).not().assertNull();
+    })
+
+    it('TestGetNextFlutterViewId returns string', 0, () => {
+      const id = flutterManager.getNextFlutterViewId();
+      expect(typeof id).assertEqual('string');
+    })
+
+    it('TestSetSpecificSystemBarEnabled does not throw with non-existent view', 0, () => {
+      let threw = false;
+      try {
+        flutterManager.setSpecificSystemBarEnabled('non-existent', 'status', true);
+      } catch (e) { threw = true; }
+      expect(threw).assertEqual(false);
+    })
+
+    it('TestHandleWindowDecorSafeArea does not throw', 0, () => {
+      const ctx = getContext();
+      let threw = false;
+      try {
+        flutterManager.handleWindowDecorSafeArea('non-existent', ctx);
+      } catch (e) { threw = true; }
+      expect(threw).assertEqual(false);
+    })
+
+    it('TestSetFullScreenChangeListener does not throw', 0, () => {
+      let threw = false;
+      try {
+        const listener: FullScreenListener = new TestFullScreenListener();
+        flutterManager.setFullScreenListener(listener);
+      } catch (e) { threw = true; }
+      expect(threw).assertEqual(false);
+    })
+
+    it('TestPopUIAbility does not throw', 0, () => {
+      let threw = false;
+      try { const ctx = getContext();
+      const ability = flutterManager.getUIAbility(ctx);
+      if (ability) { flutterManager.popUIAbility(ability); } } catch (e) { threw = true; }
+      expect(threw).assertEqual(false);
+    })
+
+    it('TestIsWindowDecorSafeAreaAvoidSupported does not throw', 0, () => {
+      const ctx = getContext();
+      let threw = false;
+      try { flutterManager.isWindowDecorSafeAreaAvoidSupported(ctx); } catch (e) { threw = true; }
+      expect(threw).assertEqual(false);
+    })
   })
+
+describe('FlutterManager.DefaultFullScreenListener', () => {
+  it('setUseFullScreenForFreeWindow applies the flag before window work', 0, () => {
+    const listener = new DefaultFullScreenListener();
+    expect(listener.useFullScreen()).assertEqual(true);
+    try {
+      listener.setUseFullScreenForFreeWindow(false);
+    } catch (e) {
+      // window stage is unavailable in the test environment; the flag is
+      // applied before that call, which is what this test pins.
+    }
+    expect(listener.useFullScreen()).assertEqual(false);
+  });
+
+  it('setUseFullScreen applies the flag before window work', 0, () => {
+    const listener = new DefaultFullScreenListener();
+    try {
+      listener.setUseFullScreen(false);
+    } catch (e) {
+      // same window-stage boundary as above
+    }
+    expect(listener.useFullScreen()).assertEqual(false);
+  });
+});
+describe('FlutterManager.freeWindowMode', () => {
+  it('isInFreeMultiWindowMode returns false without a window stage', 0, () => {
+    let result: boolean = true;
+    let threw = false;
+    try { result = FlutterManager.getInstance().isInFreeMultiWindowMode(); } catch (e) { threw = true; }
+    expect(threw).assertEqual(false);
+    expect(result).assertEqual(false);
+  });
+});
+}
+
+class DragDropCallbackImpl implements DragDropCallback {
+  do(event: Object, extraParams: string): void {
+    // no-op
+  }
+}
+class TestFullScreenListener implements FullScreenListener {
+  useFullScreen(): boolean { return false; }
+  setUseFullScreen(_useFullScreen: boolean, _context?: Context | null | undefined): void {}
+  setUseFullScreenForFreeWindow(_useFullScreen: boolean, _context?: Context | null | undefined): void {}
+  onScreenStateChanged(_data: window.WindowStatusType): void {}
+
+
 }

@@ -98,6 +98,9 @@ def run_cmd( # pylint: disable=too-many-arguments
       stderr=subprocess.STDOUT,
       env=env,
       universal_newlines=True,
+      # Native test binaries may emit non-UTF-8 bytes; strict decoding raises
+      # UnicodeDecodeError mid-stream and kills the whole run.
+      errors='replace',
       **kwargs
   )
   output = ''
@@ -840,7 +843,7 @@ def run_ohos_unittest(
 
 def _filter_coverage_source_files(cov_binary, unstripped_exe, merged_profile, source_regex):
   """Returns source files matching source_regex, excluding
-  third_party/unittest/fixture/generated."""
+  third_party/unittest/fixture/test_stubs/generated."""
   report_output = subprocess.check_output(
       [cov_binary, 'report', '-object', unstripped_exe,
        '-instr-profile=%s' % merged_profile],
@@ -848,7 +851,7 @@ def _filter_coverage_source_files(cov_binary, unstripped_exe, merged_profile, so
       universal_newlines=True,
   )
   source_pattern = re.compile(source_regex, re.IGNORECASE)
-  exclude_pattern = re.compile(r'flutter/third_party/|unittest|fixture|/out/|^out/')
+  exclude_pattern = re.compile(r'flutter/third_party/|unittest|fixture|test_stubs|/out/|^out/')
   filtered = []
   for line in report_output.splitlines():
     parts = line.split()
@@ -931,7 +934,7 @@ def _collect_and_generate_ohos_coverage(
             cov_binary, 'show', '-object', unstripped_exe,
             '-instr-profile=%s' % merged_profile, '-format=html',
             '-output-dir=%s' % coverage_dir, '-tab-size=2',
-            '-ignore-filename-regex=flutter/third_party/|unittest|fixture'
+            '-ignore-filename-regex=flutter/third_party/|unittest|fixture|test_stubs'
         ],
         cwd=BUILDROOT_DIR,
     )

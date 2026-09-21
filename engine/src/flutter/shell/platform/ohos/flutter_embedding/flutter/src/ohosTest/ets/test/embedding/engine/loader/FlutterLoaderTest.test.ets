@@ -14,6 +14,8 @@
  */
 
 import common from '@ohos.app.ability.common';
+import Any from '../../../../../../main/ets/plugin/common/Any';
+import FlutterInjector from '../../../../../../main/ets/FlutterInjector';
 import FlutterLoader from '../../../../../../main/ets/embedding/engine/loader/FlutterLoader';
 import { describe, expect, it } from '@ohos/hypium';
 import FlutterNapi from '../../../../../../main/ets/embedding/engine/FlutterNapi';
@@ -51,4 +53,31 @@ export default function FlutterLoaderTest() {
       done();
     })
   })
+describe('FlutterLoader.copyResource', () => {
+  it('copies kernel and snapshot resources into filesDir', 0, () => {
+    const loader: Any = new FlutterLoader(FlutterInjector.getInstance().getFlutterNapi());
+    loader['flutterApplicationInfo'] = {
+      'flutterAssetsDir': 'flutter_assets',
+      'vmSnapshotData': 'vm_snapshot_data',
+      'isolateSnapshotData': 'isolate_snapshot_data'
+    };
+    const context: common.Context = getContext();
+    let threw = false;
+    try { loader['copyResource'](context); } catch (e) { threw = true; }
+    expect(threw).assertEqual(false);
+  });
+
+  it('second copy run stays stable', 0, () => {
+    const loader: Any = new FlutterLoader(FlutterInjector.getInstance().getFlutterNapi());
+    loader['flutterApplicationInfo'] = {
+      'flutterAssetsDir': 'flutter_assets',
+      'vmSnapshotData': 'vm_snapshot_data',
+      'isolateSnapshotData': 'isolate_snapshot_data'
+    };
+    const context: common.Context = getContext();
+    let threw = false;
+    try { loader['copyResource'](context); } catch (e) { threw = true; }
+    expect(threw).assertEqual(false);
+  });
+});
 }

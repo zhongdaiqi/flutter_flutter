@@ -108,6 +108,53 @@ TaskFunction createAndroidTextureScrollPerfTest({bool? enableImpeller}) {
   ).run;
 }
 
+TaskFunction createOhosPlatformViewScrollPerfTest({bool? enableImpeller}) {
+  return PerfTest(
+    '${flutterDirectory.path}/dev/benchmarks/platform_views_layout',
+    'test_driver/android_view_scroll_perf.dart',
+    'platform_views_scroll_perf',
+    testDriver: 'test_driver/scroll_perf_test.dart',
+    needsFullTimeline: false,
+    enableImpeller: enableImpeller,
+    enableMergedPlatformThread: true,
+  ).run;
+}
+
+TaskFunction createOhosAdBannersScrollPerfTest({bool? enableImpeller}) {
+  return PerfTest(
+    '${flutterDirectory.path}/dev/benchmarks/platform_views_layout',
+    'test_driver/uikit_view_scroll_perf_ad_banners.dart',
+    'platform_views_scroll_perf_ad_banners',
+    testDriver: 'test_driver/scroll_perf_ad_banners_test.dart',
+    needsFullTimeline: false,
+    enableImpeller: enableImpeller,
+  ).run;
+}
+
+TaskFunction createOhosBottomAdBannerScrollPerfTest({bool? enableImpeller}) {
+  return PerfTest(
+    '${flutterDirectory.path}/dev/benchmarks/platform_views_layout',
+    'test_driver/uikit_view_scroll_perf_bottom_ad_banner.dart',
+    'platform_views_scroll_perf_bottom_ad_banner',
+    testDriver: 'test_driver/scroll_perf_bottom_ad_banner_test.dart',
+    needsFullTimeline: false,
+    enableImpeller: enableImpeller,
+  ).run;
+}
+
+TaskFunction createOhosHcppScrollPerfTest() {
+  return PerfTest(
+    '${flutterDirectory.path}/dev/benchmarks/platform_views_layout',
+    'test_driver/scroll_perf_hcpp.dart',
+    'platform_views_hcpp_scroll_perf',
+    testDriver: 'test_driver/scroll_perf_hcpp_test.dart',
+    needsFullTimeline: false,
+    enableImpeller: true,
+    enableSurfaceControl: true,
+    enableMergedPlatformThread: true,
+  ).run;
+}
+
 TaskFunction createAndroidHCPPScrollPerfTest() {
   return PerfTest(
     '${flutterDirectory.path}/dev/benchmarks/platform_views_layout',
@@ -346,6 +393,8 @@ TaskFunction createBasicMaterialCompileTest() {
     if (!sampleDir.existsSync()) {
       throw 'Failed to create default Flutter app in ${sampleDir.path}';
     }
+
+    await injectOhosSigningConfig(sampleDir.path);
 
     return CompileTest(sampleDir.path).run();
   };
@@ -1384,6 +1433,8 @@ class PerfTest {
         );
       }
 
+      final bool isOhos = deviceOperatingSystem == DeviceOperatingSystem.ohos;
+
       bool changedPlist = false;
       bool changedManifest = false;
 
@@ -1410,7 +1461,7 @@ class PerfTest {
       }
 
       try {
-        if (enableImpeller ?? false) {
+        if ((enableImpeller ?? false) && !isOhos) {
           changedManifest = true;
           _addVulkanGPUTracingToManifest(testDirectory);
           if (forceOpenGLES ?? false) {
@@ -1426,7 +1477,7 @@ class PerfTest {
             _addLazyShaderMode(testDirectory);
           }
         }
-        if (disablePartialRepaint || enableMergedPlatformThread) {
+        if ((disablePartialRepaint || enableMergedPlatformThread) && !isOhos) {
           changedPlist = true;
           _updateManifestSettings(
             testDirectory,
@@ -1501,7 +1552,6 @@ class PerfTest {
       }
 
       final bool isAndroid = deviceOperatingSystem == DeviceOperatingSystem.android;
-      final bool isOhos = deviceOperatingSystem == DeviceOperatingSystem.ohos;
       return TaskResult.success(
         data,
         detailFiles: <String>[
@@ -1710,6 +1760,10 @@ class CompileTest {
   Future<TaskResult> run() async {
     return inDirectory<TaskResult>(testDirectory, () async {
       await flutter('packages', options: <String>['get']);
+
+      if (deviceOperatingSystem == DeviceOperatingSystem.ohos) {
+        await injectOhosSigningConfig(testDirectory);
+      }
 
       // "initial" compile required downloading and creating the `android/.gradle` directory while "full"
       // compiles only run `flutter clean` between runs.
@@ -2018,7 +2072,14 @@ class CompileTest {
       case DeviceOperatingSystem.linux:
         throw Exception('Unsupported option for Linux devices');
       case DeviceOperatingSystem.ohos:
-        throw Exception('Unsupported option for OHOS devices');
+        options.insert(0, 'hap');
+        options.add('--tree-shake-icons');
+        options.add('--split-debug-info=infos/');
+        watch.start();
+        await flutter('build', options: options);
+        watch.stop();
+        final File hap = _findOhosHap(dir(path.join(cwd, 'build')), dir(path.join(cwd, 'ohos')));
+        releaseSizeInBytes = hap.lengthSync();
       case DeviceOperatingSystem.windows:
         unawaited(stderr.flush());
         options.insert(0, 'windows');
@@ -2084,7 +2145,7 @@ class CompileTest {
       case DeviceOperatingSystem.linux:
         throw Exception('Unsupported option for Linux devices');
       case DeviceOperatingSystem.ohos:
-        throw Exception('Unsupported option for OHOS devices');
+        options.insert(0, 'hap');
       case DeviceOperatingSystem.macos:
         unawaited(stderr.flush());
         options.insert(0, 'macos');
@@ -2250,6 +2311,12 @@ class MemoryTest {
     await receivedNextMessage;
   }
 
+  /// The location to tap when waking the application.
+  ///
+  /// Override this to change the tap location, e.g. to avoid the status bar
+  /// on certain platforms.
+  math.Point<int> get tapLocation => const math.Point<int>(100, 100);
+
   /// Taps the application and looks for acknowledgement.
   ///
   /// This is used by several tests to ensure scrolling gestures are installed.
@@ -2267,7 +2334,7 @@ class MemoryTest {
           }
           tapCount += 1;
           print('tapping device... [$tapCount]');
-          await device!.tap(100, 100);
+          await device!.tap(tapLocation.x, tapLocation.y);
           await Future<void>.delayed(const Duration(milliseconds: 100));
         }
       }(),
@@ -2521,4 +2588,67 @@ String? _findDarwinAppInBuildDirectory(String searchDirectory) {
     }
   }
   return null;
+}
+
+File _findOhosHap(Directory buildDir, Directory ohosDir) {
+  // The HAP output path varies by project configuration. Check known locations.
+  final List<String> knownPaths = <String>[
+    path.join(buildDir.path, 'ohos', 'hap', 'entry-default-signed.hap'),
+    path.join(
+      ohosDir.path,
+      'entry',
+      'build',
+      'default',
+      'outputs',
+      'default',
+      'entry-default-signed.hap',
+    ),
+  ];
+  for (final String candidatePath in knownPaths) {
+    final File candidate = file(candidatePath);
+    if (candidate.existsSync()) {
+      return candidate;
+    }
+  }
+  throw 'Failed to find entry-default-signed.hap in ${buildDir.path} or ${ohosDir.path}';
+}
+
+/// Injects OHos signing configuration into a Flutter project's ohos directory.
+///
+/// Reads the signing config from the `OHOS_SIGNING_CONFIG` environment
+/// variable, which should point to a JSON file containing `signingConfigs`
+/// and optionally `bundleName`. This is required for OHos projects created
+/// in temporary directories that don't have signing configured.
+Future<void> injectOhosSigningConfig(String projectPath) async {
+  final String? configPath = Platform.environment['OHOS_SIGNING_CONFIG'];
+  if (configPath == null || configPath.isEmpty) {
+    return;
+  }
+  final File configFile = File(configPath);
+  if (!configFile.existsSync()) {
+    return;
+  }
+  final Map<String, dynamic> config =
+      json.decode(configFile.readAsStringSync()) as Map<String, dynamic>;
+
+  final File bpFile = File(path.join(projectPath, 'ohos', 'build-profile.json5'));
+  if (bpFile.existsSync()) {
+    String content = bpFile.readAsStringSync();
+    final String signingStr = '"signingConfigs": ${json.encode(config['signingConfigs'])}';
+    content = content.replaceAll(RegExp(r'"signingConfigs":\s*\[.*?\]', dotAll: true), signingStr);
+    bpFile.writeAsStringSync(content);
+  }
+
+  final String? bundleName = config['bundleName'] as String?;
+  if (bundleName != null && bundleName.isNotEmpty) {
+    final File appFile = File(path.join(projectPath, 'ohos', 'AppScope', 'app.json5'));
+    if (appFile.existsSync()) {
+      String content = appFile.readAsStringSync();
+      content = content.replaceAll(
+        RegExp(r'"bundleName"\s*:\s*"[^"]*"'),
+        '"bundleName": "$bundleName"',
+      );
+      appFile.writeAsStringSync(content);
+    }
+  }
 }

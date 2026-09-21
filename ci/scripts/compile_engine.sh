@@ -22,9 +22,10 @@ compile_engine() {
             exit 1
         fi
     else
-        readonly BUILD_MODE="debug"
+        readonly BUILD_MODE="profile"
         log_info "Compiling engine in $BUILD_MODE mode"
-        if ! run_cmd "./ohos -t $BUILD_MODE -g \"\\--coverage\""; then
+        # Disable LTO temporarily
+        if ! run_cmd "./ohos -t $BUILD_MODE -g \"\\--coverage \\--no-lto\""; then
             log_error "Engine compilation failed for mode: $BUILD_MODE"
             exit 1
         fi

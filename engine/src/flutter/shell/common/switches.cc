@@ -537,6 +537,8 @@ Settings SettingsFromCommandLine(const fml::CommandLine& command_line) {
       command_line.HasOption(FlagForSwitch(Switch::ImpellerLazyShaderMode));
   settings.impeller_antialiased_lines =
       command_line.HasOption(FlagForSwitch(Switch::ImpellerAntialiasLines));
+  settings.enable_glyph_raster_parallelization = command_line.HasOption(
+      FlagForSwitch(Switch::EnableGlyphRasterParallelization));
 
   return settings;
 }
