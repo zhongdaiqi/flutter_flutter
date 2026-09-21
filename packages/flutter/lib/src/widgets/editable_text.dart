@@ -3671,6 +3671,9 @@ class EditableTextState extends State<EditableText> with AutomaticKeepAliveClien
       _openInputConnection();
     } else if (!_hasFocus) {
       _closeInputConnectionIfNeeded();
+      if (defaultTargetPlatform == TargetPlatform.ohos && _value.composing.isValid) {
+        _formatAndSetValue(_value.copyWith(composing: TextRange.empty), null);
+      }
       widget.controller.clearComposing();
     }
   }
@@ -3993,8 +3996,13 @@ class EditableTextState extends State<EditableText> with AutomaticKeepAliveClien
       } else {
         _selectionOverlay!.update(_value);
       }
-      _selectionOverlay!.handlesVisible = widget.showSelectionHandles;
-      _selectionOverlay!.showHandles();
+      if (defaultTargetPlatform == TargetPlatform.ohos &&
+          _value.composing.isValid && _value.composing.isNormalized) {
+        _selectionOverlay?.hideHandles();
+      } else {
+        _selectionOverlay!.handlesVisible = widget.showSelectionHandles;
+        _selectionOverlay!.showHandles();
+      }
     }
     // TODO(chunhtai): we should make sure selection actually changed before
     // we call the onSelectionChanged.

@@ -11,10 +11,10 @@ import 'package:flutter/foundation.dart';
 
 import 'box.dart';
 import 'debug_overflow_indicator.dart';
+import 'flex_overflow_strategy.dart';
 import 'layer.dart';
 import 'layout_helper.dart';
 import 'object.dart';
-import 'flex_overflow_strategy.dart';
 
 // A 2D vector that uses a [RenderFlex]'s main axis and cross axis as its first and second coordinate axes.
 // It represents the same vector as (double mainAxisExtent, double crossAxisExtent).
@@ -666,7 +666,7 @@ class RenderFlex extends RenderBox with ContainerRenderObjectMixin<RenderBox, Fl
   FlexOverflowStrategy _overflowStrategy;
   set overflowStrategy(FlexOverflowStrategy value) {
     if (_overflowStrategy != value) {
-      _overflowStrategy.dispose();
+      _overflowStrategy.dispose(this);
       _overflowStrategy = value;
       markNeedsLayout();
     }
@@ -1245,7 +1245,7 @@ class RenderFlex extends RenderBox with ContainerRenderObjectMixin<RenderBox, Fl
   @override
   void dispose() {
     _clipRectLayer.layer = null;
-    _overflowStrategy.dispose();
+    _overflowStrategy.dispose(this);
     super.dispose();
   }
 
