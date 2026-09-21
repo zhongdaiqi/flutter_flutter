@@ -842,8 +842,7 @@ TEST_P(AiksTest, MultipleColorWithShadowCache) {
   paint.setColor(DlColor::kWhite());
   builder.DrawPaint(paint);
 
-  AiksContext aiks_context(GetContext(),
-                           std::make_shared<TypographerContextSkia>());
+  AiksContext aiks_context(GetContext(), TypographerContextSkia::Make());
   // Cache empty
   EXPECT_EQ(aiks_context.GetContentContext()
                 .GetTextShadowCache()
