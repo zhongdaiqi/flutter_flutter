@@ -9,11 +9,13 @@
 
 namespace impeller {
 
+struct Flags;
+
 class TypographerContextSkia : public TypographerContext {
  public:
-  static std::shared_ptr<TypographerContext> Make();
+  static std::shared_ptr<TypographerContext> Make(const Flags& flags = Flags{});
 
-  TypographerContextSkia();
+  explicit TypographerContextSkia(const Flags& flags);
 
   ~TypographerContextSkia() override;
 
@@ -27,13 +29,14 @@ class TypographerContextSkia : public TypographerContext {
       GlyphAtlas::Type type,
       HostBuffer& host_buffer,
       const std::shared_ptr<GlyphAtlasContext>& atlas_context,
-      const std::vector<std::shared_ptr<TextFrame>>& text_frames)
-      const override;
+      const std::vector<RenderableText>& renderable_texts) const override;
 
  private:
   static std::pair<std::vector<FontGlyphPair>, std::vector<Rect>>
   CollectNewGlyphs(const std::shared_ptr<GlyphAtlas>& atlas,
-                   const std::vector<std::shared_ptr<TextFrame>>& text_frames);
+                   const std::vector<RenderableText>& renderable_texts);
+
+  Flags flags_;
 
   TypographerContextSkia(const TypographerContextSkia&) = delete;
 

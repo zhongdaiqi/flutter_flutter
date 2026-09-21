@@ -15,6 +15,7 @@
 import { describe, expect, it } from '@ohos/hypium';
 import FlutterEngine from '../../../../../main/ets/embedding/engine/FlutterEngine';
 import FlutterEngineCache from '../../../../../main/ets/embedding/engine/FlutterEngineCache';
+import Any from '../../../../../main/ets/plugin/common/Any';
 
 export default function FlutterEngineCacheTest() {
   const flutterEngineCache: FlutterEngineCache = new FlutterEngineCache();
@@ -43,5 +44,65 @@ export default function FlutterEngineCacheTest() {
       }
       done();
     })
+
+    it('contains returns false for unknown id', 0, () => {
+      const r = flutterEngineCache.contains('non-existent-id-12345');
+      expect(r).assertEqual(false);
+    });
+
+    it('get returns null for unknown id', 0, () => {
+      const r = flutterEngineCache.get('non-existent-id-12345');
+      expect(r).assertNull();
+    });
+
+    it('getInstance returns same instance on second call', 0, () => {
+      const a = FlutterEngineCache.getInstance();
+      const b = FlutterEngineCache.getInstance();
+      expect(a === b).assertEqual(true);
+    });
+  })
+
+  describe('FlutterEngineCache.put.get.contains.branches', () => {
+    it('put then get returns the same instance', 0, () => {
+      const cache = new FlutterEngineCache();
+      const fakeEngine = { tag: 'e1' } as Any as FlutterEngine;
+      cache.put('id1', fakeEngine);
+      expect(cache.get('id1') === fakeEngine).assertEqual(true);
+      expect(cache.contains('id1')).assertEqual(true);
+    });
+
+    it('get of missing id returns null', 0, () => {
+      const cache = new FlutterEngineCache();
+      expect(cache.get('missing-id')).assertNull();
+    });
+
+    it('containsEngine finds the cached instance and rejects another', 0, () => {
+      const cache = new FlutterEngineCache();
+      const engineA = { tag: 'a' } as Any as FlutterEngine;
+      const engineB = { tag: 'b' } as Any as FlutterEngine;
+      cache.put('a', engineA);
+      expect(cache.containsEngine(engineA)).assertEqual(true);
+      expect(cache.containsEngine(engineB)).assertEqual(false);
+    });
+
+    it('put with null removes the entry', 0, () => {
+      const cache = new FlutterEngineCache();
+      cache.put('gone', { tag: 'x' } as Any as FlutterEngine);
+      expect(cache.contains('gone')).assertEqual(true);
+      cache.put('gone', null);
+      expect(cache.contains('gone')).assertEqual(false);
+      expect(cache.get('gone')).assertNull();
+    });
+
+    it('remove delegates to put-null and clear empties the cache', 0, () => {
+      const cache = new FlutterEngineCache();
+      cache.put('r1', { tag: 'r' } as Any as FlutterEngine);
+      cache.put('r2', { tag: 'r2' } as Any as FlutterEngine);
+      cache.remove('r1');
+      expect(cache.contains('r1')).assertEqual(false);
+      expect(cache.contains('r2')).assertEqual(true);
+      cache.clear();
+      expect(cache.contains('r2')).assertEqual(false);
+    });
   })
 }

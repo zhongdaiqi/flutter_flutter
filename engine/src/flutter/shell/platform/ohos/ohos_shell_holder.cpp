@@ -32,27 +32,46 @@ static constexpr int64_t kImplicitViewId = 0;
 static void OHOSPlatformThreadConfigSetter(
     const fml::Thread::ThreadConfig& config) {
   fml::Thread::SetCurrentThreadName(config);
-  // set thread priority
   switch (config.priority) {
     case fml::Thread::ThreadPriority::kBackground: {
       int ret = OH_QoS_SetThreadQoS(QoS_Level::QOS_BACKGROUND);
-      FML_DLOG(INFO) << "qos set background result:" << ret
-                     << ",tid:" << gettid();
+      if (ret != 0) {
+        FML_LOG(WARNING) << "qos set background failed:" << ret
+                         << ", fallback to QOS_DEFAULT, tid:" << gettid();
+        OH_QoS_SetThreadQoS(QoS_Level::QOS_DEFAULT);
+      } else {
+        FML_LOG(INFO) << "qos set background ok, tid:" << gettid();
+      }
       break;
     }
     case fml::Thread::ThreadPriority::kDisplay: {
       int ret = OH_QoS_SetThreadQoS(QoS_Level::QOS_USER_INTERACTIVE);
-      FML_DLOG(INFO) << "qos set display result:" << ret << ",tid:" << gettid();
+      if (ret != 0) {
+        FML_LOG(WARNING) << "qos set display failed:" << ret
+                         << ", fallback to QOS_USER_INITIATED, tid:"
+                         << gettid();
+        OH_QoS_SetThreadQoS(QoS_Level::QOS_USER_INITIATED);
+      } else {
+        FML_LOG(INFO) << "qos set display ok, tid:" << gettid();
+      }
       break;
     }
     case fml::Thread::ThreadPriority::kRaster: {
       int ret = OH_QoS_SetThreadQoS(QoS_Level::QOS_USER_INTERACTIVE);
-      FML_DLOG(INFO) << "qos set raster result:" << ret << ",tid:" << gettid();
+      if (ret != 0) {
+        FML_LOG(WARNING) << "qos set raster failed:" << ret
+                         << ", fallback to QOS_USER_INITIATED, tid:"
+                         << gettid();
+        OH_QoS_SetThreadQoS(QoS_Level::QOS_USER_INITIATED);
+      } else {
+        FML_LOG(INFO) << "qos set raster ok, tid:" << gettid();
+      }
       break;
     }
-    default:
+    default: {
       int ret = OH_QoS_SetThreadQoS(QoS_Level::QOS_DEFAULT);
-      FML_DLOG(INFO) << "qos set default result:" << ret << ",tid:" << gettid();
+      FML_LOG(INFO) << "qos set default result:" << ret << ", tid:" << gettid();
+    }
   }
 }
 
@@ -194,17 +213,14 @@ OHOSShellHolder::OHOSShellHolder(
             shell.GetSettings()
                 .enable_software_rendering  // use software rendering
         );
-        LOGI("on_create_platform_view LOGI");
         FML_LOG(INFO) << "on_create_platform_view end";
         weak_platform_view = platform_view_OHOS->GetWeakPtr();
-        LOGI("on_create_platform_view LOGI2");
         FML_LOG(INFO) << "on_create_platform_view end1";
         // std::vector<std::unique_ptr<Display>> displays;
         // displays.push_back(std::make_unique<OHOSDisplay>(napi_facade));
         // FML_DLOG(INFO) << "on_create_platform_view LOGI3";
         // FML_LOG(INFO) << "on_create_platform_view end3---here";
         // shell.OnDisplayUpdates(std::move(displays));
-        LOGI("on_create_platform_view LOGI4");
         FML_LOG(INFO) << "on_create_platform_view end3";
         return platform_view_OHOS;
       };
@@ -255,7 +271,7 @@ OHOSShellHolder::OHOSShellHolder(
       }
     });
 
-    LOGI("shell_ end");
+    FML_LOG(INFO) << "shell_ end";
     shell_->RegisterImageDecoder(
         [](sk_sp<SkData> buffer) {
           return OHOSImageGenerator::MakeFromData(std::move(buffer));
@@ -379,6 +395,8 @@ std::unique_ptr<OHOSShellHolder> OHOSShellHolder::Spawn(
   if (!config) {
     // If the RunConfiguration was null, the kernel blob wasn't readable.
     // Fail the whole thing.
+    FML_LOG(ERROR)
+        << "BuildRunConfiguration failed (kernel/snapshot unreadable)";
     return nullptr;
   }
 
@@ -472,7 +490,7 @@ std::optional<RunConfiguration> OHOSShellHolder::BuildRunConfiguration(
         fml::FileMapping::CreateReadOnly(
             GetSettings().application_kernel_asset);
     if (!kernel_blob) {
-      FML_DLOG(ERROR) << "Unable to load the kernel blob asset.";
+      FML_LOG(ERROR) << "Unable to load the kernel blob asset.";
       return std::nullopt;
     }
     FML_LOG(INFO) << "CreateForKernel.";

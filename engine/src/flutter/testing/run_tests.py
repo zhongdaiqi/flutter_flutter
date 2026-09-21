@@ -104,6 +104,9 @@ def run_cmd( # pylint: disable=too-many-arguments
       stderr=subprocess.STDOUT,
       env=env,
       universal_newlines=True,
+      # Native test binaries may emit non-UTF-8 bytes; strict decoding raises
+      # UnicodeDecodeError mid-stream and kills the whole run.
+      errors='replace',
       **kwargs
   )
   output = ''
@@ -264,8 +267,10 @@ def build_engine_executable_command(
 
 def _executable_exists(unstripped_exe, stripped_exe):
   # pylint: disable=missing-function-docstring
-  return (os.path.exists(unstripped_exe) or os.path.exists(stripped_exe) or
-          os.path.exists(stripped_exe + '.exe') or os.path.exists(stripped_exe + '.bat'))
+  return (
+      os.path.exists(unstripped_exe) or os.path.exists(stripped_exe) or
+      os.path.exists(stripped_exe + '.exe') or os.path.exists(stripped_exe + '.bat')
+  )
 
 
 def run_engine_executable( # pylint: disable=too-many-arguments
@@ -859,7 +864,8 @@ def run_ohos_unittest(
       # Remove stale profile on the device, then run with LLVM_PROFILE_FILE set.
       run_cmd([hdc_path, 'shell', 'rm', '-f', remote_rawprofile], cwd=BUILDROOT_DIR)
       run_cmd(
-          [hdc_path, 'shell', 'LLVM_PROFILE_FILE=%s %s' % (remote_rawprofile, remote_tests_path)],
+          [hdc_path, 'shell',
+           'LLVM_PROFILE_FILE=%s %s' % (remote_rawprofile, remote_tests_path)],
           cwd=BUILDROOT_DIR,
       )
     else:
@@ -876,30 +882,30 @@ def run_ohos_unittest(
     if coverage:
       try:
         _collect_and_generate_ohos_coverage(
-            test_runner_name, ohos_variant, hdc_path, remote_rawprofile,
-            source_regex
+            test_runner_name, ohos_variant, hdc_path, remote_rawprofile, source_regex
         )
       except Exception as exn:  # pylint: disable=broad-except
         _logger.warning('Failed to collect coverage for %s: %s', test_runner_name, exn)
 
 
 def _filter_coverage_source_files(cov_binary, unstripped_exe, merged_profile, source_regex):
-  """Returns source files matching source_regex, excluding third_party/unittest/fixture/generated."""
+  """Returns source files matching source_regex, excluding third_party/unittest/fixture/test_stubs/generated."""
   report_output = subprocess.check_output(
       [cov_binary, 'report', '-object', unstripped_exe,
        '-instr-profile=%s' % merged_profile],
-      cwd=BUILDROOT_DIR, universal_newlines=True,
+      cwd=BUILDROOT_DIR,
+      universal_newlines=True,
   )
   source_pattern = re.compile(source_regex, re.IGNORECASE)
-  exclude_pattern = re.compile(r'flutter/third_party/|unittest|fixture|/out/|^out/')
+  exclude_pattern = re.compile(r'flutter/third_party/|unittest|fixture|test_stubs|/out/|^out/')
   filtered = []
   for line in report_output.splitlines():
     parts = line.split()
     if not parts:
       continue
     filename = parts[0]
-    if (source_pattern.search(filename) and not exclude_pattern.search(filename)
-        and filename.endswith(('.cc', '.cpp', '.h', '.c'))):
+    if (source_pattern.search(filename) and not exclude_pattern.search(filename) and
+        filename.endswith(('.cc', '.cpp', '.h', '.c'))):
       filtered.append(filename)
   return filtered
 
@@ -935,9 +941,7 @@ def _collect_and_generate_ohos_coverage(
   # buildtools if custom_toolchain is not set.
   llvm_bin_dir = _get_ohos_llvm_bin_dir(build_dir)
   if not llvm_bin_dir:
-    llvm_bin_dir = os.path.join(
-        BUILDROOT_DIR, 'flutter', 'buildtools', 'linux-x64', 'clang', 'bin'
-    )
+    llvm_bin_dir = os.path.join(BUILDROOT_DIR, 'flutter', 'buildtools', 'linux-x64', 'clang', 'bin')
   profdata_binary = os.path.join(llvm_bin_dir, 'llvm-profdata')
   cov_binary = os.path.join(llvm_bin_dir, 'llvm-cov')
 
@@ -952,9 +956,8 @@ def _collect_and_generate_ohos_coverage(
   # to only those source files (the binary links many shared libraries whose
   # coverage is irrelevant). Otherwise fall back to ignore-regex filtering.
   filtered_files = (
-      _filter_coverage_source_files(
-          cov_binary, unstripped_exe, merged_profile, source_regex
-      ) if source_regex else None
+      _filter_coverage_source_files(cov_binary, unstripped_exe, merged_profile, source_regex)
+      if source_regex else None
   )
 
   if filtered_files:
@@ -962,24 +965,23 @@ def _collect_and_generate_ohos_coverage(
     # the covered executable, the rest are source files to display. No
     # -ignore-filename-regex needed — the file list itself is the filter.
     run_cmd(
-        [cov_binary, 'show',
-         '-instr-profile=%s' % merged_profile,
-         '-format=html',
-         '-output-dir=%s' % coverage_dir,
-         '-tab-size=2',
-         unstripped_exe] + filtered_files,
+        [
+            cov_binary, 'show',
+            '-instr-profile=%s' % merged_profile, '-format=html',
+            '-output-dir=%s' % coverage_dir, '-tab-size=2', unstripped_exe
+        ] + filtered_files,
         cwd=BUILDROOT_DIR,
     )
   else:
     # No source filter (or no matches): show all files, excluding third_party
     # and test code via -ignore-filename-regex.
     run_cmd(
-        [cov_binary, 'show', '-object', unstripped_exe,
-         '-instr-profile=%s' % merged_profile,
-         '-format=html',
-         '-output-dir=%s' % coverage_dir,
-         '-tab-size=2',
-         '-ignore-filename-regex=flutter/third_party/|unittest|fixture'],
+        [
+            cov_binary, 'show', '-object', unstripped_exe,
+            '-instr-profile=%s' % merged_profile, '-format=html',
+            '-output-dir=%s' % coverage_dir, '-tab-size=2',
+            '-ignore-filename-regex=flutter/third_party/|unittest|fixture|test_stubs'
+        ],
         cwd=BUILDROOT_DIR,
     )
   _logger.info('Coverage report for %s generated at %s', test_runner_name, coverage_dir)
@@ -999,8 +1001,7 @@ def _get_ohos_llvm_bin_dir(build_dir):
 
 
 def run_ohos_tests(
-    ohos_variant='ohos_debug_arm64', hdc_path=None, coverage=False,
-    coverage_source_regex=None
+    ohos_variant='ohos_debug_arm64', hdc_path=None, coverage=False, coverage_source_regex=None
 ):
   if hdc_path is None:
     hdc_path = 'hdc'
@@ -1008,8 +1009,11 @@ def run_ohos_tests(
     coverage_source_regex = 'ohos'
 
   run_ohos_unittest(
-      'flutter_ohos_unittests', ohos_variant, hdc_path,
-      coverage=coverage, source_regex=coverage_source_regex
+      'flutter_ohos_unittests',
+      ohos_variant,
+      hdc_path,
+      coverage=coverage,
+      source_regex=coverage_source_regex
   )
 
 
@@ -1499,7 +1503,7 @@ Flutter Wiki page on the subject: https://github.com/flutter/flutter/wiki/Testin
       action='store',
       default=None,
       help='Regex to filter source files in ohos coverage reports (default: "ohos"). '
-           'Pass ".*" to include all source files.'
+      'Pass ".*" to include all source files.'
   )
   parser.add_argument(
       '--engine-capture-core-dump',
@@ -1650,7 +1654,9 @@ Flutter Wiki page on the subject: https://github.com/flutter/flutter/wiki/Testin
   if 'ohos' in types:
     assert not is_windows(), "OHos engine files can't be compiled on Windows."
     run_ohos_tests(
-        args.ohos_variant, args.hdc_path, coverage=args.coverage,
+        args.ohos_variant,
+        args.hdc_path,
+        coverage=args.coverage,
         coverage_source_regex=args.coverage_source_regex
     )
 

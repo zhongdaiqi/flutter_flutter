@@ -335,6 +335,8 @@ export class FlutterView {
   private windowPosition: window.Rect | null = null;
   // 默认值5，参考：https://developer.huawei.com/consumer/cn/doc/harmonyos-references/ts-basic-gestures-pangesture
   private callbackValue: callbackNumber = () => 5;
+  // Stay consistent with Android
+ 	private defaultPhysicalTouchSlop: number = 8;
   // DPI update flag to distinguish between system DPI updates and custom DPI updates
   private isDevicePixelRatioAdaptive: boolean = false;
   private lastHeight: number = 0;
@@ -342,7 +344,8 @@ export class FlutterView {
 
   private ltpoSwitchState: LTPOSwitchState = LTPOSwitchState.NOT_INIT;
 
-  private isAllCallbacksRegistered: boolean = false;
+  private isDefaultCallbacksRegistered: boolean = false;
+  private isUiCallbacksRegistered: boolean = false;
 
   /**
    * Constructs a new FlutterView instance.
@@ -367,6 +370,7 @@ export class FlutterView {
 
     this.mFirstFrameListeners = new ArrayList<FirstFrameListener>();
     this.mFirstPreloadFrameListeners = new ArrayList<FirstPreloadFrameListener>();
+    this.registerDefaultCallbacks();
   }
 
   onBackPressCallback = () => {
@@ -397,6 +401,13 @@ export class FlutterView {
     try {
       // Get display information
       this.displayInfo = display.getDefaultDisplaySync();
+
+      // Keep the native system-density snapshot in sync. Platform-view
+      // pointer packets are mapped with system_density / flutter_dpr on the
+      // native side; a snapshot taken only at engine attach goes stale when
+      // the system display zoom changes and skews every forwarded
+      // coordinate by system_density_stale / flutter_dpr.
+      this.flutterEngine?.getFlutterNapi()?.updateDensity(this.displayInfo.densityPixels);
 
       // Set DPI for text input channel
       this.flutterEngine?.getTextInputChannel()?.setDevicePixelRatio(this.displayInfo.densityPixels);
@@ -482,15 +493,17 @@ export class FlutterView {
   private densityUpdateCallback = (info: uiObserver.DensityInfo) => {
     try {
       const sysDensity = display.getDefaultDisplaySync().densityPixels;
+      // Sync the native system-density snapshot (see onDevicePixelRatioChange).
+      this.flutterEngine?.getFlutterNapi()?.updateDensity(sysDensity);
       const customDensity = info.density;
       if (sysDensity > 0 && customDensity > 0 && Number.isFinite(customDensity)) {
         const scale = customDensity / sysDensity;
         Log.i(TAG, "densityUpdateCallback: customDensity=" + customDensity + ", sysDensity=" +
           sysDensity + ", scale=" + scale);
         const currentUri = this.flutterEngine?.getDisplayMetricsChannel()?.getCurrentUri() ?? '';
- 	      if (currentUri) {
- 	        this.flutterEngine?.getDisplayMetricsChannel()?.setCustomDpiActive(true);
- 	      }
+        if (currentUri && scale !== 1) {
+          this.flutterEngine?.getDisplayMetricsChannel()?.setCustomDpiActive(true);
+        }
         this.onDevicePixelRatioChange(scale);
       }
     } catch (e) {
@@ -532,11 +545,12 @@ export class FlutterView {
   private windowSizeChangeCallback = (data: window.Size) => {
     Log.i(TAG, `windowSizeChangeCallback: width=${data.width}, height=${data.height}, lastHeight=${this.lastHeight}`);
     // Only handle when height changes
-    if (this.lastHeight !== data.height) {
-      try {
-        // If DPI has been customized, do not process system DPI changes
-        this.displayInfo = display.getDefaultDisplaySync();
-        this.flutterEngine?.getTextInputChannel()?.setDevicePixelRatio(this.displayInfo.densityPixels);
+      if (this.lastHeight !== data.height) {
+        try {
+          // If DPI has been customized, do not process system DPI changes
+          this.displayInfo = display.getDefaultDisplaySync();
+          this.flutterEngine?.getFlutterNapi()?.updateDensity(this.displayInfo.densityPixels);
+          this.flutterEngine?.getTextInputChannel()?.setDevicePixelRatio(this.displayInfo.densityPixels);
 
         let devicePixelRatio: number = this.displayInfo.densityPixels;
         Log.i(TAG, `windowSizeChangeCallback devicePixelRatio: ${devicePixelRatio}, viewportMetrics.devicePixelRatio: ${this.viewportMetrics.devicePixelRatio}`);
@@ -573,12 +587,18 @@ export class FlutterView {
     }
   };
   private displayChangeCallback = (data: number) => {
+    // Refresh the display info and keep the native system-density snapshot
+    // in sync even when a custom DPI scale is active (see
+    // onDevicePixelRatioChange for why the snapshot must track the current
+    // system density). The viewport update below is still skipped for
+    // custom DPI, but pointer mapping must not use a stale density.
+    this.displayInfo = display.getDefaultDisplaySync();
+    this.flutterEngine?.getFlutterNapi()?.updateDensity(this.displayInfo.densityPixels);
     // If DPI has been customized, do not process system DPI changes
     if (this.isDevicePixelRatioAdaptive) {
       Log.d(TAG, "Skipping display change callback due to custom DPI setting");
       return;
     }
-    this.displayInfo = display.getDefaultDisplaySync();
     this.flutterEngine?.getTextInputChannel()?.setDevicePixelRatio(this.displayInfo.densityPixels);
     let devicePixelRatio: number = this.displayInfo?.densityPixels;
     Log.i(TAG, "Display on: " + JSON.stringify(this.displayInfo) + ". Display id:" + JSON.stringify(data))
@@ -633,11 +653,10 @@ export class FlutterView {
     FlutterManager.getInstance().handleWindowDecorSafeArea(this.id, this.context);
   }
 
-  private registerAllCallbacks() {
-    if (this.isAllCallbacksRegistered) {
-      this.unRegisterAllCallbacks();
+  private registerDefaultCallbacks() {
+    if (this.isDefaultCallbacksRegistered) {
+      return;
     }
-
     try {
       this.mainWindow?.on('windowSizeChange', this.windowSizeChangeCallback);
       this.mainWindow?.on('avoidAreaChange', this.avoidAreaChangeCallback);
@@ -670,14 +689,6 @@ export class FlutterView {
       Log.e(TAG, "commonEventManager createSubscriber error: " + JSON.stringify(e));
     }
 
-    try {
-      // Listen to route navigation (Flutter navigating to HarmonyOS native), soft keyboard management
-      uiObserver.on('routerPageUpdate', this.uiContext as UIContext, this.routerPageUpdateCallback);
-      uiObserver.on('densityUpdate', this.uiContext as UIContext, this.densityUpdateCallback);
-    } catch (e) {
-      Log.e(TAG, "uiObserver on error: " + JSON.stringify(e));
-    }
-
     // Subscribes to display changes. Example: event that the display size is changed.
     try {
       display.on('foldStatusChange', this.foldStatusChangeCallback);
@@ -685,11 +696,11 @@ export class FlutterView {
     } catch (e) {
       Log.e(TAG, "displayInfo on error: " + JSON.stringify(e));
     }
-    this.isAllCallbacksRegistered = true;
+    this.isDefaultCallbacksRegistered = true;
   }
 
-  private unRegisterAllCallbacks() {
-    if (!this.isAllCallbacksRegistered) {
+  private unRegisterDefaultCallbacks() {
+    if (!this.isDefaultCallbacksRegistered) {
       return;
     }
 
@@ -732,19 +743,40 @@ export class FlutterView {
     }
 
     try {
-      uiObserver.off('routerPageUpdate', this.uiContext as UIContext, this.routerPageUpdateCallback);
-      uiObserver.off('densityUpdate', this.uiContext as UIContext, this.densityUpdateCallback);
-    } catch (e) {
-      Log.e(TAG, "uiObserver off error: " + JSON.stringify(e));
-    }
-
-    try {
       display.off('foldStatusChange', this.foldStatusChangeCallback);
       display.off("change", this.displayChangeCallback);
     } catch (e) {
       Log.e(TAG, "displayInfo off error: " + JSON.stringify(e));
     }
-    this.isAllCallbacksRegistered = false;
+    this.isDefaultCallbacksRegistered = false;
+  }
+
+  private registerUiCallbacks() {
+    if (this.isUiCallbacksRegistered) {
+      return;
+    }
+    try {
+      this.uiContext = this.mainWindow?.getUIContext();
+      // Listen to route navigation (Flutter navigating to HarmonyOS native), soft keyboard management
+      uiObserver.on('routerPageUpdate', this.uiContext as UIContext, this.routerPageUpdateCallback);
+      uiObserver.on('densityUpdate', this.uiContext as UIContext, this.densityUpdateCallback);
+    } catch (e) {
+      Log.e(TAG, "uiObserver on error: " + JSON.stringify(e));
+    }
+    this.isUiCallbacksRegistered = true;
+  }
+
+  private unRegisterUiCallbacks() {
+    if (!this.isUiCallbacksRegistered) {
+      return;
+    }
+    try {
+      uiObserver.off('routerPageUpdate', this.uiContext as UIContext, this.routerPageUpdateCallback);
+      uiObserver.off('densityUpdate', this.uiContext as UIContext, this.densityUpdateCallback);
+    } catch (e) {
+      Log.e(TAG, "uiObserver off error: " + JSON.stringify(e));
+    }
+    this.isUiCallbacksRegistered = false;
   }
 
   /**
@@ -899,7 +931,8 @@ export class FlutterView {
    * Cleans up all event listeners and resources.
    */
   onDestroy() {
-    this.unRegisterAllCallbacks();
+    this.unRegisterDefaultCallbacks();
+    this.unRegisterUiCallbacks();
     this.mainWindow = null;
     FlutterManager.getInstance().deleteFlutterView(this.id, this);
 
@@ -1067,9 +1100,8 @@ export class FlutterView {
    */
   onWindowCreated() {
     Log.d(TAG, "received onwindowCreated.");
-    this.uiContext = this.tryGetUIContext();
+    this.registerUiCallbacks();
     this.sendSettings();
-    this.registerAllCallbacks();
     if (this.uiContext !== undefined && this.autofillUiContext === undefined) {
       this.applyAutofillUiContext(this.uiContext);
     }
@@ -1285,7 +1317,7 @@ export class FlutterView {
         displayFeatureStatus[i] = displayFeatures[i].getState();
       }
 
-      this.viewportMetrics.physicalTouchSlop = this.callbackValue();
+      this.viewportMetrics.physicalTouchSlop = this.defaultPhysicalTouchSlop * this.viewportMetrics.devicePixelRatio;
       this?.flutterEngine?.getFlutterNapi()?.setViewportMetrics(this.viewportMetrics.devicePixelRatio,
         this.viewportMetrics.physicalWidth,
         this.viewportMetrics.physicalHeight,

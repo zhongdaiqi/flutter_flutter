@@ -60,6 +60,7 @@ export default function FlutterEnginePreloadTest() {
         'dartEntrypointArgs': ['--debug']
       };
       const result = FlutterEnginePreload.preLoadFlutterNapi(context, 'test_bundle', params);
+      await result?.detachFromNativeAndReleaseResourcesAsync();
       done();
     })
 
@@ -70,6 +71,7 @@ export default function FlutterEnginePreloadTest() {
         'cachedEngineId': 'test_cached_engine'
       };
       const result = FlutterEnginePreload.preLoadFlutterNapi(context, 'test_bundle', params);
+      await result?.detachFromNativeAndReleaseResourcesAsync();
       done();
     })
 
@@ -80,7 +82,11 @@ export default function FlutterEnginePreloadTest() {
         'cachedEngineGroupId': 'test_cached_engine_group'
       };
       const result = FlutterEnginePreload.preLoadFlutterNapi(context, 'test_bundle', params);
+      await result?.detachFromNativeAndReleaseResourcesAsync();
       done();
     })
+    it('predrawEngine static method exists', 0, () => {
+      expect(typeof FlutterEnginePreload.predrawEngine).assertEqual('function');
+    });
   })
 }

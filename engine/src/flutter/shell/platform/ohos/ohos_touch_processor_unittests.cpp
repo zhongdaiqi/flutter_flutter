@@ -10,14 +10,15 @@
 #define private public
 #define protected public
 
-#include "flutter/shell/platform/ohos/ohos_touch_processor.h"
-#include "flutter/shell/platform/ohos/ohos_shell_holder.h"
-
 #include <gtest/gtest.h>
-
 #include <cstring>
 #include <memory>
 #include <string>
+#include "flutter/fml/log_settings.h"
+#include "flutter/shell/platform/ohos/ohos_shell_holder.h"
+#include "flutter/shell/platform/ohos/ohos_touch_processor.h"
+#include "flutter/shell/platform/ohos/test_stubs/ace_graphic_ndk_stub.h"
+#include "flutter/shell/platform/ohos/test_stubs/ace_napi_stub.h"
 
 namespace flutter {
 namespace testing {
@@ -79,18 +80,18 @@ TEST(OhosTouchProcessorTest, GetPointerChangeForMouseMove) {
 
 TEST(OhosTouchProcessorTest, GetPointerChangeForMouseUnknownReturnsCancel) {
   OhosTouchProcessor processor;
-  EXPECT_EQ(
-      processor.getPointerChangeForMouseAction(
-          static_cast<OH_NativeXComponent_MouseEventAction>(99999)),
-      PointerData::Change::kCancel);
+  EXPECT_EQ(processor.getPointerChangeForMouseAction(
+                static_cast<OH_NativeXComponent_MouseEventAction>(99999)),
+            PointerData::Change::kCancel);
 }
 
 // ===== getPointerButtonFromMouse =====
 
 TEST(OhosTouchProcessorTest, GetPointerButtonFromLeftButton) {
   OhosTouchProcessor processor;
-  EXPECT_EQ(processor.getPointerButtonFromMouse(OH_NATIVEXCOMPONENT_LEFT_BUTTON),
-            kPointerButtonMousePrimary);
+  EXPECT_EQ(
+      processor.getPointerButtonFromMouse(OH_NATIVEXCOMPONENT_LEFT_BUTTON),
+      kPointerButtonMousePrimary);
 }
 
 TEST(OhosTouchProcessorTest, GetPointerButtonFromRightButton) {
@@ -109,8 +110,9 @@ TEST(OhosTouchProcessorTest, GetPointerButtonFromMiddleButton) {
 
 TEST(OhosTouchProcessorTest, GetPointerButtonFromBackButton) {
   OhosTouchProcessor processor;
-  EXPECT_EQ(processor.getPointerButtonFromMouse(OH_NATIVEXCOMPONENT_BACK_BUTTON),
-            kPointerButtonMouseBack);
+  EXPECT_EQ(
+      processor.getPointerButtonFromMouse(OH_NATIVEXCOMPONENT_BACK_BUTTON),
+      kPointerButtonMouseBack);
 }
 
 TEST(OhosTouchProcessorTest, GetPointerButtonFromForwardButton) {
@@ -122,10 +124,9 @@ TEST(OhosTouchProcessorTest, GetPointerButtonFromForwardButton) {
 
 TEST(OhosTouchProcessorTest, GetPointerButtonFromUnknownReturnsPrimary) {
   OhosTouchProcessor processor;
-  EXPECT_EQ(
-      processor.getPointerButtonFromMouse(
-          static_cast<OH_NativeXComponent_MouseEventButton>(99999)),
-      kPointerButtonMousePrimary);
+  EXPECT_EQ(processor.getPointerButtonFromMouse(
+                static_cast<OH_NativeXComponent_MouseEventButton>(99999)),
+            kPointerButtonMousePrimary);
 }
 
 // ===== getPointerDeviceTypeForToolType =====
@@ -264,8 +265,20 @@ TEST(OhosTouchProcessorTest, ShouldDropTouchEventReturnsFalseForMoveEvent) {
   OH_NativeXComponent_TouchEvent moveEvent = {};
   moveEvent.type = OH_NATIVEXCOMPONENT_MOVE;
   moveEvent.id = 0;
-  // Move events are never filtered
   EXPECT_FALSE(processor.shouldDropTouchEvent(&moveEvent));
+
+  OH_NativeXComponent_TouchEvent downEvent = {};
+  downEvent.type = OH_NATIVEXCOMPONENT_DOWN;
+  downEvent.id = 3;
+  EXPECT_FALSE(processor.shouldDropTouchEvent(&downEvent));
+  OH_NativeXComponent_TouchEvent cancelEvent = {};
+  cancelEvent.type = OH_NATIVEXCOMPONENT_CANCEL;
+  cancelEvent.id = 3;
+  EXPECT_FALSE(processor.shouldDropTouchEvent(&cancelEvent));
+  OH_NativeXComponent_TouchEvent upAfterCancel = {};
+  upAfterCancel.type = OH_NATIVEXCOMPONENT_UP;
+  upAfterCancel.id = 3;
+  EXPECT_TRUE(processor.shouldDropTouchEvent(&upAfterCancel));
 }
 
 TEST(OhosTouchProcessorTest, ShouldDropTouchEventHandlesMultipleFingers) {
@@ -292,8 +305,7 @@ TEST(OhosTouchProcessorTest, ShouldDropTouchEventHandlesMultipleFingers) {
   EXPECT_FALSE(processor.shouldDropTouchEvent(&up1));
 }
 
-TEST(OhosTouchProcessorTest,
-     ShouldDropTouchEventDownUpDownCycleForSameFinger) {
+TEST(OhosTouchProcessorTest, ShouldDropTouchEventDownUpDownCycleForSameFinger) {
   OhosTouchProcessor processor;
   // Down finger 0
   OH_NativeXComponent_TouchEvent down1 = {};
@@ -376,8 +388,7 @@ TEST(OhosTouchProcessorTest, PackagePacketDataSerializesBasicFields) {
   // Verify first touchPoint id (offset 11, first per-pointer field)
   EXPECT_EQ(result[11], std::to_string(0));
   // Verify toolType (additional attribute, at offset 11 + 10*1 = 21)
-  EXPECT_EQ(result[21],
-            std::to_string(OH_NATIVEXCOMPONENT_TOOL_TYPE_FINGER));
+  EXPECT_EQ(result[21], std::to_string(OH_NATIVEXCOMPONENT_TOOL_TYPE_FINGER));
 }
 
 TEST(OhosTouchProcessorTest, PackagePacketDataHandlesMultiplePoints) {
@@ -441,8 +452,8 @@ TEST(OhosTouchProcessorTest, HandleMouseButtonEventFirstPressReturnsDown) {
 
   PointerData::Change change;
   int64_t buttons_to_send = 0;
-  EXPECT_TRUE(processor.HandleMouseButtonEvent(mouseEvent, change,
-                                               buttons_to_send));
+  EXPECT_TRUE(
+      processor.HandleMouseButtonEvent(mouseEvent, change, buttons_to_send));
   EXPECT_EQ(change, PointerData::Change::kDown);
   EXPECT_EQ(buttons_to_send, kPointerButtonMousePrimary);
 }
@@ -502,8 +513,8 @@ TEST(OhosTouchProcessorTest, HandleMouseButtonEventReleaseLastButtonReturnsUp) {
   release.action = OH_NATIVEXCOMPONENT_MOUSE_RELEASE;
   PointerData::Change changeRelease;
   int64_t buttonsRelease = 99;
-  EXPECT_TRUE(processor.HandleMouseButtonEvent(release, changeRelease,
-                                               buttonsRelease));
+  EXPECT_TRUE(
+      processor.HandleMouseButtonEvent(release, changeRelease, buttonsRelease));
   EXPECT_EQ(changeRelease, PointerData::Change::kUp);
   EXPECT_EQ(buttonsRelease, 0);
 }
@@ -573,8 +584,8 @@ TEST(OhosTouchProcessorTest,
   press.action = OH_NATIVEXCOMPONENT_MOUSE_PRESS;
   PointerData::Change changePress;
   int64_t buttonsPress = 0;
-  EXPECT_TRUE(processor.HandleMouseButtonEvent(press, changePress,
-                                                buttonsPress));
+  EXPECT_TRUE(
+      processor.HandleMouseButtonEvent(press, changePress, buttonsPress));
   EXPECT_EQ(changePress, PointerData::Change::kDown);
   EXPECT_EQ(buttonsPress, kPointerButtonMouseMiddle);
 
@@ -584,8 +595,8 @@ TEST(OhosTouchProcessorTest,
   release.action = OH_NATIVEXCOMPONENT_MOUSE_RELEASE;
   PointerData::Change changeRelease;
   int64_t buttonsRelease = 0;
-  EXPECT_TRUE(processor.HandleMouseButtonEvent(release, changeRelease,
-                                               buttonsRelease));
+  EXPECT_TRUE(
+      processor.HandleMouseButtonEvent(release, changeRelease, buttonsRelease));
   EXPECT_EQ(changeRelease, PointerData::Change::kUp);
   EXPECT_EQ(buttonsRelease, 0);
 }
@@ -596,7 +607,6 @@ TEST(OhosTouchProcessorTest,
 
 TEST(OhosTouchProcessorTest, HandleTouchEventReturnsOnNullEvent) {
   OhosTouchProcessor processor;
-  // touchEvent == nullptr → early return, no crash
   processor.HandleTouchEvent(0, nullptr, nullptr);
   SUCCEED();
 }
@@ -639,6 +649,11 @@ TEST(OhosTouchProcessorTest, PlatformViewOnAxisEventReturnsOnLowApiVersion) {
   OhosTouchProcessor processor;
   // Force apiVersion_ < 20 to trigger early return
   processor.apiVersion_ = 10;
+  {
+    fml::ScopedSetLogSettings loud({fml::kLogInfo});
+    processor.PlatformViewOnAxisEvent(
+        0, reinterpret_cast<ArkUI_UIInputEvent*>(0x1), 0.0);
+  }
   processor.PlatformViewOnAxisEvent(
       0, reinterpret_cast<ArkUI_UIInputEvent*>(0x1), 0.0);
   SUCCEED();
@@ -665,7 +680,8 @@ TEST(OhosTouchProcessorTest, SendFinalMoveEventBeforeLeaveNoHistory) {
 // HandleAxisEvent line 297: `if (!warned)` — the `warned` static variable is
 // set to true on the first call with apiVersion_ < 15. A second call hits the
 // false branch (warned already true), skipping the FML_LOG(WARNING).
-TEST(OhosTouchProcessorTest, HandleAxisEventLowApiVersionSecondCallSkipsWarning) {
+TEST(OhosTouchProcessorTest,
+     HandleAxisEventLowApiVersionSecondCallSkipsWarning) {
   OhosTouchProcessor processor;
   processor.apiVersion_ = 10;
   // First call sets warned = true (may already be true from prior tests)
@@ -677,11 +693,12 @@ TEST(OhosTouchProcessorTest, HandleAxisEventLowApiVersionSecondCallSkipsWarning)
   SUCCEED();
 }
 
-// HandleTouchEvent line 199: `if (touchEvent == nullptr || shouldDropTouchEvent(touchEvent))`
-// — covers the false branch of `touchEvent == nullptr` (non-null event) and the
-// true branch of `shouldDropTouchEvent` (duplicate down → early return before
-// OHOSShellHolder access).
+// HandleTouchEvent line 199: `if (touchEvent == nullptr ||
+// shouldDropTouchEvent(touchEvent))` — covers the false branch of `touchEvent
+// == nullptr` (non-null event) and the true branch of `shouldDropTouchEvent`
+// (duplicate down → early return before OHOSShellHolder access).
 TEST(OhosTouchProcessorTest, HandleTouchEventDroppedOnDuplicateDown) {
+  GraphicStubKnobGuard knob_guard;
   OhosTouchProcessor processor;
   // First down registers finger id 0
   OH_NativeXComponent_TouchEvent downEvent = {};
@@ -698,12 +715,10 @@ TEST(OhosTouchProcessorTest, HandleTouchEventDroppedOnDuplicateDown) {
 }
 
 // ===== Strong stub definitions for NDK and napi functions =====
-//
 // These definitions are strong symbols in the main executable; at link time
 // they take precedence over the same symbols in the shared libraries
 // (standard ELF symbol interposition), allowing us to test functions that
 // depend on NDK/napi runtime without a real device environment.
-//
 // The stubs return safe default values and never dereference opaque pointers.
 
 namespace {
@@ -721,8 +736,8 @@ double g_stub_vertical_axis_value = 0.0;
 double g_stub_horizontal_axis_value = 0.0;
 double g_stub_pinch_scale_value = 1.0;
 int64_t g_stub_event_time = 1000000;
-int32_t g_stub_xcomponent_tool_type = OH_NATIVEXCOMPONENT_TOOL_TYPE_FINGER;
-int32_t g_stub_xcomponent_ret = OH_NATIVEXCOMPONENT_RESULT_SUCCESS;
+uint64_t g_stub_modifier_keys = 0;
+int32_t g_stub_modifier_error = 0;
 
 // Reset all stub variables to their default values.
 // Called after each test to prevent test-order dependencies.
@@ -740,8 +755,8 @@ void ResetStubState() {
   g_stub_horizontal_axis_value = 0.0;
   g_stub_pinch_scale_value = 1.0;
   g_stub_event_time = 1000000;
-  g_stub_xcomponent_tool_type = OH_NATIVEXCOMPONENT_TOOL_TYPE_FINGER;
-  g_stub_xcomponent_ret = OH_NATIVEXCOMPONENT_RESULT_SUCCESS;
+  g_stub_modifier_keys = 0;
+  g_stub_modifier_error = 0;
 }
 
 // gtest listener that resets all stub state after each test, ensuring
@@ -758,137 +773,7 @@ struct StubStateResetterRegistrar {
         new StubStateResetter());
   }
 } g_stub_resetter_registrar;
-}  // namespace
 
-// Stub OH_NativeXComponent touch point functions
-extern "C" int32_t OH_NativeXComponent_GetTouchPointToolType(
-    OH_NativeXComponent* component, uint32_t pointIndex,
-    OH_NativeXComponent_TouchPointToolType* toolType) {
-  if (toolType) {
-    *toolType = static_cast<OH_NativeXComponent_TouchPointToolType>(
-        g_stub_xcomponent_tool_type);
-  }
-  return g_stub_xcomponent_ret;
-}
-
-extern "C" int32_t OH_NativeXComponent_GetTouchPointTiltX(
-    OH_NativeXComponent* component, uint32_t pointIndex, float* tiltX) {
-  if (tiltX) {
-    *tiltX = 0.0f;
-  }
-  return g_stub_xcomponent_ret;
-}
-
-extern "C" int32_t OH_NativeXComponent_GetTouchPointTiltY(
-    OH_NativeXComponent* component, uint32_t pointIndex, float* tiltY) {
-  if (tiltY) {
-    *tiltY = 0.0f;
-  }
-  return g_stub_xcomponent_ret;
-}
-
-// Stub ArkUI UIInputEvent functions
-extern "C" int32_t OH_ArkUI_UIInputEvent_GetToolType(const ArkUI_UIInputEvent* event) {
-  return g_stub_tool_type;
-}
-
-extern "C" int64_t OH_ArkUI_UIInputEvent_GetEventTime(const ArkUI_UIInputEvent* event) {
-  return g_stub_event_time;
-}
-
-extern "C" float OH_ArkUI_PointerEvent_GetX(const ArkUI_UIInputEvent* event) {
-  return g_stub_pointer_x;
-}
-
-extern "C" float OH_ArkUI_PointerEvent_GetY(const ArkUI_UIInputEvent* event) {
-  return g_stub_pointer_y;
-}
-
-extern "C" float OH_ArkUI_PointerEvent_GetWindowX(const ArkUI_UIInputEvent* event) {
-  return g_stub_pointer_window_x;
-}
-
-extern "C" float OH_ArkUI_PointerEvent_GetWindowY(const ArkUI_UIInputEvent* event) {
-  return g_stub_pointer_window_y;
-}
-
-extern "C" float OH_ArkUI_PointerEvent_GetDisplayX(const ArkUI_UIInputEvent* event) {
-  return g_stub_pointer_display_x;
-}
-
-extern "C" float OH_ArkUI_PointerEvent_GetDisplayY(const ArkUI_UIInputEvent* event) {
-  return g_stub_pointer_display_y;
-}
-
-extern "C" double OH_ArkUI_AxisEvent_GetVerticalAxisValue(const ArkUI_UIInputEvent* event) {
-  return g_stub_vertical_axis_value;
-}
-
-extern "C" double OH_ArkUI_AxisEvent_GetHorizontalAxisValue(const ArkUI_UIInputEvent* event) {
-  return g_stub_horizontal_axis_value;
-}
-
-extern "C" double OH_ArkUI_AxisEvent_GetPinchAxisScaleValue(const ArkUI_UIInputEvent* event) {
-  return g_stub_pinch_scale_value;
-}
-
-// Stub napi functions — these prevent crashes when PlatformViewOHOSNapi methods
-// are called with a null env_ (which is the case in unit tests since nativeAttach
-// is never called).
-extern "C" napi_status napi_open_handle_scope(napi_env env, napi_handle_scope* result) {
-  if (result) {
-    *result = reinterpret_cast<napi_handle_scope>(0x1);
-  }
-  return napi_ok;
-}
-
-extern "C" napi_status napi_close_handle_scope(napi_env env, napi_handle_scope scope) {
-  return napi_ok;
-}
-
-extern "C" napi_status napi_create_array(napi_env env, napi_value* result) {
-  if (result) {
-    *result = reinterpret_cast<napi_value>(0x2);
-  }
-  return napi_ok;
-}
-
-extern "C" napi_status napi_create_string_utf8(napi_env env, const char* str, size_t length, napi_value* result) {
-  if (result) {
-    *result = reinterpret_cast<napi_value>(0x3);
-  }
-  return napi_ok;
-}
-
-extern "C" napi_status napi_set_element(napi_env env, napi_value object, uint32_t index, napi_value value) {
-  return napi_ok;
-}
-
-extern "C" napi_status napi_get_reference_value(napi_env env, napi_ref ref, napi_value* result) {
-  if (result) {
-    *result = reinterpret_cast<napi_value>(0x4);
-  }
-  return napi_ok;
-}
-
-extern "C" napi_status napi_get_named_property(napi_env env, napi_value object, const char* name, napi_value* result) {
-  if (result) {
-    *result = reinterpret_cast<napi_value>(0x5);
-  }
-  return napi_ok;
-}
-
-extern "C" napi_status napi_call_function(napi_env env, napi_value recv, napi_value fn, size_t argc, const napi_value* argv, napi_value* result) {
-  return napi_ok;
-}
-
-// ===== OHOSShellHolder integration tests =====
-// These tests construct a real OHOSShellHolder (with software rendering) to
-// obtain a valid shell_holderID, then exercise the full Handle*Event paths
-// that were previously untestable. The NDK and napi stubs above ensure these
-// paths don't crash.
-
-namespace {
 // Helper to create Settings configured for software rendering (no GPU needed).
 static Settings MakeShellHolderTestSettings() {
   Settings settings;
@@ -902,7 +787,8 @@ static int64_t CreateShellHolderForTest(
     std::unique_ptr<OHOSShellHolder>& out_holder) {
   auto settings = MakeShellHolderTestSettings();
   auto napi_facade = std::make_shared<PlatformViewOHOSNapi>(nullptr);
-  out_holder = std::make_unique<OHOSShellHolder>(settings, napi_facade, nullptr);
+  out_holder =
+      std::make_unique<OHOSShellHolder>(settings, napi_facade, nullptr);
   EXPECT_TRUE(out_holder->IsValid());
   return reinterpret_cast<int64_t>(out_holder.get());
 }
@@ -910,15 +796,91 @@ static int64_t CreateShellHolderForTest(
 // Helper to null out dynamic function pointers loaded via dlsym.
 // These point to real NDK functions that would crash on fake event pointers.
 // Setting them to nullptr makes the code take the safe fallback paths.
-#define NULL_OUT_DYNAMIC_PTRS(processor)        \
-  (processor).dynamicGetDeviceId_ = nullptr;    \
-  (processor).dynamicGetAxisAction_ = nullptr;  \
-  (processor).dynamicGetModifierKeyStates_ = nullptr;
+int32_t StubGetDeviceId(ArkUI_UIInputEvent*) {
+  return g_stub_device_id;
+}
+
+int32_t StubGetAxisAction(ArkUI_UIInputEvent*) {
+  return g_stub_axis_action;
+}
+
+int32_t StubGetModifierKeyStates(ArkUI_UIInputEvent*, uint64_t* keys) {
+  if (keys != nullptr) {
+    *keys = g_stub_modifier_keys;
+  }
+  return g_stub_modifier_error;
+}
+
+#define NULL_OUT_DYNAMIC_PTRS(processor)                 \
+  (processor).dynamicGetDeviceId_ = StubGetDeviceId;     \
+  (processor).dynamicGetAxisAction_ = StubGetAxisAction; \
+  (processor).dynamicGetModifierKeyStates_ = StubGetModifierKeyStates;
 }  // namespace
+
+// Stub ArkUI UIInputEvent functions
+extern "C" int32_t OH_ArkUI_UIInputEvent_GetToolType(
+    const ArkUI_UIInputEvent* event) {
+  return g_stub_tool_type;
+}
+
+extern "C" int64_t OH_ArkUI_UIInputEvent_GetEventTime(
+    const ArkUI_UIInputEvent* event) {
+  return g_stub_event_time;
+}
+
+extern "C" float OH_ArkUI_PointerEvent_GetX(const ArkUI_UIInputEvent* event) {
+  return g_stub_pointer_x;
+}
+
+extern "C" float OH_ArkUI_PointerEvent_GetY(const ArkUI_UIInputEvent* event) {
+  return g_stub_pointer_y;
+}
+
+extern "C" float OH_ArkUI_PointerEvent_GetWindowX(
+    const ArkUI_UIInputEvent* event) {
+  return g_stub_pointer_window_x;
+}
+
+extern "C" float OH_ArkUI_PointerEvent_GetWindowY(
+    const ArkUI_UIInputEvent* event) {
+  return g_stub_pointer_window_y;
+}
+
+extern "C" float OH_ArkUI_PointerEvent_GetDisplayX(
+    const ArkUI_UIInputEvent* event) {
+  return g_stub_pointer_display_x;
+}
+
+extern "C" float OH_ArkUI_PointerEvent_GetDisplayY(
+    const ArkUI_UIInputEvent* event) {
+  return g_stub_pointer_display_y;
+}
+
+extern "C" double OH_ArkUI_AxisEvent_GetVerticalAxisValue(
+    const ArkUI_UIInputEvent* event) {
+  return g_stub_vertical_axis_value;
+}
+
+extern "C" double OH_ArkUI_AxisEvent_GetHorizontalAxisValue(
+    const ArkUI_UIInputEvent* event) {
+  return g_stub_horizontal_axis_value;
+}
+
+extern "C" double OH_ArkUI_AxisEvent_GetPinchAxisScaleValue(
+    const ArkUI_UIInputEvent* event) {
+  return g_stub_pinch_scale_value;
+}
+
+// ===== OHOSShellHolder integration tests =====
+// These tests construct a real OHOSShellHolder (with software rendering) to
+// obtain a valid shell_holderID, then exercise the full Handle*Event paths
+// that were previously untestable. The NDK and napi stubs above ensure these
+// paths don't crash.
 
 // ===== HandleTouchEvent full path with real OHOSShellHolder =====
 
 TEST(OhosTouchProcessorTest, HandleTouchEventFullPathWithShellHolder) {
+  GraphicStubKnobGuard knob_guard;
   std::unique_ptr<OHOSShellHolder> holder;
   int64_t shell_id = CreateShellHolderForTest(holder);
 
@@ -947,6 +909,7 @@ TEST(OhosTouchProcessorTest, HandleTouchEventFullPathWithShellHolder) {
 }
 
 TEST(OhosTouchProcessorTest, HandleTouchEventUpEventWithShellHolder) {
+  GraphicStubKnobGuard knob_guard;
   std::unique_ptr<OHOSShellHolder> holder;
   int64_t shell_id = CreateShellHolderForTest(holder);
 
@@ -972,6 +935,7 @@ TEST(OhosTouchProcessorTest, HandleTouchEventUpEventWithShellHolder) {
 }
 
 TEST(OhosTouchProcessorTest, HandleTouchEventMoveEventWithShellHolder) {
+  GraphicStubKnobGuard knob_guard;
   std::unique_ptr<OHOSShellHolder> holder;
   int64_t shell_id = CreateShellHolderForTest(holder);
 
@@ -999,6 +963,7 @@ TEST(OhosTouchProcessorTest, HandleTouchEventMoveEventWithShellHolder) {
 // ===== HandleAxisEvent full path with real OHOSShellHolder =====
 
 TEST(OhosTouchProcessorTest, HandleAxisEventMouseScrollWithShellHolder) {
+  GraphicStubKnobGuard knob_guard;
   std::unique_ptr<OHOSShellHolder> holder;
   int64_t shell_id = CreateShellHolderForTest(holder);
 
@@ -1014,10 +979,14 @@ TEST(OhosTouchProcessorTest, HandleAxisEventMouseScrollWithShellHolder) {
 
   auto* event = reinterpret_cast<ArkUI_UIInputEvent*>(0x1);
   processor.HandleAxisEvent(shell_id, nullptr, event);
-  SUCCEED();
+
+  g_stub_modifier_keys = ARKUI_MODIFIER_KEY_CTRL;
+  g_stub_modifier_error = ARKUI_ERROR_CODE_PARAM_INVALID;
+  processor.HandleAxisEvent(shell_id, nullptr, event);
 }
 
 TEST(OhosTouchProcessorTest, HandleAxisEventMouseCtrlScrollWithShellHolder) {
+  GraphicStubKnobGuard knob_guard;
   std::unique_ptr<OHOSShellHolder> holder;
   int64_t shell_id = CreateShellHolderForTest(holder);
 
@@ -1026,18 +995,17 @@ TEST(OhosTouchProcessorTest, HandleAxisEventMouseCtrlScrollWithShellHolder) {
   NULL_OUT_DYNAMIC_PTRS(processor)
 
   g_stub_tool_type = UI_INPUT_EVENT_TOOL_TYPE_MOUSE;
-  // dynamicGetModifierKeyStates_ is nullptr → errorCode = 0
-  // keys = 0 → no Ctrl → HandleScrollEvent (not HandleScaleEvent)
-  // To test HandleScaleEvent, we'd need dynamicGetModifierKeyStates_ to return
-  // keys with ARKUI_MODIFIER_KEY_CTRL. But since it's nullptr, we get the
-  // non-Ctrl path.
+  g_stub_modifier_keys = ARKUI_MODIFIER_KEY_CTRL;
+  g_stub_modifier_error = 0;
+  g_stub_axis_action = UI_TOUCH_EVENT_ACTION_DOWN;
 
   auto* event = reinterpret_cast<ArkUI_UIInputEvent*>(0x1);
   processor.HandleAxisEvent(shell_id, nullptr, event);
-  SUCCEED();
+  EXPECT_FLOAT_EQ(processor.accumulatedScale_, 1.0f);
 }
 
 TEST(OhosTouchProcessorTest, HandleAxisEventTouchpadPanZoomWithShellHolder) {
+  GraphicStubKnobGuard knob_guard;
   std::unique_ptr<OHOSShellHolder> holder;
   int64_t shell_id = CreateShellHolderForTest(holder);
 
@@ -1054,6 +1022,7 @@ TEST(OhosTouchProcessorTest, HandleAxisEventTouchpadPanZoomWithShellHolder) {
 }
 
 TEST(OhosTouchProcessorTest, HandleAxisEventFingerToolTypeWithShellHolder) {
+  GraphicStubKnobGuard knob_guard;
   std::unique_ptr<OHOSShellHolder> holder;
   int64_t shell_id = CreateShellHolderForTest(holder);
 
@@ -1071,7 +1040,28 @@ TEST(OhosTouchProcessorTest, HandleAxisEventFingerToolTypeWithShellHolder) {
 
 // ===== HandleScaleEvent full path with real OHOSShellHolder =====
 
+TEST(OhosTouchProcessorTest, HandleScaleEventNullDynamicPtrsFallback) {
+  GraphicStubKnobGuard knob_guard;
+  std::unique_ptr<OHOSShellHolder> holder;
+  int64_t shell_id = CreateShellHolderForTest(holder);
+
+  OhosTouchProcessor processor;
+  processor.apiVersion_ = 20;
+  processor.dynamicGetDeviceId_ = nullptr;
+  processor.dynamicGetAxisAction_ = nullptr;
+  processor.dynamicGetModifierKeyStates_ = nullptr;
+
+  g_stub_tool_type = UI_INPUT_EVENT_TOOL_TYPE_MOUSE;
+  auto* event = reinterpret_cast<ArkUI_UIInputEvent*>(0x1);
+  processor.HandleScaleEvent(shell_id, nullptr, event);
+  processor.HandlePanZooomEvent(shell_id, nullptr, event);
+  processor.HandleScrollEvent(shell_id, nullptr, event);
+  processor.HandleAxisEvent(shell_id, nullptr, event);
+  EXPECT_FLOAT_EQ(processor.accumulatedScale_, 1.0f);
+}
+
 TEST(OhosTouchProcessorTest, HandleScaleEventCancelActionWithShellHolder) {
+  GraphicStubKnobGuard knob_guard;
   std::unique_ptr<OHOSShellHolder> holder;
   int64_t shell_id = CreateShellHolderForTest(holder);
 
@@ -1086,6 +1076,7 @@ TEST(OhosTouchProcessorTest, HandleScaleEventCancelActionWithShellHolder) {
 }
 
 TEST(OhosTouchProcessorTest, HandleScaleEventDownActionWithShellHolder) {
+  GraphicStubKnobGuard knob_guard;
   std::unique_ptr<OHOSShellHolder> holder;
   int64_t shell_id = CreateShellHolderForTest(holder);
 
@@ -1096,10 +1087,15 @@ TEST(OhosTouchProcessorTest, HandleScaleEventDownActionWithShellHolder) {
   g_stub_axis_action = UI_TOUCH_EVENT_ACTION_DOWN;
   auto* event = reinterpret_cast<ArkUI_UIInputEvent*>(0x1);
   processor.HandleScaleEvent(shell_id, nullptr, event);
-  SUCCEED();
+  EXPECT_FLOAT_EQ(processor.accumulatedScale_, 1.0f);
+
+  g_stub_device_id = -1;
+  processor.HandleScaleEvent(shell_id, nullptr, event);
+  EXPECT_FLOAT_EQ(processor.accumulatedScale_, 1.0f);
 }
 
 TEST(OhosTouchProcessorTest, HandleScaleEventMoveActionWithShellHolder) {
+  GraphicStubKnobGuard knob_guard;
   std::unique_ptr<OHOSShellHolder> holder;
   int64_t shell_id = CreateShellHolderForTest(holder);
 
@@ -1111,10 +1107,12 @@ TEST(OhosTouchProcessorTest, HandleScaleEventMoveActionWithShellHolder) {
   g_stub_vertical_axis_value = -1.0;  // negative → ZOOM_IN
   auto* event = reinterpret_cast<ArkUI_UIInputEvent*>(0x1);
   processor.HandleScaleEvent(shell_id, nullptr, event);
-  SUCCEED();
+  EXPECT_FLOAT_EQ(processor.accumulatedScale_, 10.0f / 8.0f);
 }
 
-TEST(OhosTouchProcessorTest, HandleScaleEventMoveActionPositiveAxisWithShellHolder) {
+TEST(OhosTouchProcessorTest,
+     HandleScaleEventMoveActionPositiveAxisWithShellHolder) {
+  GraphicStubKnobGuard knob_guard;
   std::unique_ptr<OHOSShellHolder> holder;
   int64_t shell_id = CreateShellHolderForTest(holder);
 
@@ -1126,10 +1124,11 @@ TEST(OhosTouchProcessorTest, HandleScaleEventMoveActionPositiveAxisWithShellHold
   g_stub_vertical_axis_value = 1.0;  // positive → ZOOM_OUT
   auto* event = reinterpret_cast<ArkUI_UIInputEvent*>(0x1);
   processor.HandleScaleEvent(shell_id, nullptr, event);
-  SUCCEED();
+  EXPECT_FLOAT_EQ(processor.accumulatedScale_, 8.0f / 10.0f);
 }
 
 TEST(OhosTouchProcessorTest, HandleScaleEventUpActionWithShellHolder) {
+  GraphicStubKnobGuard knob_guard;
   std::unique_ptr<OHOSShellHolder> holder;
   int64_t shell_id = CreateShellHolderForTest(holder);
 
@@ -1139,11 +1138,13 @@ TEST(OhosTouchProcessorTest, HandleScaleEventUpActionWithShellHolder) {
 
   g_stub_axis_action = UI_TOUCH_EVENT_ACTION_UP;
   auto* event = reinterpret_cast<ArkUI_UIInputEvent*>(0x1);
+  const float scale_before = processor.accumulatedScale_;
   processor.HandleScaleEvent(shell_id, nullptr, event);
-  SUCCEED();
+  EXPECT_FLOAT_EQ(processor.accumulatedScale_, scale_before);
 }
 
 TEST(OhosTouchProcessorTest, HandleScaleEventDefaultActionWithShellHolder) {
+  GraphicStubKnobGuard knob_guard;
   std::unique_ptr<OHOSShellHolder> holder;
   int64_t shell_id = CreateShellHolderForTest(holder);
 
@@ -1154,10 +1155,14 @@ TEST(OhosTouchProcessorTest, HandleScaleEventDefaultActionWithShellHolder) {
   g_stub_axis_action = 999;  // default case
   auto* event = reinterpret_cast<ArkUI_UIInputEvent*>(0x1);
   processor.HandleScaleEvent(shell_id, nullptr, event);
-  SUCCEED();
+  {
+    fml::ScopedSetLogSettings quiet({fml::kLogFatal});
+    processor.HandleScaleEvent(shell_id, nullptr, event);
+  }
 }
 
 TEST(OhosTouchProcessorTest, HandleScaleEventApi20PlusWithOnAxisEvent) {
+  GraphicStubKnobGuard knob_guard;
   std::unique_ptr<OHOSShellHolder> holder;
   int64_t shell_id = CreateShellHolderForTest(holder);
 
@@ -1174,6 +1179,7 @@ TEST(OhosTouchProcessorTest, HandleScaleEventApi20PlusWithOnAxisEvent) {
 // ===== HandlePanZooomEvent full path with real OHOSShellHolder =====
 
 TEST(OhosTouchProcessorTest, HandlePanZooomEventCancelActionWithShellHolder) {
+  GraphicStubKnobGuard knob_guard;
   std::unique_ptr<OHOSShellHolder> holder;
   int64_t shell_id = CreateShellHolderForTest(holder);
 
@@ -1188,6 +1194,7 @@ TEST(OhosTouchProcessorTest, HandlePanZooomEventCancelActionWithShellHolder) {
 }
 
 TEST(OhosTouchProcessorTest, HandlePanZooomEventDownActionWithShellHolder) {
+  GraphicStubKnobGuard knob_guard;
   std::unique_ptr<OHOSShellHolder> holder;
   int64_t shell_id = CreateShellHolderForTest(holder);
 
@@ -1198,10 +1205,16 @@ TEST(OhosTouchProcessorTest, HandlePanZooomEventDownActionWithShellHolder) {
   g_stub_axis_action = UI_TOUCH_EVENT_ACTION_DOWN;
   auto* event = reinterpret_cast<ArkUI_UIInputEvent*>(0x1);
   processor.HandlePanZooomEvent(shell_id, nullptr, event);
-  SUCCEED();
+  EXPECT_FLOAT_EQ(processor.accumulatedPanX_, 0.0f);
+  EXPECT_FLOAT_EQ(processor.accumulatedPanY_, 0.0f);
+
+  g_stub_device_id = -1;
+  processor.HandlePanZooomEvent(shell_id, nullptr, event);
+  EXPECT_FLOAT_EQ(processor.accumulatedPanX_, 0.0f);
 }
 
 TEST(OhosTouchProcessorTest, HandlePanZooomEventMoveActionWithShellHolder) {
+  GraphicStubKnobGuard knob_guard;
   std::unique_ptr<OHOSShellHolder> holder;
   int64_t shell_id = CreateShellHolderForTest(holder);
 
@@ -1214,10 +1227,12 @@ TEST(OhosTouchProcessorTest, HandlePanZooomEventMoveActionWithShellHolder) {
   g_stub_vertical_axis_value = 10.0;
   auto* event = reinterpret_cast<ArkUI_UIInputEvent*>(0x1);
   processor.HandlePanZooomEvent(shell_id, nullptr, event);
-  SUCCEED();
+  EXPECT_FLOAT_EQ(processor.accumulatedPanX_, -5.0f);
+  EXPECT_FLOAT_EQ(processor.accumulatedPanY_, -10.0f);
 }
 
 TEST(OhosTouchProcessorTest, HandlePanZooomEventUpActionWithShellHolder) {
+  GraphicStubKnobGuard knob_guard;
   std::unique_ptr<OHOSShellHolder> holder;
   int64_t shell_id = CreateShellHolderForTest(holder);
 
@@ -1232,6 +1247,7 @@ TEST(OhosTouchProcessorTest, HandlePanZooomEventUpActionWithShellHolder) {
 }
 
 TEST(OhosTouchProcessorTest, HandlePanZooomEventDefaultActionWithShellHolder) {
+  GraphicStubKnobGuard knob_guard;
   std::unique_ptr<OHOSShellHolder> holder;
   int64_t shell_id = CreateShellHolderForTest(holder);
 
@@ -1242,10 +1258,14 @@ TEST(OhosTouchProcessorTest, HandlePanZooomEventDefaultActionWithShellHolder) {
   g_stub_axis_action = 999;  // default case
   auto* event = reinterpret_cast<ArkUI_UIInputEvent*>(0x1);
   processor.HandlePanZooomEvent(shell_id, nullptr, event);
-  SUCCEED();
+  {
+    fml::ScopedSetLogSettings quiet({fml::kLogFatal});
+    processor.HandlePanZooomEvent(shell_id, nullptr, event);
+  }
 }
 
 TEST(OhosTouchProcessorTest, HandlePanZooomEventZeroScaleWithShellHolder) {
+  GraphicStubKnobGuard knob_guard;
   std::unique_ptr<OHOSShellHolder> holder;
   int64_t shell_id = CreateShellHolderForTest(holder);
 
@@ -1260,6 +1280,7 @@ TEST(OhosTouchProcessorTest, HandlePanZooomEventZeroScaleWithShellHolder) {
 }
 
 TEST(OhosTouchProcessorTest, HandlePanZooomEventApi20PlusWithOnAxisEvent) {
+  GraphicStubKnobGuard knob_guard;
   std::unique_ptr<OHOSShellHolder> holder;
   int64_t shell_id = CreateShellHolderForTest(holder);
 
@@ -1276,6 +1297,7 @@ TEST(OhosTouchProcessorTest, HandlePanZooomEventApi20PlusWithOnAxisEvent) {
 // ===== HandleScrollEvent full path with real OHOSShellHolder =====
 
 TEST(OhosTouchProcessorTest, HandleScrollEventWithShellHolder) {
+  GraphicStubKnobGuard knob_guard;
   std::unique_ptr<OHOSShellHolder> holder;
   int64_t shell_id = CreateShellHolderForTest(holder);
 
@@ -1291,6 +1313,7 @@ TEST(OhosTouchProcessorTest, HandleScrollEventWithShellHolder) {
 }
 
 TEST(OhosTouchProcessorTest, HandleScrollEventLowApiVersionWithShellHolder) {
+  GraphicStubKnobGuard knob_guard;
   std::unique_ptr<OHOSShellHolder> holder;
   int64_t shell_id = CreateShellHolderForTest(holder);
 
@@ -1306,6 +1329,7 @@ TEST(OhosTouchProcessorTest, HandleScrollEventLowApiVersionWithShellHolder) {
 // ===== HandleMouseEvent full path with real OHOSShellHolder =====
 
 TEST(OhosTouchProcessorTest, HandleMouseEventMoveWithShellHolder) {
+  GraphicStubKnobGuard knob_guard;
   std::unique_ptr<OHOSShellHolder> holder;
   int64_t shell_id = CreateShellHolderForTest(holder);
 
@@ -1319,11 +1343,13 @@ TEST(OhosTouchProcessorTest, HandleMouseEventMoveWithShellHolder) {
   mouseEvent.action = OH_NATIVEXCOMPONENT_MOUSE_MOVE;
   mouseEvent.timestamp = 1000;
 
-  processor.HandleMouseEvent(shell_id, nullptr, mouseEvent, 0.0, false, 200.0, 200.0);
+  processor.HandleMouseEvent(shell_id, nullptr, mouseEvent, 0.0, false, 200.0,
+                             200.0);
   SUCCEED();
 }
 
 TEST(OhosTouchProcessorTest, HandleMouseEventPressWithShellHolder) {
+  GraphicStubKnobGuard knob_guard;
   std::unique_ptr<OHOSShellHolder> holder;
   int64_t shell_id = CreateShellHolderForTest(holder);
 
@@ -1337,11 +1363,13 @@ TEST(OhosTouchProcessorTest, HandleMouseEventPressWithShellHolder) {
   mouseEvent.action = OH_NATIVEXCOMPONENT_MOUSE_PRESS;
   mouseEvent.timestamp = 1000;
 
-  processor.HandleMouseEvent(shell_id, nullptr, mouseEvent, 0.0, false, 200.0, 200.0);
+  processor.HandleMouseEvent(shell_id, nullptr, mouseEvent, 0.0, false, 200.0,
+                             200.0);
   SUCCEED();
 }
 
 TEST(OhosTouchProcessorTest, HandleMouseEventReleaseWithShellHolder) {
+  GraphicStubKnobGuard knob_guard;
   std::unique_ptr<OHOSShellHolder> holder;
   int64_t shell_id = CreateShellHolderForTest(holder);
 
@@ -1352,17 +1380,23 @@ TEST(OhosTouchProcessorTest, HandleMouseEventReleaseWithShellHolder) {
   OH_NativeXComponent_MouseEvent pressEvent = {};
   pressEvent.button = OH_NATIVEXCOMPONENT_LEFT_BUTTON;
   pressEvent.action = OH_NATIVEXCOMPONENT_MOUSE_PRESS;
-  processor.HandleMouseEvent(shell_id, nullptr, pressEvent, 0.0, false, 200.0, 200.0);
+  processor.HandleMouseEvent(shell_id, nullptr, pressEvent, 0.0, false, 200.0,
+                             200.0);
+
+  processor.HandleMouseEvent(shell_id, nullptr, pressEvent, 0.0, false, 200.0,
+                             200.0);
 
   // Then release
   OH_NativeXComponent_MouseEvent releaseEvent = {};
   releaseEvent.button = OH_NATIVEXCOMPONENT_LEFT_BUTTON;
   releaseEvent.action = OH_NATIVEXCOMPONENT_MOUSE_RELEASE;
-  processor.HandleMouseEvent(shell_id, nullptr, releaseEvent, 0.0, false, 200.0, 200.0);
+  processor.HandleMouseEvent(shell_id, nullptr, releaseEvent, 0.0, false, 200.0,
+                             200.0);
   SUCCEED();
 }
 
 TEST(OhosTouchProcessorTest, HandleMouseEventLeaveWithShellHolder) {
+  GraphicStubKnobGuard knob_guard;
   std::unique_ptr<OHOSShellHolder> holder;
   int64_t shell_id = CreateShellHolderForTest(holder);
 
@@ -1375,7 +1409,8 @@ TEST(OhosTouchProcessorTest, HandleMouseEventLeaveWithShellHolder) {
   moveEvent.y = 60.0;
   moveEvent.button = OH_NATIVEXCOMPONENT_NONE_BUTTON;
   moveEvent.action = OH_NATIVEXCOMPONENT_MOUSE_MOVE;
-  processor.HandleMouseEvent(shell_id, nullptr, moveEvent, 0.0, false, 200.0, 200.0);
+  processor.HandleMouseEvent(shell_id, nullptr, moveEvent, 0.0, false, 200.0,
+                             200.0);
 
   // Then send a leave event
   OH_NativeXComponent_MouseEvent leaveEvent = {};
@@ -1383,11 +1418,13 @@ TEST(OhosTouchProcessorTest, HandleMouseEventLeaveWithShellHolder) {
   leaveEvent.y = 60.0;
   leaveEvent.button = OH_NATIVEXCOMPONENT_NONE_BUTTON;
   leaveEvent.action = OH_NATIVEXCOMPONENT_MOUSE_MOVE;
-  processor.HandleMouseEvent(shell_id, nullptr, leaveEvent, 0.0, true, 200.0, 200.0);
+  processor.HandleMouseEvent(shell_id, nullptr, leaveEvent, 0.0, true, 200.0,
+                             200.0);
   SUCCEED();
 }
 
 TEST(OhosTouchProcessorTest, HandleMouseEventWithOffsetYWithShellHolder) {
+  GraphicStubKnobGuard knob_guard;
   std::unique_ptr<OHOSShellHolder> holder;
   int64_t shell_id = CreateShellHolderForTest(holder);
 
@@ -1400,11 +1437,13 @@ TEST(OhosTouchProcessorTest, HandleMouseEventWithOffsetYWithShellHolder) {
   mouseEvent.button = OH_NATIVEXCOMPONENT_NONE_BUTTON;
   mouseEvent.action = OH_NATIVEXCOMPONENT_MOUSE_MOVE;
   // offsetY != 0 → signal_kind = kScroll
-  processor.HandleMouseEvent(shell_id, nullptr, mouseEvent, 10.0, false, 200.0, 200.0);
+  processor.HandleMouseEvent(shell_id, nullptr, mouseEvent, 10.0, false, 200.0,
+                             200.0);
   SUCCEED();
 }
 
 TEST(OhosTouchProcessorTest, HandleMouseEventApi20PlusWithOnMouseEvent) {
+  GraphicStubKnobGuard knob_guard;
   std::unique_ptr<OHOSShellHolder> holder;
   int64_t shell_id = CreateShellHolderForTest(holder);
 
@@ -1416,13 +1455,15 @@ TEST(OhosTouchProcessorTest, HandleMouseEventApi20PlusWithOnMouseEvent) {
   mouseEvent.y = 60.0;
   mouseEvent.button = OH_NATIVEXCOMPONENT_NONE_BUTTON;
   mouseEvent.action = OH_NATIVEXCOMPONENT_MOUSE_MOVE;
-  processor.HandleMouseEvent(shell_id, nullptr, mouseEvent, 0.0, false, 200.0, 200.0);
+  processor.HandleMouseEvent(shell_id, nullptr, mouseEvent, 0.0, false, 200.0,
+                             200.0);
   SUCCEED();
 }
 
 // ===== HandleVirtualTouchEvent full path with real OHOSShellHolder =====
 
 TEST(OhosTouchProcessorTest, HandleVirtualTouchEventLowApiWithShellHolder) {
+  GraphicStubKnobGuard knob_guard;
   std::unique_ptr<OHOSShellHolder> holder;
   int64_t shell_id = CreateShellHolderForTest(holder);
 
@@ -1444,6 +1485,7 @@ TEST(OhosTouchProcessorTest, HandleVirtualTouchEventLowApiWithShellHolder) {
 // ===== PlatformViewOnTouchEvent with real OHOSShellHolder =====
 
 TEST(OhosTouchProcessorTest, PlatformViewOnTouchEventWithShellHolder) {
+  GraphicStubKnobGuard knob_guard;
   std::unique_ptr<OHOSShellHolder> holder;
   int64_t shell_id = CreateShellHolderForTest(holder);
 
@@ -1456,14 +1498,15 @@ TEST(OhosTouchProcessorTest, PlatformViewOnTouchEventWithShellHolder) {
   touchEvent.touchPoints[0].type = OH_NATIVEXCOMPONENT_DOWN;
   touchEvent.touchPoints[0].isPressed = true;
 
-  processor.PlatformViewOnTouchEvent(shell_id, OH_NATIVEXCOMPONENT_TOOL_TYPE_FINGER,
-                                     nullptr, &touchEvent);
+  processor.PlatformViewOnTouchEvent(
+      shell_id, OH_NATIVEXCOMPONENT_TOOL_TYPE_FINGER, nullptr, &touchEvent);
   SUCCEED();
 }
 
 // ===== PlatformViewOnAxisEvent with real OHOSShellHolder =====
 
 TEST(OhosTouchProcessorTest, PlatformViewOnAxisEventWithShellHolder) {
+  GraphicStubKnobGuard knob_guard;
   std::unique_ptr<OHOSShellHolder> holder;
   int64_t shell_id = CreateShellHolderForTest(holder);
 
@@ -1479,6 +1522,7 @@ TEST(OhosTouchProcessorTest, PlatformViewOnAxisEventWithShellHolder) {
 // ===== VsyncVotingTouchValue/Up/Down with real OHOSShellHolder =====
 
 TEST(OhosTouchProcessorTest, VsyncVotingTouchUpWithShellHolder) {
+  GraphicStubKnobGuard knob_guard;
   std::unique_ptr<OHOSShellHolder> holder;
   int64_t shell_id = CreateShellHolderForTest(holder);
 
@@ -1488,6 +1532,7 @@ TEST(OhosTouchProcessorTest, VsyncVotingTouchUpWithShellHolder) {
 }
 
 TEST(OhosTouchProcessorTest, VsyncVotingTouchDownWithShellHolder) {
+  GraphicStubKnobGuard knob_guard;
   std::unique_ptr<OHOSShellHolder> holder;
   int64_t shell_id = CreateShellHolderForTest(holder);
 
@@ -1499,6 +1544,7 @@ TEST(OhosTouchProcessorTest, VsyncVotingTouchDownWithShellHolder) {
 // ===== SendFinalMoveEventBeforeLeave with real OHOSShellHolder =====
 
 TEST(OhosTouchProcessorTest, SendFinalMoveEventBeforeLeaveWithShellHolder) {
+  GraphicStubKnobGuard knob_guard;
   std::unique_ptr<OHOSShellHolder> holder;
   int64_t shell_id = CreateShellHolderForTest(holder);
 
@@ -1511,17 +1557,20 @@ TEST(OhosTouchProcessorTest, SendFinalMoveEventBeforeLeaveWithShellHolder) {
   moveEvent.y = 60.0;
   moveEvent.button = OH_NATIVEXCOMPONENT_NONE_BUTTON;
   moveEvent.action = OH_NATIVEXCOMPONENT_MOUSE_MOVE;
-  processor.HandleMouseEvent(shell_id, nullptr, moveEvent, 0.0, false, 200.0, 200.0);
+  processor.HandleMouseEvent(shell_id, nullptr, moveEvent, 0.0, false, 200.0,
+                             200.0);
 
   // Now call SendFinalMoveEventBeforeLeave — lastMouseX_/lastMouseY_ >= 0
   OH_NativeXComponent_MouseEvent mouseEvent = {};
   mouseEvent.x = 50.0;
   mouseEvent.y = 60.0;
-  processor.SendFinalMoveEventBeforeLeave(shell_id, nullptr, mouseEvent, 200.0, 200.0);
+  processor.SendFinalMoveEventBeforeLeave(shell_id, nullptr, mouseEvent, 200.0,
+                                          200.0);
   SUCCEED();
 }
 
 TEST(OhosTouchProcessorTest, SendFinalMoveEventBeforeLeaveLeftBoundary) {
+  GraphicStubKnobGuard knob_guard;
   std::unique_ptr<OHOSShellHolder> holder;
   int64_t shell_id = CreateShellHolderForTest(holder);
 
@@ -1534,16 +1583,19 @@ TEST(OhosTouchProcessorTest, SendFinalMoveEventBeforeLeaveLeftBoundary) {
   moveEvent.y = 100.0;
   moveEvent.button = OH_NATIVEXCOMPONENT_NONE_BUTTON;
   moveEvent.action = OH_NATIVEXCOMPONENT_MOUSE_MOVE;
-  processor.HandleMouseEvent(shell_id, nullptr, moveEvent, 0.0, false, 200.0, 200.0);
+  processor.HandleMouseEvent(shell_id, nullptr, moveEvent, 0.0, false, 200.0,
+                             200.0);
 
   OH_NativeXComponent_MouseEvent mouseEvent = {};
   mouseEvent.x = 5.0;
   mouseEvent.y = 100.0;
-  processor.SendFinalMoveEventBeforeLeave(shell_id, nullptr, mouseEvent, 200.0, 200.0);
+  processor.SendFinalMoveEventBeforeLeave(shell_id, nullptr, mouseEvent, 200.0,
+                                          200.0);
   SUCCEED();
 }
 
 TEST(OhosTouchProcessorTest, SendFinalMoveEventBeforeLeaveRightBoundary) {
+  GraphicStubKnobGuard knob_guard;
   std::unique_ptr<OHOSShellHolder> holder;
   int64_t shell_id = CreateShellHolderForTest(holder);
 
@@ -1556,16 +1608,19 @@ TEST(OhosTouchProcessorTest, SendFinalMoveEventBeforeLeaveRightBoundary) {
   moveEvent.y = 100.0;
   moveEvent.button = OH_NATIVEXCOMPONENT_NONE_BUTTON;
   moveEvent.action = OH_NATIVEXCOMPONENT_MOUSE_MOVE;
-  processor.HandleMouseEvent(shell_id, nullptr, moveEvent, 0.0, false, 200.0, 200.0);
+  processor.HandleMouseEvent(shell_id, nullptr, moveEvent, 0.0, false, 200.0,
+                             200.0);
 
   OH_NativeXComponent_MouseEvent mouseEvent = {};
   mouseEvent.x = 195.0;
   mouseEvent.y = 100.0;
-  processor.SendFinalMoveEventBeforeLeave(shell_id, nullptr, mouseEvent, 200.0, 200.0);
+  processor.SendFinalMoveEventBeforeLeave(shell_id, nullptr, mouseEvent, 200.0,
+                                          200.0);
   SUCCEED();
 }
 
 TEST(OhosTouchProcessorTest, SendFinalMoveEventBeforeLeaveTopBoundary) {
+  GraphicStubKnobGuard knob_guard;
   std::unique_ptr<OHOSShellHolder> holder;
   int64_t shell_id = CreateShellHolderForTest(holder);
 
@@ -1578,16 +1633,19 @@ TEST(OhosTouchProcessorTest, SendFinalMoveEventBeforeLeaveTopBoundary) {
   moveEvent.y = 5.0;  // close to top
   moveEvent.button = OH_NATIVEXCOMPONENT_NONE_BUTTON;
   moveEvent.action = OH_NATIVEXCOMPONENT_MOUSE_MOVE;
-  processor.HandleMouseEvent(shell_id, nullptr, moveEvent, 0.0, false, 200.0, 200.0);
+  processor.HandleMouseEvent(shell_id, nullptr, moveEvent, 0.0, false, 200.0,
+                             200.0);
 
   OH_NativeXComponent_MouseEvent mouseEvent = {};
   mouseEvent.x = 100.0;
   mouseEvent.y = 5.0;
-  processor.SendFinalMoveEventBeforeLeave(shell_id, nullptr, mouseEvent, 200.0, 200.0);
+  processor.SendFinalMoveEventBeforeLeave(shell_id, nullptr, mouseEvent, 200.0,
+                                          200.0);
   SUCCEED();
 }
 
 TEST(OhosTouchProcessorTest, SendFinalMoveEventBeforeLeaveBottomBoundary) {
+  GraphicStubKnobGuard knob_guard;
   std::unique_ptr<OHOSShellHolder> holder;
   int64_t shell_id = CreateShellHolderForTest(holder);
 
@@ -1600,16 +1658,19 @@ TEST(OhosTouchProcessorTest, SendFinalMoveEventBeforeLeaveBottomBoundary) {
   moveEvent.y = 195.0;  // close to bottom (windowHeight=200)
   moveEvent.button = OH_NATIVEXCOMPONENT_NONE_BUTTON;
   moveEvent.action = OH_NATIVEXCOMPONENT_MOUSE_MOVE;
-  processor.HandleMouseEvent(shell_id, nullptr, moveEvent, 0.0, false, 200.0, 200.0);
+  processor.HandleMouseEvent(shell_id, nullptr, moveEvent, 0.0, false, 200.0,
+                             200.0);
 
   OH_NativeXComponent_MouseEvent mouseEvent = {};
   mouseEvent.x = 100.0;
   mouseEvent.y = 195.0;
-  processor.SendFinalMoveEventBeforeLeave(shell_id, nullptr, mouseEvent, 200.0, 200.0);
+  processor.SendFinalMoveEventBeforeLeave(shell_id, nullptr, mouseEvent, 200.0,
+                                          200.0);
   SUCCEED();
 }
 
 TEST(OhosTouchProcessorTest, SendFinalMoveEventBeforeLeaveZeroWindowSize) {
+  GraphicStubKnobGuard knob_guard;
   std::unique_ptr<OHOSShellHolder> holder;
   int64_t shell_id = CreateShellHolderForTest(holder);
 
@@ -1622,19 +1683,27 @@ TEST(OhosTouchProcessorTest, SendFinalMoveEventBeforeLeaveZeroWindowSize) {
   moveEvent.y = 60.0;
   moveEvent.button = OH_NATIVEXCOMPONENT_NONE_BUTTON;
   moveEvent.action = OH_NATIVEXCOMPONENT_MOUSE_MOVE;
-  processor.HandleMouseEvent(shell_id, nullptr, moveEvent, 0.0, false, 200.0, 200.0);
+  processor.HandleMouseEvent(shell_id, nullptr, moveEvent, 0.0, false, 200.0,
+                             200.0);
 
   // windowWidth=0, windowHeight=0 → use original coordinates
   OH_NativeXComponent_MouseEvent mouseEvent = {};
   mouseEvent.x = 50.0;
   mouseEvent.y = 60.0;
-  processor.SendFinalMoveEventBeforeLeave(shell_id, nullptr, mouseEvent, 0.0, 0.0);
+  processor.SendFinalMoveEventBeforeLeave(shell_id, nullptr, mouseEvent, 0.0,
+                                          0.0);
+  processor.SendFinalMoveEventBeforeLeave(shell_id, nullptr, mouseEvent, 200.0,
+                                          0.0);
+  processor.lastMouseY_ = -1.0;
+  processor.SendFinalMoveEventBeforeLeave(shell_id, nullptr, mouseEvent, 200.0,
+                                          200.0);
   SUCCEED();
 }
 
 // ===== HandleScaleEvent with deviceId == -1 (default device ID path) =====
 
 TEST(OhosTouchProcessorTest, HandleScaleEventDeviceIdMinusOneWithShellHolder) {
+  GraphicStubKnobGuard knob_guard;
   std::unique_ptr<OHOSShellHolder> holder;
   int64_t shell_id = CreateShellHolderForTest(holder);
 
@@ -1649,7 +1718,9 @@ TEST(OhosTouchProcessorTest, HandleScaleEventDeviceIdMinusOneWithShellHolder) {
   SUCCEED();
 }
 
-TEST(OhosTouchProcessorTest, HandlePanZooomEventDeviceIdMinusOneWithShellHolder) {
+TEST(OhosTouchProcessorTest,
+     HandlePanZooomEventDeviceIdMinusOneWithShellHolder) {
+  GraphicStubKnobGuard knob_guard;
   std::unique_ptr<OHOSShellHolder> holder;
   int64_t shell_id = CreateShellHolderForTest(holder);
 
@@ -1665,6 +1736,7 @@ TEST(OhosTouchProcessorTest, HandlePanZooomEventDeviceIdMinusOneWithShellHolder)
 }
 
 TEST(OhosTouchProcessorTest, HandleScrollEventDeviceIdMinusOneWithShellHolder) {
+  GraphicStubKnobGuard knob_guard;
   std::unique_ptr<OHOSShellHolder> holder;
   int64_t shell_id = CreateShellHolderForTest(holder);
 
@@ -1687,7 +1759,9 @@ TEST(OhosTouchProcessorTest, HandleVirtualTouchEventNdkFailureWithShellHolder) {
   OhosTouchProcessor processor;
   processor.apiVersion_ = 10;
 
-  g_stub_xcomponent_ret = OH_NATIVEXCOMPONENT_RESULT_BAD_PARAMETER;
+  GraphicStubKnobGuard knob_guard;
+  g_stub_graphic_fail_mask =
+      kStubFailGetTouchPointToolType | kStubFailTouchTilt;
   OH_NativeXComponent_TouchEvent touchEvent = {};
   touchEvent.id = 0;
   touchEvent.type = OH_NATIVEXCOMPONENT_DOWN;
@@ -1707,7 +1781,9 @@ TEST(OhosTouchProcessorTest, HandleTouchEventNdkFailureWithShellHolder) {
   int64_t shell_id = CreateShellHolderForTest(holder);
 
   OhosTouchProcessor processor;
-  g_stub_xcomponent_ret = OH_NATIVEXCOMPONENT_RESULT_BAD_PARAMETER;
+  GraphicStubKnobGuard knob_guard;
+  g_stub_graphic_fail_mask =
+      kStubFailGetTouchPointToolType | kStubFailTouchTilt;
 
   OH_NativeXComponent_TouchEvent touchEvent = {};
   touchEvent.id = 0;
@@ -1721,8 +1797,10 @@ TEST(OhosTouchProcessorTest, HandleTouchEventNdkFailureWithShellHolder) {
   SUCCEED();
 }
 
-// HandleTouchEvent line 199: variant — duplicate up event triggers early return.
+// HandleTouchEvent line 199: variant — duplicate up event triggers early
+// return.
 TEST(OhosTouchProcessorTest, HandleTouchEventDroppedOnDuplicateUp) {
+  GraphicStubKnobGuard knob_guard;
   OhosTouchProcessor processor;
   // Up without prior down → shouldDropTouchEvent returns true → early return
   OH_NativeXComponent_TouchEvent upEvent = {};
@@ -1733,24 +1811,503 @@ TEST(OhosTouchProcessorTest, HandleTouchEventDroppedOnDuplicateUp) {
   SUCCEED();
 }
 
-// HandleTouchEvent line 199: variant — CANCEL event (neither DOWN nor UP) passes
-// shouldDropTouchEvent (returns false), but we can't test the full path without
-// OHOSShellHolder. This test verifies the non-null, non-dropped path doesn't
-// crash at the null check level — but it WILL access OHOSShellHolder, so we
-// only test the shouldDropTouchEvent=true path.
+// HandleTouchEvent line 199: variant — CANCEL event (neither DOWN nor UP)
+// passes shouldDropTouchEvent (returns false), but we can't test the full path
+// without OHOSShellHolder. This test verifies the non-null, non-dropped path
+// doesn't crash at the null check level — but it WILL access OHOSShellHolder,
+// so we only test the shouldDropTouchEvent=true path.
 TEST(OhosTouchProcessorTest, HandleTouchEventDroppedOnCancelAfterDown) {
+  GraphicStubKnobGuard knob_guard;
+  std::unique_ptr<OHOSShellHolder> holder;
+  int64_t shell_id = CreateShellHolderForTest(holder);
+
   OhosTouchProcessor processor;
-  // Register finger with down
   OH_NativeXComponent_TouchEvent downEvent = {};
   downEvent.type = OH_NATIVEXCOMPONENT_DOWN;
   downEvent.id = 7;
-  EXPECT_FALSE(processor.shouldDropTouchEvent(&downEvent));
-  // Now send a duplicate down → shouldDropTouchEvent returns true
-  OH_NativeXComponent_TouchEvent duplicateDown = {};
-  duplicateDown.type = OH_NATIVEXCOMPONENT_DOWN;
-  duplicateDown.id = 7;
-  processor.HandleTouchEvent(0, nullptr, &duplicateDown);
-  SUCCEED();
+  downEvent.numPoints = 1;
+  downEvent.touchPoints[0].id = 7;
+  downEvent.touchPoints[0].type = OH_NATIVEXCOMPONENT_DOWN;
+  processor.HandleTouchEvent(shell_id, nullptr, &downEvent);
+
+  OH_NativeXComponent_TouchEvent cancelEvent = {};
+  cancelEvent.type = OH_NATIVEXCOMPONENT_CANCEL;
+  cancelEvent.id = 7;
+  cancelEvent.numPoints = 1;
+  cancelEvent.touchPoints[0].id = 7;
+  cancelEvent.touchPoints[0].type = OH_NATIVEXCOMPONENT_CANCEL;
+  processor.HandleTouchEvent(shell_id, nullptr, &cancelEvent);
+
+  OH_NativeXComponent_TouchEvent upEvent = {};
+  upEvent.type = OH_NATIVEXCOMPONENT_UP;
+  upEvent.id = 7;
+  EXPECT_TRUE(processor.shouldDropTouchEvent(&upEvent));
+}
+
+TEST(OhosTouchProcessorTest, HandleScrollEventDensityFallback) {
+  GraphicStubKnobGuard knob_guard;
+  std::unique_ptr<OHOSShellHolder> holder;
+  int64_t shell_id = CreateShellHolderForTest(holder);
+
+  OhosTouchProcessor processor;
+  processor.apiVersion_ = 20;
+  NULL_OUT_DYNAMIC_PTRS(processor)
+
+  g_stub_vertical_axis_value = 10.0;
+  g_stub_horizontal_axis_value = 5.0;
+  auto* event = reinterpret_cast<ArkUI_UIInputEvent*>(0x1);
+
+  double saved = PlatformViewOHOSNapi::display_density_pixels;
+  PlatformViewOHOSNapi::display_density_pixels = 0.0;
+  EXPECT_NO_FATAL_FAILURE(
+      processor.HandleScrollEvent(shell_id, nullptr, event));
+  PlatformViewOHOSNapi::display_density_pixels = 2.5;
+  EXPECT_NO_FATAL_FAILURE(
+      processor.HandleScrollEvent(shell_id, nullptr, event));
+  PlatformViewOHOSNapi::display_density_pixels = saved;
+}
+
+TEST(OhosTouchProcessorTest, PlatformViewOnTouchEventTiltQueryFailure) {
+  std::unique_ptr<OHOSShellHolder> holder;
+  int64_t shell_id = CreateShellHolderForTest(holder);
+
+  OhosTouchProcessor processor;
+  processor.apiVersion_ = 20;
+
+  OH_NativeXComponent_TouchEvent touchEvent = {};
+  touchEvent.numPoints = 1;
+  touchEvent.id = 3;
+  touchEvent.type = OH_NATIVEXCOMPONENT_MOVE;
+  touchEvent.x = 10.0f;
+  touchEvent.y = 20.0f;
+
+  GraphicStubKnobGuard knob_guard;
+  g_stub_graphic_fail_mask = kStubFailTouchTilt;
+  EXPECT_NO_FATAL_FAILURE(processor.PlatformViewOnTouchEvent(
+      shell_id, OH_NATIVEXCOMPONENT_TOOL_TYPE_FINGER, nullptr, &touchEvent));
+}
+
+TEST(OhosTouchProcessorTest, LogSeverityReplayRemainingEdges) {
+  {
+    fml::ScopedSetLogSettings loud({fml::kLogInfo});
+    OhosTouchProcessor processor;
+    OH_NativeXComponent_TouchEvent downEvent = {};
+    downEvent.type = OH_NATIVEXCOMPONENT_DOWN;
+    downEvent.id = 0;
+    EXPECT_FALSE(processor.shouldDropTouchEvent(&downEvent));
+    OH_NativeXComponent_TouchEvent duplicateDown = {};
+    duplicateDown.type = OH_NATIVEXCOMPONENT_DOWN;
+    duplicateDown.id = 0;
+    processor.HandleTouchEvent(0, nullptr, &duplicateDown);
+
+    OH_NativeXComponent_TouchEvent upEvent = {};
+    upEvent.type = OH_NATIVEXCOMPONENT_UP;
+    upEvent.id = 5;
+    processor.HandleTouchEvent(0, nullptr, &upEvent);
+  }
+  {
+    fml::ScopedSetLogSettings quiet({fml::kLogFatal});
+    OhosTouchProcessor processor;
+    processor.HandleAxisEvent(0, nullptr, nullptr);
+    processor.apiVersion_ = 10;
+    processor.HandleAxisEvent(0, nullptr,
+                              reinterpret_cast<ArkUI_UIInputEvent*>(0x2));
+
+    std::unique_ptr<OHOSShellHolder> holder;
+    int64_t shell_id = CreateShellHolderForTest(holder);
+    OH_NativeXComponent_TouchEvent touchEvent = {};
+    touchEvent.numPoints = 1;
+    touchEvent.id = 3;
+    touchEvent.type = OH_NATIVEXCOMPONENT_MOVE;
+    GraphicStubKnobGuard knob_guard;
+    g_stub_graphic_fail_mask = kStubFailTouchTilt;
+    EXPECT_NO_FATAL_FAILURE(processor.PlatformViewOnTouchEvent(
+        shell_id, OH_NATIVEXCOMPONENT_TOOL_TYPE_FINGER, nullptr, &touchEvent));
+    g_stub_graphic_fail_mask =
+        kStubFailGetTouchPointToolType | kStubFailTouchTilt;
+    EXPECT_NO_FATAL_FAILURE(processor.PlatformViewOnTouchEvent(
+        shell_id, OH_NATIVEXCOMPONENT_TOOL_TYPE_FINGER, nullptr, &touchEvent));
+    processor.apiVersion_ = 10;
+    processor.PlatformViewOnAxisEvent(
+        0, reinterpret_cast<ArkUI_UIInputEvent*>(0x1), 0.0);
+  }
+}
+
+// ===== Screen-to-layout coordinate scaling for platform-view packets =====
+//
+// Regression tests for the WebView click-drift bug: when a custom DPI scale
+// (flutter/displaymetrics 'updateDpiScale', e.g. the OHOS Column overflow
+// adaptation) makes the Flutter DPR diverge from the system display density,
+// pointer packets forwarded to platform views must be mapped from physical
+// screen pixels onto the ArkUI layout pixel space (x system_density /
+// flutter_dpr), otherwise clicks drift linearly with the coordinate value.
+// See GetScreenToLayoutScale / ScaleTouchEventCoordinates in
+// ohos_touch_processor.cpp and PlatformViewOHOS::
+// GetScreenToPlatformViewLayoutScale.
+
+namespace {
+
+// Saves and restores the process-wide static system display density.
+class ScopedSystemDensity {
+ public:
+  explicit ScopedSystemDensity(double value)
+      : saved_(PlatformViewOHOSNapi::display_density_pixels) {
+    PlatformViewOHOSNapi::display_density_pixels = value;
+  }
+  ~ScopedSystemDensity() {
+    PlatformViewOHOSNapi::display_density_pixels = saved_;
+  }
+
+ private:
+  double saved_;
+};
+
+// Enables the opt-in napi stub string recording for the lifetime of the
+// object and exposes the strings that were forwarded to the JS side.
+class ScopedNapiStringRecorder {
+ public:
+  ScopedNapiStringRecorder() {
+    StubNapiClearRecordedStrings();
+    StubNapiSetRecordStrings(true);
+  }
+  ~ScopedNapiStringRecorder() { StubNapiSetRecordStrings(false); }
+
+  size_t size() const { return StubNapiRecordedStringCount(); }
+  std::string at(size_t index) const {
+    const char* s = StubNapiRecordedStringAt(index);
+    return s != nullptr ? std::string(s) : std::string();
+  }
+};
+
+// Two-finger event whose main-event and per-point coordinates differ so that
+// field offsets can be told apart in the serialized packet.
+OH_NativeXComponent_TouchEvent MakeScalingTestTouchEvent() {
+  OH_NativeXComponent_TouchEvent event = {};
+  event.id = 7;
+  event.screenX = 164.0f;
+  event.screenY = 590.0f;
+  event.x = 100.0f;
+  event.y = 200.0f;
+  event.type = OH_NATIVEXCOMPONENT_DOWN;
+  event.size = 1.5;
+  event.force = 0.5f;
+  event.deviceId = 42;
+  event.timeStamp = 1234567890;
+  event.numPoints = 2;
+  event.touchPoints[0].id = 0;
+  event.touchPoints[0].screenX = 164.0f;
+  event.touchPoints[0].screenY = 590.0f;
+  event.touchPoints[0].x = 100.0f;
+  event.touchPoints[0].y = 200.0f;
+  event.touchPoints[0].type = OH_NATIVEXCOMPONENT_DOWN;
+  event.touchPoints[0].size = 1.0;
+  event.touchPoints[0].force = 0.5f;
+  event.touchPoints[0].timeStamp = 111;
+  event.touchPoints[0].isPressed = true;
+  event.touchPoints[1].id = 1;
+  event.touchPoints[1].screenX = 300.0f;
+  event.touchPoints[1].screenY = 600.0f;
+  event.touchPoints[1].x = 250.0f;
+  event.touchPoints[1].y = 350.0f;
+  event.touchPoints[1].type = OH_NATIVEXCOMPONENT_DOWN;
+  event.touchPoints[1].size = 2.0;
+  event.touchPoints[1].force = 0.8f;
+  event.touchPoints[1].timeStamp = 222;
+  event.touchPoints[1].isPressed = true;
+  return event;
+}
+
+}  // namespace
+
+TEST(OhosTouchProcessorTest, ScaleTouchEventCoordinatesIdentityAtUnitScale) {
+  const OH_NativeXComponent_TouchEvent event = MakeScalingTestTouchEvent();
+  const OH_NativeXComponent_TouchEvent scaled =
+      OhosTouchProcessor::ScaleTouchEventCoordinates(event, 1.0);
+  EXPECT_EQ(scaled.id, event.id);
+  EXPECT_EQ(scaled.screenX, event.screenX);
+  EXPECT_EQ(scaled.screenY, event.screenY);
+  EXPECT_EQ(scaled.x, event.x);
+  EXPECT_EQ(scaled.y, event.y);
+  EXPECT_EQ(scaled.type, event.type);
+  EXPECT_EQ(scaled.size, event.size);
+  EXPECT_EQ(scaled.force, event.force);
+  EXPECT_EQ(scaled.deviceId, event.deviceId);
+  EXPECT_EQ(scaled.timeStamp, event.timeStamp);
+  EXPECT_EQ(scaled.numPoints, event.numPoints);
+  for (uint32_t i = 0; i < scaled.numPoints; ++i) {
+    EXPECT_EQ(scaled.touchPoints[i].id, event.touchPoints[i].id);
+    EXPECT_EQ(scaled.touchPoints[i].screenX, event.touchPoints[i].screenX);
+    EXPECT_EQ(scaled.touchPoints[i].screenY, event.touchPoints[i].screenY);
+    EXPECT_EQ(scaled.touchPoints[i].x, event.touchPoints[i].x);
+    EXPECT_EQ(scaled.touchPoints[i].y, event.touchPoints[i].y);
+    EXPECT_EQ(scaled.touchPoints[i].type, event.touchPoints[i].type);
+    EXPECT_EQ(scaled.touchPoints[i].size, event.touchPoints[i].size);
+    EXPECT_EQ(scaled.touchPoints[i].force, event.touchPoints[i].force);
+    EXPECT_EQ(scaled.touchPoints[i].timeStamp, event.touchPoints[i].timeStamp);
+    EXPECT_EQ(scaled.touchPoints[i].isPressed, event.touchPoints[i].isPressed);
+  }
+}
+
+TEST(OhosTouchProcessorTest, ScaleTouchEventCoordinatesScalesCoordinatesOnly) {
+  const OH_NativeXComponent_TouchEvent event = MakeScalingTestTouchEvent();
+  // system_density 3.25, custom flutter_dpr 3.181 (matches the on-device
+  // repro of the click-drift bug).
+  const double scale = 3.25 / 3.181;
+  const OH_NativeXComponent_TouchEvent scaled =
+      OhosTouchProcessor::ScaleTouchEventCoordinates(event, scale);
+
+  EXPECT_NEAR(scaled.screenX, event.screenX * scale, 1e-3);
+  EXPECT_NEAR(scaled.screenY, event.screenY * scale, 1e-3);
+  EXPECT_NEAR(scaled.x, event.x * scale, 1e-3);
+  EXPECT_NEAR(scaled.y, event.y * scale, 1e-3);
+  EXPECT_NEAR(scaled.touchPoints[0].screenX,
+              event.touchPoints[0].screenX * scale, 1e-3);
+  EXPECT_NEAR(scaled.touchPoints[0].screenY,
+              event.touchPoints[0].screenY * scale, 1e-3);
+  EXPECT_NEAR(scaled.touchPoints[0].x, event.touchPoints[0].x * scale, 1e-3);
+  EXPECT_NEAR(scaled.touchPoints[0].y, event.touchPoints[0].y * scale, 1e-3);
+  EXPECT_NEAR(scaled.touchPoints[1].screenX,
+              event.touchPoints[1].screenX * scale, 1e-3);
+  EXPECT_NEAR(scaled.touchPoints[1].screenY,
+              event.touchPoints[1].screenY * scale, 1e-3);
+  EXPECT_NEAR(scaled.touchPoints[1].x, event.touchPoints[1].x * scale, 1e-3);
+  EXPECT_NEAR(scaled.touchPoints[1].y, event.touchPoints[1].y * scale, 1e-3);
+
+  // Non-coordinate fields must be preserved.
+  EXPECT_EQ(scaled.id, event.id);
+  EXPECT_EQ(scaled.type, event.type);
+  EXPECT_EQ(scaled.size, event.size);
+  EXPECT_EQ(scaled.force, event.force);
+  EXPECT_EQ(scaled.deviceId, event.deviceId);
+  EXPECT_EQ(scaled.timeStamp, event.timeStamp);
+  EXPECT_EQ(scaled.numPoints, event.numPoints);
+  EXPECT_EQ(scaled.touchPoints[0].id, event.touchPoints[0].id);
+  EXPECT_EQ(scaled.touchPoints[0].type, event.touchPoints[0].type);
+  EXPECT_EQ(scaled.touchPoints[0].size, event.touchPoints[0].size);
+  EXPECT_EQ(scaled.touchPoints[0].force, event.touchPoints[0].force);
+  EXPECT_EQ(scaled.touchPoints[0].timeStamp, event.touchPoints[0].timeStamp);
+  EXPECT_EQ(scaled.touchPoints[1].id, event.touchPoints[1].id);
+  EXPECT_EQ(scaled.touchPoints[1].type, event.touchPoints[1].type);
+  EXPECT_EQ(scaled.touchPoints[1].size, event.touchPoints[1].size);
+  EXPECT_EQ(scaled.touchPoints[1].force, event.touchPoints[1].force);
+  EXPECT_EQ(scaled.touchPoints[1].timeStamp, event.touchPoints[1].timeStamp);
+}
+
+TEST(OhosTouchProcessorTest, HandleTouchEventScalesPacketWhenCustomDpiActive) {
+  GraphicStubKnobGuard knob_guard;
+  std::unique_ptr<OHOSShellHolder> holder;
+  int64_t shell_id = CreateShellHolderForTest(holder);
+  auto platform_view = holder->GetPlatformView();
+  ASSERT_TRUE(platform_view);
+
+  // System density 3.25, custom Flutter DPR 3.181 -> scale 3.25/3.181.
+  ScopedSystemDensity density(3.25);
+  platform_view->viewport_metrics_.device_pixel_ratio = 3.181;
+
+  OhosTouchProcessor processor;
+  OH_NativeXComponent_TouchEvent touchEvent = MakeScalingTestTouchEvent();
+
+  ScopedNapiStringRecorder recorder;
+  processor.HandleTouchEvent(shell_id, nullptr, &touchEvent);
+
+  // Serialized packet layout:
+  // [0] numPoints, [1] id, [2] screenX, [3] screenY, [4] x, [5] y,
+  // [6] type, ... then 10 fields per point starting at [11]:
+  // id, screenX, screenY, x, y, type, size, force, timeStamp, isPressed.
+  ASSERT_GE(recorder.size(), 26u);
+  EXPECT_EQ(recorder.at(0), std::to_string(2u));
+  const double scale = 3.25 / 3.181;
+  EXPECT_NEAR(std::stod(recorder.at(2)), 164.0 * scale, 1e-3);
+  EXPECT_NEAR(std::stod(recorder.at(3)), 590.0 * scale, 1e-3);
+  EXPECT_NEAR(std::stod(recorder.at(4)), 100.0 * scale, 1e-3);
+  EXPECT_NEAR(std::stod(recorder.at(5)), 200.0 * scale, 1e-3);
+  // First touch point coordinates start at [12].
+  EXPECT_NEAR(std::stod(recorder.at(12)), 164.0 * scale, 1e-3);
+  EXPECT_NEAR(std::stod(recorder.at(13)), 590.0 * scale, 1e-3);
+  EXPECT_NEAR(std::stod(recorder.at(14)), 100.0 * scale, 1e-3);
+  EXPECT_NEAR(std::stod(recorder.at(15)), 200.0 * scale, 1e-3);
+  // Second touch point coordinates start at [22].
+  EXPECT_NEAR(std::stod(recorder.at(22)), 300.0 * scale, 1e-3);
+  EXPECT_NEAR(std::stod(recorder.at(23)), 600.0 * scale, 1e-3);
+  EXPECT_NEAR(std::stod(recorder.at(24)), 250.0 * scale, 1e-3);
+  EXPECT_NEAR(std::stod(recorder.at(25)), 350.0 * scale, 1e-3);
+  // Non-coordinate fields must not change.
+  EXPECT_EQ(recorder.at(1), std::to_string(7));
+  EXPECT_EQ(recorder.at(6), std::to_string(OH_NATIVEXCOMPONENT_DOWN));
+  EXPECT_EQ(recorder.at(10), std::to_string(1234567890));
+}
+
+TEST(OhosTouchProcessorTest,
+     HandleTouchEventKeepsPacketUnchangedWhenDprsMatch) {
+  GraphicStubKnobGuard knob_guard;
+  std::unique_ptr<OHOSShellHolder> holder;
+  int64_t shell_id = CreateShellHolderForTest(holder);
+  auto platform_view = holder->GetPlatformView();
+  ASSERT_TRUE(platform_view);
+
+  // System density and Flutter DPR both 3.25 -> identity scale.
+  ScopedSystemDensity density(3.25);
+  platform_view->viewport_metrics_.device_pixel_ratio = 3.25;
+
+  OhosTouchProcessor processor;
+  OH_NativeXComponent_TouchEvent touchEvent = MakeScalingTestTouchEvent();
+
+  ScopedNapiStringRecorder recorder;
+  processor.HandleTouchEvent(shell_id, nullptr, &touchEvent);
+
+  ASSERT_GE(recorder.size(), 26u);
+  EXPECT_EQ(recorder.at(0), std::to_string(2u));
+  // std::to_string(float) prints 6 decimals; unscaled values pass through.
+  EXPECT_EQ(recorder.at(2), std::to_string(164.0f));
+  EXPECT_EQ(recorder.at(3), std::to_string(590.0f));
+  EXPECT_EQ(recorder.at(4), std::to_string(100.0f));
+  EXPECT_EQ(recorder.at(5), std::to_string(200.0f));
+  EXPECT_EQ(recorder.at(12), std::to_string(164.0f));
+  EXPECT_EQ(recorder.at(22), std::to_string(300.0f));
+  EXPECT_EQ(recorder.at(25), std::to_string(350.0f));
+}
+
+TEST(OhosTouchProcessorTest, HandleMouseEventScalesPacketWhenCustomDpiActive) {
+  GraphicStubKnobGuard knob_guard;
+  std::unique_ptr<OHOSShellHolder> holder;
+  int64_t shell_id = CreateShellHolderForTest(holder);
+  auto platform_view = holder->GetPlatformView();
+  ASSERT_TRUE(platform_view);
+
+  ScopedSystemDensity density(3.25);
+  platform_view->viewport_metrics_.device_pixel_ratio = 3.181;
+
+  OhosTouchProcessor processor;
+  processor.apiVersion_ = 20;  // >= 20 forwards the mouse packet to napi.
+
+  OH_NativeXComponent_MouseEvent mouseEvent = {};
+  mouseEvent.x = 50.0f;
+  mouseEvent.y = 60.0f;
+  mouseEvent.screenX = 100.0f;
+  mouseEvent.screenY = 200.0f;
+  mouseEvent.button = OH_NATIVEXCOMPONENT_NONE_BUTTON;
+  mouseEvent.action = OH_NATIVEXCOMPONENT_MOUSE_MOVE;
+
+  ScopedNapiStringRecorder recorder;
+  processor.HandleMouseEvent(shell_id, nullptr, mouseEvent, 0.0, false, 200.0,
+                             200.0);
+
+  // Serialized packet layout: [0] x, [1] y, [2] screenX, [3] screenY,
+  // [4] timestamp, [5] action, [6] button.
+  ASSERT_GE(recorder.size(), 7u);
+  const double scale = 3.25 / 3.181;
+  EXPECT_NEAR(std::stod(recorder.at(0)), 50.0 * scale, 1e-3);
+  EXPECT_NEAR(std::stod(recorder.at(1)), 60.0 * scale, 1e-3);
+  EXPECT_NEAR(std::stod(recorder.at(2)), 100.0 * scale, 1e-3);
+  EXPECT_NEAR(std::stod(recorder.at(3)), 200.0 * scale, 1e-3);
+  // Non-coordinate fields must not change.
+  EXPECT_EQ(recorder.at(5), std::to_string(OH_NATIVEXCOMPONENT_MOUSE_MOVE));
+}
+
+TEST(OhosTouchProcessorTest,
+     HandleScrollEventScalesAxisPacketWhenCustomDpiActive) {
+  GraphicStubKnobGuard knob_guard;
+  std::unique_ptr<OHOSShellHolder> holder;
+  int64_t shell_id = CreateShellHolderForTest(holder);
+  auto platform_view = holder->GetPlatformView();
+  ASSERT_TRUE(platform_view);
+
+  ScopedSystemDensity density(3.25);
+  platform_view->viewport_metrics_.device_pixel_ratio = 3.181;
+
+  OhosTouchProcessor processor;
+  processor.apiVersion_ = 20;  // >= 20 forwards the axis packet to napi.
+  NULL_OUT_DYNAMIC_PTRS(processor)
+
+  // Stubbed pointer coordinates: x/windowX/displayX = 100,
+  // y/windowY/displayY = 200 (defaults reset by StubStateResetter).
+  auto* event = reinterpret_cast<ArkUI_UIInputEvent*>(0x1);
+
+  ScopedNapiStringRecorder recorder;
+  processor.HandleScrollEvent(shell_id, nullptr, event);
+
+  // Serialized packet layout: [0] action, [1] x, [2] y, [3] windowX,
+  // [4] windowY, [5] displayX, [6] displayY, [7] scroll delta.
+  ASSERT_GE(recorder.size(), 8u);
+  const double scale = 3.25 / 3.181;
+  EXPECT_NEAR(std::stod(recorder.at(1)), 100.0 * scale, 1e-3);
+  EXPECT_NEAR(std::stod(recorder.at(2)), 200.0 * scale, 1e-3);
+  EXPECT_NEAR(std::stod(recorder.at(3)), 100.0 * scale, 1e-3);
+  EXPECT_NEAR(std::stod(recorder.at(4)), 200.0 * scale, 1e-3);
+  EXPECT_NEAR(std::stod(recorder.at(5)), 100.0 * scale, 1e-3);
+  EXPECT_NEAR(std::stod(recorder.at(6)), 200.0 * scale, 1e-3);
+}
+
+TEST(OhosTouchProcessorTest,
+     HandleScaleEventScalesAxisPacketWhenCustomDpiActive) {
+  GraphicStubKnobGuard knob_guard;
+  std::unique_ptr<OHOSShellHolder> holder;
+  int64_t shell_id = CreateShellHolderForTest(holder);
+  auto platform_view = holder->GetPlatformView();
+  ASSERT_TRUE(platform_view);
+
+  ScopedSystemDensity density(3.25);
+  platform_view->viewport_metrics_.device_pixel_ratio = 3.181;
+
+  OhosTouchProcessor processor;
+  processor.apiVersion_ = 20;  // >= 20 forwards the axis packet to napi.
+  NULL_OUT_DYNAMIC_PTRS(processor)
+
+  g_stub_vertical_axis_value = -2.5;  // zoom delta, not a coordinate.
+
+  auto* event = reinterpret_cast<ArkUI_UIInputEvent*>(0x1);
+
+  ScopedNapiStringRecorder recorder;
+  processor.HandleScaleEvent(shell_id, nullptr, event);
+
+  // Serialized packet layout: [0] action, [1] x, [2] y, [3] windowX,
+  // [4] windowY, [5] displayX, [6] displayY, [7] zoom delta.
+  ASSERT_GE(recorder.size(), 8u);
+  const double scale = 3.25 / 3.181;
+  EXPECT_NEAR(std::stod(recorder.at(1)), 100.0 * scale, 1e-3);
+  EXPECT_NEAR(std::stod(recorder.at(2)), 200.0 * scale, 1e-3);
+  EXPECT_NEAR(std::stod(recorder.at(3)), 100.0 * scale, 1e-3);
+  EXPECT_NEAR(std::stod(recorder.at(4)), 200.0 * scale, 1e-3);
+  EXPECT_NEAR(std::stod(recorder.at(5)), 100.0 * scale, 1e-3);
+  EXPECT_NEAR(std::stod(recorder.at(6)), 200.0 * scale, 1e-3);
+  // The zoom delta is not a coordinate and must not be scaled.
+  EXPECT_EQ(recorder.at(7), std::to_string(-2.5));
+}
+
+TEST(OhosTouchProcessorTest,
+     HandlePanZooomEventScalesAxisPacketWhenCustomDpiActive) {
+  GraphicStubKnobGuard knob_guard;
+  std::unique_ptr<OHOSShellHolder> holder;
+  int64_t shell_id = CreateShellHolderForTest(holder);
+  auto platform_view = holder->GetPlatformView();
+  ASSERT_TRUE(platform_view);
+
+  ScopedSystemDensity density(3.25);
+  platform_view->viewport_metrics_.device_pixel_ratio = 3.181;
+
+  OhosTouchProcessor processor;
+  processor.apiVersion_ = 20;  // >= 20 forwards the axis packet to napi.
+  NULL_OUT_DYNAMIC_PTRS(processor)
+
+  g_stub_vertical_axis_value = -2.5;  // pan/scroll delta, not a coordinate.
+
+  auto* event = reinterpret_cast<ArkUI_UIInputEvent*>(0x1);
+
+  ScopedNapiStringRecorder recorder;
+  processor.HandlePanZooomEvent(shell_id, nullptr, event);
+
+  // Serialized packet layout: [0] action, [1] x, [2] y, [3] windowX,
+  // [4] windowY, [5] displayX, [6] displayY, [7] pan/scroll delta.
+  ASSERT_GE(recorder.size(), 8u);
+  const double scale = 3.25 / 3.181;
+  EXPECT_NEAR(std::stod(recorder.at(1)), 100.0 * scale, 1e-3);
+  EXPECT_NEAR(std::stod(recorder.at(2)), 200.0 * scale, 1e-3);
+  EXPECT_NEAR(std::stod(recorder.at(3)), 100.0 * scale, 1e-3);
+  EXPECT_NEAR(std::stod(recorder.at(4)), 200.0 * scale, 1e-3);
+  EXPECT_NEAR(std::stod(recorder.at(5)), 100.0 * scale, 1e-3);
+  EXPECT_NEAR(std::stod(recorder.at(6)), 200.0 * scale, 1e-3);
+  // The pan/scroll delta is not a coordinate and must not be scaled.
+  EXPECT_EQ(recorder.at(7), std::to_string(-2.5));
 }
 
 }  // namespace testing
