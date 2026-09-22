@@ -11,6 +11,7 @@
 
 #include <memory>
 #include <sstream>
+#include <type_traits>
 #include <utility>
 #include <vector>
 
@@ -46,6 +47,13 @@
 #include "third_party/skia/include/codec/SkWebpDecoder.h"
 #include "third_party/skia/include/core/SkGraphics.h"
 #include "third_party/tonic/common/log.h"
+
+#ifdef FML_OS_OHOS
+#include <hilog/log.h>
+#define OHOS_LOGI(...)                                                \
+  ((void)OH_LOG_Print(LOG_APP, LOG_INFO, 0x0000, "XComFlutterEngine", \
+                      __VA_ARGS__))
+#endif
 
 namespace flutter {
 
@@ -110,7 +118,7 @@ void PerformInitializationTasks(Settings& settings) {
   {
     fml::LogSettings log_settings;
     log_settings.min_log_level =
-        settings.verbose_logging ? fml::kLogInfo : fml::kLogError;
+        settings.verbose_logging ? fml::kLogInfo : fml::kLogWarning;
     fml::SetLogSettings(log_settings);
   }
 
@@ -267,6 +275,7 @@ std::unique_ptr<Shell> Shell::CreateShellOnPlatformThread(
     FML_LOG(ERROR) << "Task runners to run the shell were invalid.";
     return nullptr;
   }
+  FML_LOG(INFO) << "CreateShellOnPlatformThread";
 
   auto shell = std::unique_ptr<Shell>(
       new Shell(std::move(vm), task_runners, std::move(parent_merger),
@@ -433,12 +442,14 @@ std::unique_ptr<Shell> Shell::CreateShellOnPlatformThread(
                              shell->is_gpu_disabled_sync_switch_,  //
                              runtime_stage_future));
       }));
+  FML_LOG(INFO) << "CreateShellOnPlatformThread Setup";
 
   if (!shell->Setup(std::move(platform_view),  //
                     engine_future.get(),       //
                     rasterizer_future.get(),   //
                     io_manager_future.get())   //
   ) {
+    FML_LOG(ERROR) << "CreateShellOnPlatformThread Setup nullptr";
     return nullptr;
   }
 
@@ -1135,6 +1146,10 @@ void Shell::OnPlatformViewSetViewportMetrics(int64_t view_id,
 
   if (!ValidateViewportMetrics(metrics)) {
     // Ignore invalid view-port metrics.
+    FML_LOG(WARNING) << "invalid viewport metrics dpr="
+                     << metrics.device_pixel_ratio
+                     << " w=" << metrics.physical_width
+                     << " h=" << metrics.physical_height;
     return;
   }
 
@@ -1425,6 +1440,9 @@ void Shell::OnAnimatorDraw(std::shared_ptr<FramePipeline> pipeline) {
 
           if (waiting_for_first_frame.load()) {
             waiting_for_first_frame.store(false);
+#ifdef FML_OS_OHOS
+            OHOS_LOGI("first-frame wait cleared");
+#endif
             waiting_for_first_frame_condition.notify_all();
           }
         }
@@ -1813,17 +1831,12 @@ void Shell::OnFrameRasterized(const FrameTiming& timing) {
 }
 
 fml::Milliseconds Shell::GetFrameBudget() {
-  if (cached_display_refresh_rate_.has_value()) {
-    return cached_display_refresh_rate_.value();
-  }
   double display_refresh_rate = display_manager_->GetMainDisplayRefreshRate();
   if (display_refresh_rate > 0) {
-    cached_display_refresh_rate_ =
-        fml::RefreshRateToFrameBudget(display_refresh_rate);
+    return fml::RefreshRateToFrameBudget(display_refresh_rate);
   } else {
-    cached_display_refresh_rate_ = fml::kDefaultFrameBudget;
+    return fml::kDefaultFrameBudget;
   }
-  return cached_display_refresh_rate_.value_or(fml::kDefaultFrameBudget);
 }
 
 fml::TimePoint Shell::GetLatestFrameTargetTime() const {

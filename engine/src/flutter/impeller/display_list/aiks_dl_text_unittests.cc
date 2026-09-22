@@ -19,7 +19,6 @@
 #include "impeller/display_list/dl_dispatcher.h"
 #include "impeller/display_list/dl_text_impeller.h"
 #include "impeller/entity/contents/content_context.h"
-#include "impeller/entity/contents/solid_color_contents.h"
 #include "impeller/entity/contents/text_contents.h"
 #include "impeller/entity/entity.h"
 #include "impeller/geometry/matrix.h"
@@ -708,8 +707,7 @@ TEST_P(AiksTest, DifferenceClipsMustRenderIdenticallyAcrossBackends) {
 }
 
 TEST_P(AiksTest, TextContentsMismatchedTransformTest) {
-  AiksContext aiks_context(GetContext(),
-                           std::make_shared<TypographerContextSkia>());
+  AiksContext aiks_context(GetContext(), TypographerContextSkia::Make());
 
   // Verifies that TextContents only use the scale/transform that is
   // computed during preroll.
@@ -734,10 +732,10 @@ TEST_P(AiksTest, TextContentsMismatchedTransformTest) {
   Point preroll_point = Point{23, 45};
   {
     aiks_context.GetContentContext().GetLazyGlyphAtlas()->AddTextFrame(
-        text_frame,        //
-        preroll_point,     //
-        preroll_matrix,    //
-        GlyphProperties{}  //
+        text_frame,     //
+        preroll_point,  //
+        preroll_matrix,
+        std::nullopt  //
     );
   }
 
@@ -768,48 +766,6 @@ TEST_P(AiksTest, TextContentsMismatchedTransformTest) {
                                    *render_pass));
 }
 
-TEST_P(AiksTest, CanRenderTextFrameWithThinLightAndDarkColors) {
-  DisplayListBuilder builder;
-  DlPaint paint;
-  paint.setColor(DlColor::ARGB(1, 0.1, 0.1, 0.1));
-  builder.DrawPaint(paint);
-
-  auto mapping =
-      flutter::testing::OpenFixtureAsSkData("RobotoSlab-VariableFont_wght.ttf");
-  ASSERT_TRUE(mapping);
-  sk_sp<SkFontMgr> font_mgr = txt::GetDefaultFontManager();
-
-  // Set the variation axis for weight to 100 (typically "Thin").
-  SkFontArguments::VariationPosition::Coordinate weight_coord{
-      SkSetFourByteTag('w', 'g', 'h', 't'), 100.0f};
-  SkFontArguments args;
-  args.setVariationDesignPosition({&weight_coord, 1});
-
-  SkFont thin_font(font_mgr->makeFromData(mapping)->makeClone(args), 25);
-
-  // Render light text
-  ASSERT_TRUE(RenderTextInCanvasSkia(
-      GetContext(), builder, "the quick brown fox jumped over the lazy dog!.?",
-      "RobotoSlab-VariableFont_wght.ttf",
-      TextRenderOptions{.color = DlColor::kWhite(),
-                        .position = DlPoint(100, 200)},
-      thin_font));
-
-  // Render dark text on a light background
-  DlPaint dart_text_background_paint;
-  dart_text_background_paint.setColor(DlColor::ARGB(1, 0.9, 0.9, 0.9));
-  builder.DrawRect(DlRect::MakeXYWH(50, 250, 900, 100),
-                   dart_text_background_paint);
-  ASSERT_TRUE(RenderTextInCanvasSkia(
-      GetContext(), builder, "the quick brown fox jumped over the lazy dog!.?",
-      "RobotoSlab-VariableFont_wght.ttf",
-      TextRenderOptions{.color = DlColor::kDarkGreen(),
-                        .position = DlPoint(100, 300)},
-      thin_font));
-
-  ASSERT_TRUE(OpenPlaygroundHere(builder.Build()));
-}
-
 TEST_P(AiksTest, TextWithShadowCache) {
   DisplayListBuilder builder;
   builder.Scale(GetContentScale().x, GetContentScale().y);
@@ -817,8 +773,7 @@ TEST_P(AiksTest, TextWithShadowCache) {
   paint.setColor(DlColor::ARGB(1, 0.1, 0.1, 0.1));
   builder.DrawPaint(paint);
 
-  AiksContext aiks_context(GetContext(),
-                           std::make_shared<TypographerContextSkia>());
+  AiksContext aiks_context(GetContext(), TypographerContextSkia::Make());
   // Cache empty
   EXPECT_EQ(aiks_context.GetContentContext()
                 .GetTextShadowCache()
@@ -847,8 +802,7 @@ TEST_P(AiksTest, MultipleTextWithShadowCache) {
   paint.setColor(DlColor::ARGB(1, 0.1, 0.1, 0.1));
   builder.DrawPaint(paint);
 
-  AiksContext aiks_context(GetContext(),
-                           std::make_shared<TypographerContextSkia>());
+  AiksContext aiks_context(GetContext(), TypographerContextSkia::Make());
   // Cache empty
   EXPECT_EQ(aiks_context.GetContentContext()
                 .GetTextShadowCache()
@@ -880,13 +834,12 @@ TEST_P(AiksTest, MultipleColorWithShadowCache) {
   paint.setColor(DlColor::kWhite());
   builder.DrawPaint(paint);
 
-  AiksContext aiks_context(GetContext(),
-                           std::make_shared<TypographerContextSkia>());
+  AiksContext aiks_context(GetContext(), TypographerContextSkia::Make());
   // Cache empty
   EXPECT_EQ(aiks_context.GetContentContext()
-                .GetTextShadowCache()
-                .GetCacheSizeForTesting(),
-            0u);
+                 .GetTextShadowCache()
+                 .GetCacheSizeForTesting(),
+             0u);
 
   SkFont sk_font = flutter::testing::CreateTestFontOfSize(12);
 
@@ -918,8 +871,7 @@ TEST_P(AiksTest, SingleIconShadowTest) {
   paint.setColor(DlColor::ARGB(1, 0.1, 0.1, 0.1));
   builder.DrawPaint(paint);
 
-  AiksContext aiks_context(GetContext(),
-                           std::make_shared<TypographerContextSkia>());
+  AiksContext aiks_context(GetContext(), TypographerContextSkia::Make());
   // Cache empty
   EXPECT_EQ(aiks_context.GetContentContext()
                 .GetTextShadowCache()
@@ -1096,56 +1048,6 @@ TEST_P(AiksTest, TextWithNonUniformScale) {
   builder.Restore();
 
   ASSERT_TRUE(OpenPlaygroundHere(builder.Build()));
-}
-
-TEST_P(AiksTest, TextGammaCorrectionGoldenTest) {
-  constexpr const char* font_fixture = "Roboto-Regular.ttf";
-  auto c_font_fixture = std::string(font_fixture);
-  auto mapping = flutter::testing::OpenFixtureAsSkData(c_font_fixture.c_str());
-  ASSERT_TRUE(mapping);
-
-  sk_sp<SkFontMgr> font_mgr = txt::GetDefaultFontManager();
-  SkFont sk_font(/*typeface=*/font_mgr->makeFromData(mapping), /*size=*/60);
-  sk_font.setSubpixel(true);
-
-  auto blob_corrected =
-      SkTextBlob::MakeFromString("Gamma Corrected (true)", sk_font);
-  ASSERT_TRUE(blob_corrected);
-  auto text_frame_corrected = MakeTextFrameFromTextBlobSkia(blob_corrected);
-  text_frame_corrected->SetEnableGammaCorrection(true);
-
-  auto blob_uncorrected =
-      SkTextBlob::MakeFromString("Gamma Corrected (false)", sk_font);
-  ASSERT_TRUE(blob_uncorrected);
-  auto text_frame_uncorrected = MakeTextFrameFromTextBlobSkia(blob_uncorrected);
-  text_frame_uncorrected->SetEnableGammaCorrection(false);
-
-  auto callback = [&]() -> sk_sp<flutter::DisplayList> {
-    DisplayListBuilder builder;
-
-    DlPaint bg_paint;
-    bg_paint.setColor(DlColor::ARGB(1.0, 0.1, 0.1, 0.1));
-    builder.DrawPaint(bg_paint);
-
-    DlPaint text_paint;
-    text_paint.setColor(DlColor::kWhite());
-
-    builder.DrawText(/*text=*/DlTextImpeller::Make(text_frame_corrected),
-                     /*x=*/50, /*y=*/100, /*paint=*/text_paint);
-    builder.DrawText(/*text=*/DlTextImpeller::Make(text_frame_uncorrected),
-                     /*x=*/50, /*y=*/200, /*paint=*/text_paint);
-
-    builder.DrawText(/*text=*/DlTextImpeller::Make(text_frame_corrected),
-                     /*x=*/50, /*y=*/300, /*paint=*/text_paint);
-    DlPaint diff_paint = text_paint;
-    diff_paint.setBlendMode(DlBlendMode::kDifference);
-    builder.DrawText(/*text=*/DlTextImpeller::Make(text_frame_uncorrected),
-                     /*x=*/50, /*y=*/300, /*paint=*/diff_paint);
-
-    return builder.Build();
-  };
-
-  ASSERT_TRUE(OpenPlaygroundHere(callback));
 }
 
 TEST_P(AiksTest, TextWithShadowAndPosition) {

@@ -133,6 +133,11 @@ CapabilitiesVK::GetEnabledInstanceExtensions() const {
     has_wsi = true;
   }
 
+  if (HasExtension("VK_OHOS_surface")) {
+    required.push_back("VK_OHOS_surface");
+    has_wsi = true;
+  }
+
   if (HasExtension("VK_KHR_xcb_surface")) {
     required.push_back("VK_KHR_xcb_surface");
     has_wsi = true;
@@ -215,6 +220,27 @@ static const char* GetExtensionName(OptionalAndroidDeviceExtensionVK ext) {
     case OptionalAndroidDeviceExtensionVK::kLast:
       return "Unknown";
   }
+  FML_UNREACHABLE();
+}
+
+static const char* GetExtensionName(RequiredOHOSDeviceExtensionVK ext) {
+  switch (ext) {
+    case RequiredOHOSDeviceExtensionVK::kOHOSNativeBuffer:
+      return "VK_OHOS_native_buffer";
+    case RequiredOHOSDeviceExtensionVK::kKHRSamplerYcbcrConversion:
+      return VK_KHR_SAMPLER_YCBCR_CONVERSION_EXTENSION_NAME;
+    case RequiredOHOSDeviceExtensionVK::kOHOSExternalMemory:
+      return "VK_OHOS_external_memory";
+    case RequiredOHOSDeviceExtensionVK::kEXTQueueFamilyForeign:
+      return VK_EXT_QUEUE_FAMILY_FOREIGN_EXTENSION_NAME;
+    case RequiredOHOSDeviceExtensionVK::kKHRDedicatedAllocation:
+      return VK_KHR_DEDICATED_ALLOCATION_EXTENSION_NAME;
+    case RequiredOHOSDeviceExtensionVK::kKHRExternalSemaphoreFd:
+      return VK_KHR_EXTERNAL_SEMAPHORE_FD_EXTENSION_NAME;
+    case RequiredOHOSDeviceExtensionVK::kLast:
+      return "Unknown";
+  }
+  FML_UNREACHABLE();
 }
 
 static const char* GetExtensionName(OptionalDeviceExtensionVK ext) {
@@ -225,8 +251,8 @@ static const char* GetExtensionName(OptionalDeviceExtensionVK ext) {
       return "VK_KHR_portability_subset";
     case OptionalDeviceExtensionVK::kEXTImageCompressionControl:
       return VK_EXT_IMAGE_COMPRESSION_CONTROL_EXTENSION_NAME;
-    case OptionalDeviceExtensionVK::kEXTTextureCompressionAstcHdr:
-      return VK_EXT_TEXTURE_COMPRESSION_ASTC_HDR_EXTENSION_NAME;
+    case OptionalDeviceExtensionVK::kVKKHRIncrementalPresent:
+      return VK_KHR_INCREMENTAL_PRESENT_EXTENSION_NAME;
     case OptionalDeviceExtensionVK::kLast:
       return "Unknown";
   }
@@ -315,6 +341,19 @@ CapabilitiesVK::GetEnabledDeviceExtensions(
         return true;
       };
 
+  auto for_each_ohos_extension = [&](RequiredOHOSDeviceExtensionVK ext) {
+#ifdef FML_OS_OHOS
+    auto name = GetExtensionName(ext);
+    if (exts.find(name) == exts.end()) {
+      VALIDATION_LOG << "Device does not support required OHOS extension: "
+                     << name;
+      return false;
+    }
+    enabled.push_back(name);
+#endif  //  FML_OS_OHOS
+    return true;
+  };
+
   auto for_each_optional_extension = [&](OptionalDeviceExtensionVK ext) {
     auto name = GetExtensionName(ext);
     if (exts.find(name) != exts.end()) {
@@ -330,6 +369,8 @@ CapabilitiesVK::GetEnabledDeviceExtensions(
           for_each_android_extension) &&
       IterateExtensions<OptionalDeviceExtensionVK>(
           for_each_optional_extension) &&
+      IterateExtensions<RequiredOHOSDeviceExtensionVK>(
+          for_each_ohos_extension) &&
       IterateExtensions<OptionalAndroidDeviceExtensionVK>(
           for_each_optional_android_extension);
 
@@ -359,8 +400,15 @@ static bool HasSuitableDepthStencilFormat(const vk::PhysicalDevice& device,
 
 static bool PhysicalDeviceSupportsRequiredFormats(
     const vk::PhysicalDevice& device) {
+#ifdef FML_OS_OHOS
   const auto has_color_format =
-      HasSuitableColorFormat(device, vk::Format::eR8G8B8A8Unorm);
+      HasSuitableColorFormat(device, vk::Format::eA2B10G10R10UnormPack32) ||
+      HasSuitableColorFormat(device, vk::Format::eR8G8B8A8Unorm) ||
+      HasSuitableColorFormat(device, vk::Format::eB8G8R8A8Unorm);
+#else
+  const auto has_color_format =
+      HasSuitableColorFormat(device, vk::Format::eB8G8R8A8Unorm);
+#endif
   const auto has_stencil_format =
       HasSuitableDepthStencilFormat(device, vk::Format::eD32SfloatS8Uint) ||
       HasSuitableDepthStencilFormat(device, vk::Format::eD24UnormS8Uint);
@@ -370,7 +418,12 @@ static bool PhysicalDeviceSupportsRequiredFormats(
 static bool HasRequiredProperties(const vk::PhysicalDevice& physical_device) {
   auto properties = physical_device.getProperties();
   if (!(properties.limits.framebufferColorSampleCounts &
+#ifdef __OHOS__
+        (vk::SampleCountFlagBits::e1 | vk::SampleCountFlagBits::e2 |
+         vk::SampleCountFlagBits::e4))) {
+#else
         (vk::SampleCountFlagBits::e1 | vk::SampleCountFlagBits::e4))) {
+#endif
     return false;
   }
   return true;
@@ -432,12 +485,6 @@ CapabilitiesVK::GetEnabledDeviceFeatures(
     supported_chain
         .unlink<vk::PhysicalDeviceImageCompressionControlFeaturesEXT>();
   }
-  if (!IsExtensionInList(
-          enabled_extensions.value(),
-          OptionalDeviceExtensionVK::kEXTTextureCompressionAstcHdr)) {
-    supported_chain
-        .unlink<vk::PhysicalDeviceTextureCompressionASTCHDRFeatures>();
-  }
 
   device.getFeatures2(&supported_chain.get());
 
@@ -451,11 +498,6 @@ CapabilitiesVK::GetEnabledDeviceFeatures(
     // We require this for enabling wireframes in the playground. But its not
     // necessarily a big deal if we don't have this feature.
     required.fillModeNonSolid = supported.fillModeNonSolid;
-
-    // Enable anisotropic filtering when available. Samplers with
-    // `max_anisotropy` greater than 1 may only be created when this feature
-    // is enabled.
-    required.samplerAnisotropy = supported.samplerAnisotropy;
   }
   // VK_KHR_sampler_ycbcr_conversion features.
   if (IsExtensionInList(
@@ -486,23 +528,6 @@ CapabilitiesVK::GetEnabledDeviceFeatures(
   } else {
     required_chain
         .unlink<vk::PhysicalDeviceImageCompressionControlFeaturesEXT>();
-  }
-
-  // VK_EXT_texture_compression_astc_hdr
-  if (IsExtensionInList(
-          enabled_extensions.value(),
-          OptionalDeviceExtensionVK::kEXTTextureCompressionAstcHdr)) {
-    auto& required =
-        required_chain
-            .get<vk::PhysicalDeviceTextureCompressionASTCHDRFeatures>();
-    const auto& supported =
-        supported_chain
-            .get<vk::PhysicalDeviceTextureCompressionASTCHDRFeatures>();
-
-    required.textureCompressionASTC_HDR = supported.textureCompressionASTC_HDR;
-  } else {
-    required_chain
-        .unlink<vk::PhysicalDeviceTextureCompressionASTCHDRFeatures>();
   }
 
   // Vulkan 1.1
@@ -542,10 +567,6 @@ bool CapabilitiesVK::SupportsPrimitiveRestart() const {
 }
 
 bool CapabilitiesVK::Supports32BitPrimitiveIndices() const {
-  return true;
-}
-
-bool CapabilitiesVK::SupportsManuallyMippedTextures() const {
   return true;
 }
 
@@ -613,6 +634,7 @@ bool CapabilitiesVK::SetPhysicalDevice(
     required_android_device_extensions_.clear();
     optional_device_extensions_.clear();
     optional_android_device_extensions_.clear();
+    required_ohos_device_extensions_.clear();
 
     std::set<std::string> exts;
     if (!use_embedder_extensions_) {
@@ -641,6 +663,13 @@ bool CapabilitiesVK::SetPhysicalDevice(
       }
       return true;
     });
+    IterateExtensions<RequiredOHOSDeviceExtensionVK>([&](auto ext) -> bool {
+      auto ext_name = GetExtensionName(ext);
+      if (exts.find(ext_name) != exts.end()) {
+        required_ohos_device_extensions_.insert(ext);
+      }
+      return true;
+    });
     IterateExtensions<OptionalDeviceExtensionVK>([&](auto ext) -> bool {
       auto ext_name = GetExtensionName(ext);
       if (exts.find(ext_name) != exts.end()) {
@@ -665,32 +694,9 @@ bool CapabilitiesVK::SetPhysicalDevice(
           .get<vk::PhysicalDeviceImageCompressionControlFeaturesEXT>()
           .imageCompressionControl;
 
-  {
-    const auto& features = enabled_features.get().features;
-    supports_texture_compression_bc_ = features.textureCompressionBC;
-    supports_texture_compression_etc2_ = features.textureCompressionETC2;
-    supports_texture_compression_astc_ = features.textureCompressionASTC_LDR;
-  }
-
-  supports_texture_compression_astc_hdr_ =
-      enabled_features
-          .isLinked<vk::PhysicalDeviceTextureCompressionASTCHDRFeatures>() &&
-      enabled_features
-          .get<vk::PhysicalDeviceTextureCompressionASTCHDRFeatures>()
-          .textureCompressionASTC_HDR;
-
   max_render_pass_attachment_size_ =
       ISize{device_properties_.limits.maxFramebufferWidth,
             device_properties_.limits.maxFramebufferHeight};
-
-  // Anisotropic filtering is gated on the samplerAnisotropy feature. When the
-  // feature is unavailable, report a maximum of 1 (disabled). The device limit
-  // is a float but is always an integer in practice, so floor it.
-  max_sampler_anisotropy_ =
-      enabled_features.get().features.samplerAnisotropy
-          ? static_cast<uint32_t>(
-                device_properties_.limits.maxSamplerAnisotropy)
-          : 1u;
 
   // Molten, Vulkan on Metal, cannot support triangle fans because Metal doesn't
   // support triangle fans.
@@ -811,6 +817,11 @@ bool CapabilitiesVK::HasExtension(RequiredAndroidDeviceExtensionVK ext) const {
          required_android_device_extensions_.end();
 }
 
+bool CapabilitiesVK::HasExtension(RequiredOHOSDeviceExtensionVK ext) const {
+  return required_ohos_device_extensions_.find(ext) !=
+         required_ohos_device_extensions_.end();
+}
+
 bool CapabilitiesVK::HasExtension(OptionalDeviceExtensionVK ext) const {
   return optional_device_extensions_.find(ext) !=
          optional_device_extensions_.end();
@@ -886,9 +897,12 @@ ISize CapabilitiesVK::GetMaximumRenderPassAttachmentSize() const {
   return max_render_pass_attachment_size_;
 }
 
-uint32_t CapabilitiesVK::GetMaxSamplerAnisotropy() const {
-  return max_sampler_anisotropy_;
+#ifdef __OHOS__
+bool CapabilitiesVK::SupportsFramebufferColorSampleCount2x() const {
+  const auto supported = device_properties_.limits.framebufferColorSampleCounts;
+  return !!(supported & vk::SampleCountFlagBits::e2);
 }
+#endif  // __OHOS__
 
 void CapabilitiesVK::ApplyWorkarounds(const WorkaroundsVK& workarounds) {
   has_primitive_restart_ = !workarounds.slow_primitive_restart_performance;
@@ -900,25 +914,6 @@ bool CapabilitiesVK::SupportsExternalSemaphoreExtensions() const {
 }
 
 bool CapabilitiesVK::SupportsExtendedRangeFormats() const {
-  return false;
-}
-
-bool CapabilitiesVK::SupportsFramebufferRenderMipmap() const {
-  return true;
-}
-
-bool CapabilitiesVK::SupportsTextureCompression(
-    CompressedTextureFamily family) const {
-  switch (family) {
-    case CompressedTextureFamily::kBC:
-      return supports_texture_compression_bc_;
-    case CompressedTextureFamily::kETC2:
-      return supports_texture_compression_etc2_;
-    case CompressedTextureFamily::kASTC:
-      return supports_texture_compression_astc_;
-    case CompressedTextureFamily::kASTCHDR:
-      return supports_texture_compression_astc_hdr_;
-  }
   return false;
 }
 

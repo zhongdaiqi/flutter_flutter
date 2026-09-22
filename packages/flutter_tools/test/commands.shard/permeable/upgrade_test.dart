@@ -664,6 +664,7 @@ void main() {
           expect(latestVersion.didDeleteVersionFile, false);
         }, overrides: {FlutterVersion: () => latestVersion});
       },
+      skip: true, // OHOS not supported
       overrides: <Type, Generator>{
         ProcessManager: () => FakeProcessManager.any(),
         Platform: () => fakePlatform,
@@ -878,6 +879,7 @@ void main() {
             PersistentToolState: () =>
                 PersistentToolState.test(directory: tempDir, logger: testLogger),
           },
+          skip: true, // OHOS not supported
         );
       });
     });

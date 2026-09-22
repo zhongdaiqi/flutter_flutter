@@ -12,24 +12,18 @@ import '../base/logger.dart';
 import '../base/process.dart';
 import '../base/utils.dart';
 import '../build_info.dart';
-import 'xcodeproj.dart';
 
 /// LLDB is the default debugger in Xcode on macOS. Once the application has
 /// launched on a physical iOS device, you can attach to it using LLDB.
 ///
 /// See `xcrun devicectl device process launch --help` for more information.
 class LLDB {
-  LLDB({
-    required Logger logger,
-    required ProcessUtils processUtils,
-    required XcodeProjectInterpreter xcodeProjectInterpreter,
-  }) : _logger = logger,
-       _processUtils = processUtils,
-       _xcodeProjectInterpreter = xcodeProjectInterpreter;
+  LLDB({required Logger logger, required ProcessUtils processUtils})
+    : _logger = logger,
+      _processUtils = processUtils;
 
   final Logger _logger;
   final ProcessUtils _processUtils;
-  final XcodeProjectInterpreter _xcodeProjectInterpreter;
 
   _LLDBProcess? _lldbProcess;
 
@@ -171,10 +165,7 @@ return False
     }
     try {
       _lldbProcess = _LLDBProcess(
-        process: await _processUtils.start(<String>[
-          ..._xcodeProjectInterpreter.xcrunCommand(),
-          'lldb',
-        ]),
+        process: await _processUtils.start(<String>['lldb']),
         appProcessId: appProcessId,
         logger: _logger,
       );
@@ -381,7 +372,7 @@ class _LLDBLogPatternCompleter {
   }
 }
 
-/// A container class for associating a [Process] that is running LLDB with
+/// A container class for associating a [Process] that is is running LLDB with
 /// the iOS device process of an application.
 class _LLDBProcess {
   _LLDBProcess({required Process process, required this.appProcessId, required Logger logger})

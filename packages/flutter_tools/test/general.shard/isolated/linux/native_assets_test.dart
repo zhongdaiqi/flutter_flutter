@@ -65,11 +65,10 @@ void main() {
         buildRunner: _BuildRunnerWithoutClang(),
         buildCodeAssets: BuildCodeAssetsOptions(appBuildDirectory: environment.outputDir),
         buildDataAssets: true,
-        recordedUsesFile: null,
       );
       expect(
         (globals.logger as BufferLogger).traceText,
-        isNot(contains('Running build hooks for ')),
+        isNot(contains('Building native assets for ')),
       );
     },
   );
@@ -296,10 +295,8 @@ CMAKE_LINKER:FILEPATH=/some/path/to/ld.lld
     'cCompilerConfigLinux FileSystemException on resolveSymbolicLinks and throwIfNotFound: false',
     overrides: <Type, Generator>{
       ProcessManager: () => FakeProcessManager.empty(),
-      FileSystem: () => _ThrowingResolveFileSystem(
-            fileSystem,
-            '${environment.outputDir.path}/mock_clang++',
-          ),
+      FileSystem: () =>
+          _ThrowingResolveFileSystem(fileSystem, '${environment.outputDir.path}/mock_clang++'),
     },
     () async {
       if (!const LocalPlatform().isLinux) {
@@ -327,10 +324,8 @@ CMAKE_LINKER:FILEPATH=/some/path/to/ld.lld
     'cCompilerConfigLinux FileSystemException on resolveSymbolicLinks and throwIfNotFound: true',
     overrides: <Type, Generator>{
       ProcessManager: () => FakeProcessManager.empty(),
-      FileSystem: () => _ThrowingResolveFileSystem(
-            fileSystem,
-            '${environment.outputDir.path}/mock_clang++',
-          ),
+      FileSystem: () =>
+          _ThrowingResolveFileSystem(fileSystem, '${environment.outputDir.path}/mock_clang++'),
     },
     () async {
       if (!const LocalPlatform().isLinux) {

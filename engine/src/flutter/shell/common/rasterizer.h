@@ -26,6 +26,7 @@
 #include "flutter/fml/time/time_delta.h"
 #include "flutter/fml/time/time_point.h"
 #if IMPELLER_SUPPORTS_RENDERING
+#include "impeller/base/flags.h"                 // nogncheck
 #include "impeller/core/formats.h"               // nogncheck
 #include "impeller/display_list/aiks_context.h"  // nogncheck
 #include "impeller/renderer/context.h"           // nogncheck
@@ -83,6 +84,8 @@ enum class DrawSurfaceStatus {
   // Layer tree was discarded because its size does not match the view size.
   // This typically occurs during resizing.
   kDiscarded,
+  // Layer tree was skipped because the damage regions were all empty.
+  kDamageEmptySkip,
 };
 
 // The information to draw to all views of a frame.
@@ -715,8 +718,11 @@ class Rasterizer final : public SnapshotDelegate,
       return surface_->GetAiksContext();
     }
     if (auto context = impeller_context_->GetContext()) {
+      impeller::Flags flags;
+      flags.glyph_raster_parallelization =
+          delegate_.GetSettings().enable_glyph_raster_parallelization;
       return std::make_shared<impeller::AiksContext>(
-          context, impeller::TypographerContextSkia::Make());
+          context, impeller::TypographerContextSkia::Make(flags));
     }
 #endif
     return nullptr;
@@ -776,6 +782,10 @@ class Rasterizer final : public SnapshotDelegate,
       float device_pixel_ratio,
       std::optional<fml::TimePoint> presentation_time);
 
+  // Skips drawing the layer tree if there is no damage in surface.
+  bool ShouldSkipNoDamageLayerTree(flutter::LayerTree& layer_tree,
+                                   int64_t view_id);
+
   ViewRecord& EnsureViewRecord(int64_t view_id);
 
   void FireNextFrameCallbackIfPresent();
@@ -783,6 +793,7 @@ class Rasterizer final : public SnapshotDelegate,
   static bool ShouldResubmitFrame(const DoDrawResult& result);
   static DrawStatus ToDrawStatus(DoDrawStatus status);
 
+  bool use_last_layer_tree_ = false;
   bool is_torn_down_ = false;
   Delegate& delegate_;
   [[maybe_unused]] MakeGpuImageBehavior gpu_image_behavior_;

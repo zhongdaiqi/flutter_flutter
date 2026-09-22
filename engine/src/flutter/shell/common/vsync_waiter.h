@@ -40,6 +40,7 @@ class VsyncWaiter : public std::enable_shared_from_this<VsyncWaiter> {
   // method.
   friend class VsyncWaiterAndroid;
   friend class VsyncWaiterEmbedder;
+  friend class VsyncWaiterOHOS;
 
   const TaskRunners task_runners_;
 
@@ -70,6 +71,10 @@ class VsyncWaiter : public std::enable_shared_from_this<VsyncWaiter> {
 
   // Schedules the callback on the UI task runner. Needs to be invoked as close
   // to the `frame_start_time` as possible.
+  void FireCallback(fml::TimePoint frame_start_time,
+                    fml::TimePoint frame_target_time,
+                    fml::TimePoint dart_frame_deadline,
+                    bool pause_secondary_tasks = true);
   void FireCallback(fml::TimePoint frame_start_time,
                     fml::TimePoint frame_target_time,
                     bool pause_secondary_tasks = true);

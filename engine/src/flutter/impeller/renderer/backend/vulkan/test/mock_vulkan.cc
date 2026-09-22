@@ -4,8 +4,12 @@
 
 #include "impeller/renderer/backend/vulkan/test/mock_vulkan.h"
 
+#include <algorithm>
+#include <atomic>
 #include <cstdint>
 #include <cstring>
+#include <optional>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -20,27 +24,12 @@ namespace testing {
 
 namespace {
 
-class MockDevice;
-
 struct MockCommandBuffer {
   explicit MockCommandBuffer(
       std::shared_ptr<std::vector<std::string>> called_functions)
       : called_functions_(std::move(called_functions)) {}
   std::shared_ptr<std::vector<std::string>> called_functions_;
   std::vector<VkImageMemoryBarrier> image_memory_barriers_;
-  std::vector<VkViewport> recorded_viewports_;
-};
-
-class MockQueue {
- public:
-  explicit MockQueue(MockDevice& device) : device_(device) {}
-
-  MockDevice& device() const { return device_; }
-
- private:
-  // The MockDevice owns the MockQueues, and each MockQueue holds a reference
-  // to its parent device.
-  MockDevice& device_;
 };
 
 struct MockQueryPool {};
@@ -66,8 +55,43 @@ static ISize currentImageSize = ISize{1, 1};
 
 class MockDevice final {
  public:
-  explicit MockDevice()
-      : called_functions_(new std::vector<std::string>()), queue_(*this) {}
+  explicit MockDevice() : called_functions_(new std::vector<std::string>()) {}
+
+  void RecordAllocation(VkDeviceMemory memory, VkDeviceSize size) {
+    Lock lock(mapped_memories_mutex_);
+    allocation_sizes_[memory] = size;
+  }
+
+  uint8_t* MapMemory(VkDeviceMemory memory, VkDeviceSize requested) {
+    Lock lock(mapped_memories_mutex_);
+    // VMA maps with VK_WHOLE_SIZE; clamp to the real allocation size so
+    // the backing vector does not throw length_error on the huge value.
+    constexpr VkDeviceSize kMaxMockMapping = 64ull * 1024 * 1024;
+    VkDeviceSize size = requested;
+    auto it = allocation_sizes_.find(memory);
+    if (it != allocation_sizes_.end() &&
+        (requested > it->second || requested == VK_WHOLE_SIZE)) {
+      size = it->second;
+    }
+    if (size > kMaxMockMapping) {
+      size = kMaxMockMapping;
+    }
+    auto& block = mapped_memories_[memory];
+    if (!block) {
+      block = std::vector<uint8_t>(std::max<VkDeviceSize>(size, 1), 0);
+    }
+    return block->data();
+  }
+
+  void UnmapMemory(VkDeviceMemory memory) {
+    // Keep the backing store; the handle may be remapped before free.
+  }
+
+  void FreeMemory(VkDeviceMemory memory) {
+    Lock lock(mapped_memories_mutex_);
+    mapped_memories_.erase(memory);
+    allocation_sizes_.erase(memory);
+  }
 
   MockCommandBuffer* NewCommandBuffer() {
     auto buffer = std::make_unique<MockCommandBuffer>(called_functions_);
@@ -105,8 +129,6 @@ class MockDevice final {
     called_functions_->push_back(function);
   }
 
-  MockQueue& GetQueue() { return queue_; }
-
  private:
   MockDevice(const MockDevice&) = delete;
 
@@ -124,7 +146,12 @@ class MockDevice final {
   std::vector<std::unique_ptr<MockCommandPool>> command_pools_
       IPLR_GUARDED_BY(commmand_pools_mutex_);
 
-  MockQueue queue_;
+  Mutex mapped_memories_mutex_;
+  std::unordered_map<VkDeviceMemory,
+                     std::optional<std::vector<uint8_t>>>
+      mapped_memories_ IPLR_GUARDED_BY(mapped_memories_mutex_);
+  std::unordered_map<VkDeviceMemory, VkDeviceSize> allocation_sizes_
+      IPLR_GUARDED_BY(mapped_memories_mutex_);
 };
 
 struct MockVulkanState {
@@ -142,9 +169,6 @@ struct MockVulkanState {
       wait_for_fences_callback;
   std::function<std::remove_pointer_t<PFN_vkAcquireNextImageKHR>>
       acquire_next_image_callback;
-  // When > 0, the next vkCreateImage for a fixed-rate-compressed image returns
-  // VK_ERROR_COMPRESSION_EXHAUSTED_EXT and decrements (models PowerVR).
-  int compression_exhausted_create_image_failures = 0;
 };
 
 class MockVulkanStatePtr {
@@ -263,52 +287,6 @@ void vkGetPhysicalDeviceProperties(VkPhysicalDevice physicalDevice,
     GetMockVulkanState().physical_device_properties_callback(physicalDevice,
                                                              pProperties);
   }
-}
-
-void vkGetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
-                                  VkPhysicalDeviceFeatures2* pFeatures) {
-  // Advertise the features the mock supports by walking the pNext chain.
-  auto* next = reinterpret_cast<VkBaseOutStructure*>(pFeatures->pNext);
-  while (next != nullptr) {
-    if (next->sType ==
-        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_COMPRESSION_CONTROL_FEATURES_EXT) {
-      reinterpret_cast<VkPhysicalDeviceImageCompressionControlFeaturesEXT*>(
-          next)
-          ->imageCompressionControl = VK_TRUE;
-    }
-    next = next->pNext;
-  }
-}
-
-VkResult vkGetPhysicalDeviceImageFormatProperties2(
-    VkPhysicalDevice physicalDevice,
-    const VkPhysicalDeviceImageFormatInfo2* pImageFormatInfo,
-    VkImageFormatProperties2* pImageFormatProperties) {
-  // Report fixed-rate compression support when it is queried (i.e. the input
-  // carries a VkImageCompressionControlEXT and the output a
-  // VkImageCompressionPropertiesEXT).
-  bool compression_requested = false;
-  const auto* in =
-      reinterpret_cast<const VkBaseInStructure*>(pImageFormatInfo->pNext);
-  while (in != nullptr) {
-    if (in->sType == VK_STRUCTURE_TYPE_IMAGE_COMPRESSION_CONTROL_EXT) {
-      compression_requested = true;
-    }
-    in = in->pNext;
-  }
-  auto* out =
-      reinterpret_cast<VkBaseOutStructure*>(pImageFormatProperties->pNext);
-  while (compression_requested && out != nullptr) {
-    if (out->sType == VK_STRUCTURE_TYPE_IMAGE_COMPRESSION_PROPERTIES_EXT) {
-      auto* props = reinterpret_cast<VkImageCompressionPropertiesEXT*>(out);
-      props->imageCompressionFlags =
-          VK_IMAGE_COMPRESSION_FIXED_RATE_EXPLICIT_EXT;
-      props->imageCompressionFixedRateFlags =
-          VK_IMAGE_COMPRESSION_FIXED_RATE_4BPC_BIT_EXT;
-    }
-    out = out->pNext;
-  }
-  return VK_SUCCESS;
 }
 
 void vkGetPhysicalDeviceQueueFamilyProperties(
@@ -437,21 +415,6 @@ VkResult vkCreateImage(VkDevice device,
                        const VkImageCreateInfo* pCreateInfo,
                        const VkAllocationCallbacks* pAllocator,
                        VkImage* pImage) {
-  reinterpret_cast<MockDevice*>(device)->AddCalledFunction("vkCreateImage");
-  // Simulate VK_ERROR_COMPRESSION_EXHAUSTED_EXT for fixed-rate-compressed image
-  // creates (the spec only returns this error for compression requests).
-  if (g_mock_vulkan_state &&
-      g_mock_vulkan_state->compression_exhausted_create_image_failures > 0) {
-    const auto* next =
-        reinterpret_cast<const VkBaseInStructure*>(pCreateInfo->pNext);
-    while (next != nullptr) {
-      if (next->sType == VK_STRUCTURE_TYPE_IMAGE_COMPRESSION_CONTROL_EXT) {
-        g_mock_vulkan_state->compression_exhausted_create_image_failures--;
-        return VK_ERROR_COMPRESSION_EXHAUSTED_EXT;
-      }
-      next = next->pNext;
-    }
-  }
   *pImage = reinterpret_cast<VkImage>(0xD0D0CACA);
   return VK_SUCCESS;
 }
@@ -468,8 +431,37 @@ VkResult vkAllocateMemory(VkDevice device,
                           const VkMemoryAllocateInfo* pAllocateInfo,
                           const VkAllocationCallbacks* pAllocator,
                           VkDeviceMemory* pMemory) {
-  *pMemory = reinterpret_cast<VkDeviceMemory>(0xCAFEB0BA);
+  // Unique handle per allocation: MapMemory keeps one backing store per
+  // handle, so a shared constant handle would alias distinct allocations.
+  static std::atomic<uintptr_t> next_handle = 0xCAFEB000;
+  *pMemory = reinterpret_cast<VkDeviceMemory>(
+      next_handle.fetch_add(1, std::memory_order_relaxed));
+  MockDevice* mock_device = reinterpret_cast<MockDevice*>(device);
+  mock_device->RecordAllocation(*pMemory, pAllocateInfo->allocationSize);
   return VK_SUCCESS;
+}
+
+VkResult vkMapMemory(VkDevice device,
+                     VkDeviceMemory memory,
+                     VkDeviceSize offset,
+                     VkDeviceSize size,
+                     VkMemoryMapFlags flags,
+                     void** ppData) {
+  MockDevice* mock_device = reinterpret_cast<MockDevice*>(device);
+  *ppData = mock_device->MapMemory(memory, size);
+  return VK_SUCCESS;
+}
+
+void vkUnmapMemory(VkDevice device, VkDeviceMemory memory) {
+  MockDevice* mock_device = reinterpret_cast<MockDevice*>(device);
+  mock_device->UnmapMemory(memory);
+}
+
+void vkFreeMemory(VkDevice device,
+                  VkDeviceMemory memory,
+                  const VkAllocationCallbacks* pAllocator) {
+  MockDevice* mock_device = reinterpret_cast<MockDevice*>(device);
+  mock_device->FreeMemory(memory);
 }
 
 VkResult vkBindImageMemory(VkDevice device,
@@ -659,9 +651,6 @@ void vkCmdSetViewport(VkCommandBuffer commandBuffer,
   MockCommandBuffer* mock_command_buffer =
       reinterpret_cast<MockCommandBuffer*>(commandBuffer);
   mock_command_buffer->called_functions_->push_back("vkCmdSetViewport");
-  for (uint32_t i = 0; i < viewportCount; ++i) {
-    mock_command_buffer->recorded_viewports_.push_back(pViewports[i]);
-  }
 }
 
 void vkFreeCommandBuffers(VkDevice device,
@@ -702,22 +691,15 @@ VkResult vkDestroyFence(VkDevice device,
   return VK_SUCCESS;
 }
 
-void vkGetDeviceQueue(VkDevice device,
-                      uint32_t queueFamilyIndex,
-                      uint32_t queueIndex,
-                      VkQueue* pQueue) {
-  MockDevice* mock_device = reinterpret_cast<MockDevice*>(device);
-  *pQueue = reinterpret_cast<VkQueue>(&mock_device->GetQueue());
-}
-
 VkResult vkQueueSubmit(VkQueue queue,
                        uint32_t submitCount,
                        const VkSubmitInfo* pSubmits,
                        VkFence fence) {
-  const MockQueue* mock_queue = reinterpret_cast<const MockQueue*>(queue);
-  mock_queue->device().AddCalledFunction("vkQueueSubmit");
   return VK_SUCCESS;
 }
+
+static thread_local std::function<std::remove_pointer_t<PFN_vkWaitForFences>>
+    g_wait_for_fences_callback;
 
 VkResult vkWaitForFences(VkDevice device,
                          uint32_t fenceCount,
@@ -935,6 +917,10 @@ void vkDestroySemaphore(VkDevice device,
   delete reinterpret_cast<MockSemaphore*>(semaphore);
 }
 
+static thread_local std::function<
+    std::remove_pointer_t<PFN_vkAcquireNextImageKHR>>
+    g_acquire_next_image_callback;
+
 VkResult vkAcquireNextImageKHR(VkDevice device,
                                VkSwapchainKHR swapchain,
                                uint64_t timeout,
@@ -1004,14 +990,6 @@ PFN_vkVoidFunction GetMockVulkanProcAddress(VkInstance instance,
         vkGetPhysicalDeviceFormatProperties);
   } else if (strcmp("vkGetPhysicalDeviceProperties", pName) == 0) {
     return reinterpret_cast<PFN_vkVoidFunction>(vkGetPhysicalDeviceProperties);
-  } else if (strcmp("vkGetPhysicalDeviceFeatures2", pName) == 0 ||
-             strcmp("vkGetPhysicalDeviceFeatures2KHR", pName) == 0) {
-    return reinterpret_cast<PFN_vkVoidFunction>(vkGetPhysicalDeviceFeatures2);
-  } else if (strcmp("vkGetPhysicalDeviceImageFormatProperties2", pName) == 0 ||
-             strcmp("vkGetPhysicalDeviceImageFormatProperties2KHR", pName) ==
-                 0) {
-    return reinterpret_cast<PFN_vkVoidFunction>(
-        vkGetPhysicalDeviceImageFormatProperties2);
   } else if (strcmp("vkGetPhysicalDeviceQueueFamilyProperties", pName) == 0) {
     return reinterpret_cast<PFN_vkVoidFunction>(
         vkGetPhysicalDeviceQueueFamilyProperties);
@@ -1101,8 +1079,6 @@ PFN_vkVoidFunction GetMockVulkanProcAddress(VkInstance instance,
     return reinterpret_cast<PFN_vkVoidFunction>(vkCreateFence);
   } else if (strcmp("vkDestroyFence", pName) == 0) {
     return reinterpret_cast<PFN_vkVoidFunction>(vkDestroyFence);
-  } else if (strcmp("vkGetDeviceQueue", pName) == 0) {
-    return reinterpret_cast<PFN_vkVoidFunction>(vkGetDeviceQueue);
   } else if (strcmp("vkQueueSubmit", pName) == 0) {
     return reinterpret_cast<PFN_vkVoidFunction>(vkQueueSubmit);
   } else if (strcmp("vkWaitForFences", pName) == 0) {
@@ -1160,6 +1136,12 @@ PFN_vkVoidFunction GetMockVulkanProcAddress(VkInstance instance,
     return reinterpret_cast<PFN_vkVoidFunction>(vkTrimCommandPool);
   } else if (strcmp("vkGetPipelineCacheData", pName) == 0) {
     return reinterpret_cast<PFN_vkVoidFunction>(vkGetPipelineCacheData);
+  } else if (strcmp("vkMapMemory", pName) == 0) {
+    return reinterpret_cast<PFN_vkVoidFunction>(vkMapMemory);
+  } else if (strcmp("vkUnmapMemory", pName) == 0) {
+    return reinterpret_cast<PFN_vkVoidFunction>(vkUnmapMemory);
+  } else if (strcmp("vkFreeMemory", pName) == 0) {
+    return reinterpret_cast<PFN_vkVoidFunction>(vkFreeMemory);
   }
   return noop;
 }
@@ -1168,7 +1150,15 @@ PFN_vkVoidFunction GetMockVulkanProcAddress(VkInstance instance,
 
 MockVulkanContextBuilder::MockVulkanContextBuilder()
     : instance_extensions_({"VK_KHR_surface", "VK_MVK_macos_surface"}),
+#ifdef FML_OS_OHOS
+      device_extensions_(
+          {"VK_KHR_swapchain", "VK_OHOS_native_buffer",
+           "VK_KHR_sampler_ycbcr_conversion", "VK_OHOS_external_memory",
+           "VK_EXT_queue_family_foreign", "VK_KHR_dedicated_allocation",
+           "VK_KHR_external_semaphore_fd"}),
+#else
       device_extensions_({"VK_KHR_swapchain"}),
+#endif  // FML_OS_OHOS
       format_properties_callback_([](VkPhysicalDevice physicalDevice,
                                      VkFormat format,
                                      VkFormatProperties* pFormatProperties) {
@@ -1204,8 +1194,6 @@ std::shared_ptr<ContextVK> MockVulkanContextBuilder::Build() {
   g_mock_vulkan_state->acquire_next_image_callback =
       acquire_next_image_callback_;
   g_mock_vulkan_state->wait_for_fences_callback = wait_for_fences_callback_;
-  g_mock_vulkan_state->compression_exhausted_create_image_failures =
-      compression_exhausted_create_image_failures_;
   settings.embedder_data = embedder_data_;
   std::shared_ptr<ContextVK> result = ContextVK::Create(std::move(settings));
   return result;
@@ -1226,12 +1214,6 @@ std::vector<VkImageMemoryBarrier>& GetImageMemoryBarriers(
   MockCommandBuffer* mock_command_buffer =
       reinterpret_cast<MockCommandBuffer*>(buffer);
   return mock_command_buffer->image_memory_barriers_;
-}
-
-const std::vector<VkViewport>& GetRecordedViewports(VkCommandBuffer buffer) {
-  MockCommandBuffer* mock_command_buffer =
-      reinterpret_cast<MockCommandBuffer*>(buffer);
-  return mock_command_buffer->recorded_viewports_;
 }
 
 }  // namespace testing

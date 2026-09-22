@@ -25,6 +25,7 @@ import 'android/native_assets.dart';
 import 'dart_hook_result.dart';
 import 'ios/native_assets.dart';
 import 'macos/native_assets.dart';
+import 'ohos/native_assets.dart';
 import 'targets.dart';
 
 /// The serialized results of running build hooks for all packages.
@@ -802,6 +803,8 @@ Map<FlutterCodeAsset, KernelAsset> assetTargetLocationsForOS(
       return assetTargetLocationsIOS(codeAssets);
     case OS.android:
       return assetTargetLocationsAndroid(codeAssets);
+    case OS.ohos:
+      return assetTargetLocationsOhos(codeAssets);
     default:
       throw UnimplementedError('This should be unreachable.');
   }
@@ -884,6 +887,9 @@ Future<List<File>> _copyNativeCodeAssetsForOS(
         assetTargetLocations,
         fileSystem,
       );
+    case OS.ohos:
+      assert(codesignIdentity == null);
+      installedFiles = await copyNativeCodeAssetsOhos(targetUri, assetTargetLocations, fileSystem);
     default:
       throw StateError('This should be unreachable.');
   }
@@ -982,6 +988,11 @@ OS getNativeOSFromTargetPlatform(TargetPlatform platform) {
     case TargetPlatform.android_arm64:
     case TargetPlatform.android_x64:
       return OS.android;
+    case TargetPlatform.ohos:
+    case TargetPlatform.ohos_arm:
+    case TargetPlatform.ohos_arm64:
+    case TargetPlatform.ohos_x64:
+      return OS.ohos;
     case TargetPlatform.tester:
       if (const LocalPlatform().isMacOS) {
         return OS.macOS;
@@ -1022,6 +1033,7 @@ const _osTargets = <OS, Set<Architecture>>{
     Architecture.x64,
   },
   OS.macOS: <Architecture>{Architecture.arm64, Architecture.x64},
+  OS.ohos: <Architecture>{Architecture.arm, Architecture.arm64, Architecture.x64},
   OS.windows: <Architecture>{Architecture.arm64, Architecture.ia32, Architecture.x64},
 };
 

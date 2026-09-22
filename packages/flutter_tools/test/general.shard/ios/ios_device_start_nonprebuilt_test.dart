@@ -40,6 +40,18 @@ import '../../src/fakes.dart';
 import '../../src/package_config.dart';
 import '../../src/throwing_pub.dart';
 
+// Helper to generate xattr commands for removing specific extended attributes
+List<FakeCommand> xattrCommands(FlutterProject flutterProject) {
+  return <FakeCommand>[
+    FakeCommand(
+      command: <String>['xattr', '-r', '-d', 'com.apple.FinderInfo', flutterProject.directory.path],
+    ),
+    FakeCommand(
+      command: <String>['xattr', '-r', '-d', 'com.apple.provenance', flutterProject.directory.path],
+    ),
+  ];
+}
+
 FakeCommand xattrCreatedByBuildSystemCommand(String outputDirPath) {
   return FakeCommand(
     command: <String>['xattr', '-w', 'com.apple.xcode.CreatedByBuildSystem', 'true', outputDirPath],
@@ -138,6 +150,7 @@ void main() {
           'My Super Awesome App',
         );
 
+        processManager.addCommands(xattrCommands(flutterProject));
         processManager.addCommand(const FakeCommand(command: kRunReleaseArgs));
 
         final LaunchResult launchResult = await iosDevice.startApp(
@@ -244,6 +257,7 @@ void main() {
             .directory('build/ios/Release-iphoneos/My Super Awesome App.app')
             .createSync(recursive: true);
 
+        processManager.addCommands(xattrCommands(flutterProject));
         processManager.addCommand(const FakeCommand(command: kRunReleaseArgs));
         processManager.addCommand(xattrCreatedByBuildSystemCommand('build/ios/Release-iphoneos'));
         processManager.addCommand(
@@ -331,6 +345,7 @@ void main() {
             .directory('build/ios/Release-iphoneos/My Super Awesome App.app')
             .createSync(recursive: true);
 
+        processManager.addCommands(xattrCommands(flutterProject));
         processManager.addCommand(
           const FakeCommand(
             command: <String>[
@@ -468,6 +483,7 @@ void main() {
               .childFile('FlutterPlugin.h')
               .createSync(recursive: true);
           processManager.addCommands([
+            ...xattrCommands(flutterProject),
             FakeCommand(
               command: const <String>[
                 'xcrun',
@@ -573,6 +589,7 @@ void main() {
               .childFile('FlutterPlugin.h')
               .createSync(recursive: true);
           processManager.addCommands([
+            ...xattrCommands(flutterProject),
             const FakeCommand(
               command: <String>[
                 'xcrun',
@@ -648,6 +665,7 @@ void main() {
           'My Super Awesome App',
         );
 
+        processManager.addCommands(xattrCommands(flutterProject));
         // The first xcrun call should fail with a
         // concurrent build exception.
         processManager.addCommand(
@@ -1557,11 +1575,6 @@ class FakeXcodeProjectInterpreter extends Fake implements XcodeProjectInterprete
     required XcodeProjectBuildContext buildContext,
     Duration timeout = const Duration(minutes: 1),
   }) async => buildSettings;
-
-  @override
-  String swiftPackageCachePath(Directory buildDirectory) {
-    return '';
-  }
 }
 
 class FakeXcodeDebug extends Fake implements XcodeDebug {
@@ -1735,17 +1748,6 @@ class FakeIOSCoreDeviceLauncher extends Fake implements IOSCoreDeviceLauncher {
     required String bundleId,
     required List<String> launchArguments,
     required BuildMode mode,
-    required ShutdownHooks shutdownHooks,
-  }) async {
-    return true;
-  }
-
-  @override
-  Future<bool> launchAppAndStreamLogsWithoutDebugger({
-    required String deviceId,
-    required String bundlePath,
-    required String bundleId,
-    required List<String> launchArguments,
     required ShutdownHooks shutdownHooks,
   }) async {
     return true;

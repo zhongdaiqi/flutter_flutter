@@ -216,6 +216,15 @@ Future<XcodeBuildResult> buildXcodeProject({
     xcodeProjectInterpreter: globals.xcodeProjectInterpreter!,
   );
 
+  await DarwinDependencyManagement.validatePluginSupport(
+    platform: darwinPlatform,
+    xcodeProject: project.ios,
+    plugins: await project.ios.getPlugins(),
+    fileSystem: globals.fs,
+    logger: globals.logger,
+    cocoapods: globals.cocoaPods,
+  );
+
   final XcodeProjectInfo? projectInfo = await app.project.projectInfo();
   if (projectInfo == null) {
     globals.printError('Xcode project not found.');

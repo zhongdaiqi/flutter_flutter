@@ -22,6 +22,13 @@
 
 namespace flutter {
 
+// The combination of targeted graphics API and Impeller support.
+enum class OHOSRenderingAPI {
+  kSoftware,
+  kOpenGLES,
+  kImpellerVulkan,
+};
+
 class FrameTiming {
  public:
   enum Phase {
@@ -247,8 +254,20 @@ struct Settings {
   // Whether to use SDFs for rendering in Impeller.
   bool impeller_use_sdfs = false;
 
+  // Whether to enable parallel glyph rasterization on multiple worker threads.
+  bool enable_glyph_raster_parallelization = false;
+
   // Log a warning during shell initialization if Impeller is not enabled.
   bool warn_on_impeller_opt_out = false;
+
+  // The selected OHOS rendering API.
+  OHOSRenderingAPI ohos_rendering_api = OHOSRenderingAPI::kOpenGLES;
+
+  // Enable OpenHarmony Hybrid Composition (HCPP): compose platform views as
+  // independent ArkUI system-composited layers (BuilderNode RENDER_TYPE_DISPLAY)
+  // instead of external textures. When disabled, the external texture / TLHC
+  // path is used and this feature has no effect.
+  bool enable_ohos_hybrid_composition = false;
 
   // Requests a specific rendering backend.
   std::optional<std::string> requested_rendering_backend;

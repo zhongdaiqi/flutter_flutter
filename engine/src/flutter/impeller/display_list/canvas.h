@@ -111,7 +111,7 @@ class LazyRenderingConfig {
 
   InlinePassContext* GetInlinePassContext() const;
 
- private:
+ public:
   std::unique_ptr<EntityPassTarget> entity_pass_target_;
   std::unique_ptr<InlinePassContext> inline_pass_context_;
 };
@@ -380,7 +380,8 @@ class Canvas {
       const Geometry* geometry,
       const Paint& paint,
       bool reuse_depth = false,
-      std::shared_ptr<Contents> override_contents = nullptr);
+      std::shared_ptr<Contents> override_contents = nullptr,
+      bool is_draw_rect = false);
 
   /// @brief  Adds a rendering entity using the UberSDF pipeline
   ///         to the current render pass.
@@ -397,7 +398,7 @@ class Canvas {
       bool reuse_depth = false,
       const std::optional<Matrix>& shape_transform = std::nullopt);
 
-  void AddRenderEntityToCurrentPass(Entity& entity, bool reuse_depth = false);
+  void AddRenderEntityToCurrentPass(Entity& entity, bool reuse_depth = false,bool is_draw_rect = false);
 
   /// Returns true if this operation is consistent with a DrawShadow-like
   /// operation.

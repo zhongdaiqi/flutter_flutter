@@ -933,6 +933,7 @@ void main() {
       case TargetPlatform.android:
       case TargetPlatform.fuchsia:
       case TargetPlatform.windows:
+      case TargetPlatform.ohos:
         expect(state.lastIntent, isA<ExtendSelectionToLineBreakIntent>());
         expect((state.lastIntent! as ExtendSelectionToLineBreakIntent).forward, false);
         expect((state.lastIntent! as ExtendSelectionToLineBreakIntent).collapseSelection, true);
@@ -959,6 +960,7 @@ void main() {
       case TargetPlatform.android:
       case TargetPlatform.fuchsia:
       case TargetPlatform.windows:
+      case TargetPlatform.ohos:
         expect(state.lastIntent, isA<ExtendSelectionToLineBreakIntent>());
         expect((state.lastIntent! as ExtendSelectionToLineBreakIntent).forward, true);
         expect((state.lastIntent! as ExtendSelectionToLineBreakIntent).collapseSelection, true);
@@ -986,6 +988,7 @@ void main() {
       case TargetPlatform.android:
       case TargetPlatform.fuchsia:
       case TargetPlatform.windows:
+      case TargetPlatform.ohos:
         expect(state.lastIntent, isA<ExtendSelectionToLineBreakIntent>());
         expect((state.lastIntent! as ExtendSelectionToLineBreakIntent).forward, false);
         expect((state.lastIntent! as ExtendSelectionToLineBreakIntent).collapseSelection, false);
@@ -1013,6 +1016,7 @@ void main() {
       case TargetPlatform.android:
       case TargetPlatform.fuchsia:
       case TargetPlatform.windows:
+      case TargetPlatform.ohos:
         expect(state.lastIntent, isA<ExtendSelectionToLineBreakIntent>());
         expect((state.lastIntent! as ExtendSelectionToLineBreakIntent).forward, true);
         expect((state.lastIntent! as ExtendSelectionToLineBreakIntent).collapseSelection, false);
@@ -1040,6 +1044,7 @@ void main() {
       case TargetPlatform.fuchsia:
       case TargetPlatform.linux:
       case TargetPlatform.windows:
+      case TargetPlatform.ohos:
         expect(state.lastIntent, isA<ExtendSelectionToDocumentBoundaryIntent>());
         expect((state.lastIntent! as ExtendSelectionToDocumentBoundaryIntent).forward, false);
         expect(
@@ -1062,6 +1067,7 @@ void main() {
       case TargetPlatform.fuchsia:
       case TargetPlatform.linux:
       case TargetPlatform.windows:
+      case TargetPlatform.ohos:
         expect(state.lastIntent, isA<ExtendSelectionToDocumentBoundaryIntent>());
         expect((state.lastIntent! as ExtendSelectionToDocumentBoundaryIntent).forward, true);
         expect(
@@ -1087,6 +1093,7 @@ void main() {
       case TargetPlatform.fuchsia:
       case TargetPlatform.linux:
       case TargetPlatform.windows:
+      case TargetPlatform.ohos:
         expect(state.lastIntent, isA<ExtendSelectionToDocumentBoundaryIntent>());
         expect((state.lastIntent! as ExtendSelectionToDocumentBoundaryIntent).forward, false);
         expect(
@@ -1112,6 +1119,7 @@ void main() {
       case TargetPlatform.fuchsia:
       case TargetPlatform.linux:
       case TargetPlatform.windows:
+      case TargetPlatform.ohos:
         expect(state.lastIntent, isA<ExtendSelectionToDocumentBoundaryIntent>());
         expect((state.lastIntent! as ExtendSelectionToDocumentBoundaryIntent).forward, true);
         expect(

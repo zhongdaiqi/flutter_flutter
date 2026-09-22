@@ -27,6 +27,8 @@
 #include "flutter/runtime/platform_data.h"
 #include "flutter/runtime/platform_isolate_manager.h"
 
+#include <cstdint>
+
 namespace flutter {
 
 class Scene;
@@ -577,6 +579,21 @@ class RuntimeController : public PlatformConfigurationClient,
   /// @return     The root isolate group identifier, zero if one can't
   ///             be established.
   uint64_t GetRootIsolateGroup() const;
+
+#ifdef FML_OS_OHOS
+  //----------------------------------------------------------------------------
+  /// @brief      Get the Dart heap memory usage for the root isolate.
+  ///
+  /// @return     A struct containing heap usage information, or zeros if
+  ///             it can't be established.
+  struct DartHeapUsage {
+    int64_t old_used;      // Old generation heap used (bytes)
+    int64_t old_capacity;  // Old generation heap capacity (bytes)
+    int64_t new_used;      // New generation heap used (bytes)
+    int64_t new_capacity;  // New generation heap capacity (bytes)
+  };
+  DartHeapUsage GetDartHeapUsage() const;
+#endif  // FML_OS_OHOS
 
   //--------------------------------------------------------------------------
   /// @brief      Loads the Dart shared library into the Dart VM. When the

@@ -11,8 +11,8 @@ struct Flags {
   bool antialiased_lines = false;
   /// Use SDFs for rendering.
   bool use_sdfs = false;
-
-  bool operator==(const Flags&) const = default;
+  /// Whether to enable parallel glyph rasterization on multiple worker threads.
+  bool glyph_raster_parallelization = false;
 };
 }  // namespace impeller
 
