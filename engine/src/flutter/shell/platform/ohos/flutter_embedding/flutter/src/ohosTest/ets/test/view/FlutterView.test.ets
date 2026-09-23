@@ -431,24 +431,47 @@ export default function flutterViewTest() {
     });
   });
 
-  describe('FlutterView.unRegisterAllCallbacks', () => {
-    it('returns early when callbacks were never registered', 0, () => {
-      const view = new FlutterView('7001', getContext() as common.Context);
+  describe('FlutterView.unRegisterDefaultCallbacks', () => {
+    it('returns early when default callbacks were never registered', 0, () => {
+      const view = new FlutterView('unreg-def-1', getContext() as common.Context);
       const v: Any = view;
-      v['isAllCallbacksRegistered'] = false;
+      v['isDefaultCallbacksRegistered'] = false;
       let threw = false;
-      try { v['unRegisterAllCallbacks'](); } catch (e) { threw = true; }
+      try { v['unRegisterDefaultCallbacks'](); } catch (e) { threw = true; }
       expect(threw).assertEqual(false);
+      expect(v['isDefaultCallbacksRegistered']).assertEqual(false);
     });
 
-    it('unregisters everything and resets the flag', 0, () => {
-      const view = new FlutterView('7002', getContext() as common.Context);
+    it('unregisters default callbacks and resets the flag', 0, () => {
+      const view = new FlutterView('unreg-def-2', getContext() as common.Context);
       const v: Any = view;
-      v['isAllCallbacksRegistered'] = true;
+      v['isDefaultCallbacksRegistered'] = true;
       let threw = false;
-      try { v['unRegisterAllCallbacks'](); } catch (e) { threw = true; }
+      try { v['unRegisterDefaultCallbacks'](); } catch (e) { threw = true; }
       expect(threw).assertEqual(false);
-      expect(v['isAllCallbacksRegistered']).assertEqual(false);
+      expect(v['isDefaultCallbacksRegistered']).assertEqual(false);
+    });
+  });
+
+  describe('FlutterView.unRegisterUiCallbacks', () => {
+    it('returns early when ui callbacks were never registered', 0, () => {
+      const view = new FlutterView('unreg-ui-1', getContext() as common.Context);
+      const v: Any = view;
+      v['isUiCallbacksRegistered'] = false;
+      let threw = false;
+      try { v['unRegisterUiCallbacks'](); } catch (e) { threw = true; }
+      expect(threw).assertEqual(false);
+      expect(v['isUiCallbacksRegistered']).assertEqual(false);
+    });
+
+    it('unregisters ui callbacks and resets the flag', 0, () => {
+      const view = new FlutterView('unreg-ui-2', getContext() as common.Context);
+      const v: Any = view;
+      v['isUiCallbacksRegistered'] = true;
+      let threw = false;
+      try { v['unRegisterUiCallbacks'](); } catch (e) { threw = true; }
+      expect(threw).assertEqual(false);
+      expect(v['isUiCallbacksRegistered']).assertEqual(false);
     });
   });
   describe('FlutterView.setActive', () => {
