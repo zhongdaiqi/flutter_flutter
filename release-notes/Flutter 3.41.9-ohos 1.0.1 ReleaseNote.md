@@ -12,14 +12,14 @@
 
 ## 版本配套
 
-| 配套 | 版本 / 要求 |
-| --- | --- |
-| **Flutter SDK**          | [**3.41.9-ohos-1.0.1**](https://gitcode.com/CPF-Flutter/flutter_flutter/tree/3.41.10-ohos-1.0.1)<br/>*（由于 Flutter 版本解析规则，为避免版本比较解析失败，实际显示为 `3.41.10-ohos-1.0.1`）* |
-| **DevEco Studio** | **DevEco Studio 26.0.0 Beta2**<br/>`Build Version：26.0.0.621` |
-| **Command Line Tools** | **Command Line Tools 26.0.0 Beta2**<br/>`Build Version：26.0.0.621` |
-| **引擎构建最低要求 API** | **OpenHarmony API 26.0.0** |
-| **应用目标 API** | **OpenHarmony API 26.0.0** |
-| **应用最低运行 API** | **OpenHarmony API 17** |
+| 配套 | 版本 | 说明 |
+| --- | --- | --- |
+| Flutter SDK | [3.41.9-ohos-1.0.1](https://gitcode.com/CPF-Flutter/flutter_flutter/tree/3.41.10-ohos-1.0.1) | 由于 Flutter 版本解析规则，为避免版本比较解析失败，实际显示为 `3.41.10-ohos-1.0.1` |
+| DevEco Studio      | DevEco Studio 26.0.0 Release                                 | 开发工具（IDE），[前往下载](https://developer.huawei.com/consumer/cn/download/deveco-studio) |
+| Command Line Tools | Command Line Tools 26.0.0 Release                            | 开发工具集，[前往下载](https://developer.huawei.com/consumer/cn/download/command-line-tools-for-hmos) |
+| 引擎构建最低 SDK | 26.0.0 | 编译构建引擎产物所需的最低SDK版本 |
+| 应用编译最低 SDK | 26.0.0 | 在 [build-profile.json5](https://developer.huawei.com/consumer/cn/doc/doccenter-deveco-studio/ide-hvigor-build-profile-app#section45865492619) 中配置："compileSdkVersion": "26.0.0" |
+| 应用运行最低 SDK | 5.0.5(17) | 在 [build-profile.json5](https://developer.huawei.com/consumer/cn/doc/doccenter-deveco-studio/ide-hvigor-build-profile-app#section45865492619) 中配置："compatibleSdkVersion": "5.0.5(17)" |
 
 ## 主要变更
 
