@@ -1,6 +1,19 @@
 ## 版本概述
 本版本为Flutter OpenHarmony平台1.0.3版本，基于Flutter 3.35.7版本适配。本版本支持和完善OpenHarmony平台侧能力，提供平台化Channel、外接纹理、云端SDK等特性，并优化性能。
 
+## 版本配套
+
+| 配套               | 版本                                                         | 说明                                                         |
+| ------------------ | ------------------------------------------------------------ | ------------------------------------------------------------ |
+| Flutter SDK        | [3.35.7-ohos-1.0.3](https://gitcode.com/CPF-Flutter/flutter_flutter/tree/3.35.8-ohos-1.0.3) | 由于 Flutter 版本解析规则，为避免版本比较解析失败，实际显示为 `3.35.8-ohos-1.0.3` |
+| DevEco Studio      | DevEco Studio 6.0.0 Release 及以上                           | 开发工具（IDE），[前往下载](https://developer.huawei.com/consumer/cn/download/deveco-studio) |
+| Command Line Tools | Command Line Tools 6.0.0 Release 及以上                      | 开发工具集，[前往下载](https://developer.huawei.com/consumer/cn/download/command-line-tools-for-hmos) |
+| 引擎构建最低 SDK   | 6.1.0(23)                                                    | 编译构建引擎产物所需的最低SDK版本                            |
+| 应用编译最低 SDK   | 6.0.0(20)                                                    | 在 [build-profile.json5](https://developer.huawei.com/consumer/cn/doc/doccenter-deveco-studio/ide-hvigor-build-profile-app#section45865492619) 中配置："compileSdkVersion": "6.0.0(20)" |
+| 应用运行最低 SDK   | 5.0.5(17)                                                    | 在 [build-profile.json5](https://developer.huawei.com/consumer/cn/doc/doccenter-deveco-studio/ide-hvigor-build-profile-app#section45865492619) 中配置："compatibleSdkVersion": "5.0.5(17)" |
+
+## 基础特性
+
 ### 主要更新
 
 **新增特性**
@@ -54,12 +67,6 @@
 - Modify the srgb rendering to p3 issue, modify the cpu computing issue, and modify the shadow rendering granularity issue
 - fix napi lookupcallbackinformation
 - fix lookupCallbackInformation error
-
-## 版本配套
-- 引擎构建要求 API：**OpenHarmony API 23**
-- 应用构建推荐适配 API：**OpenHarmony API 23**
-- 应用构建最低适配 API：**OpenHarmony API 20**
-- Flutter SDK：**3.35.7-ohos-1.0.3**（由于flutter版本解析规则，为了避免版本比较解析失败，将显示为3.35.8-ohos-1.0.3）
 
 ## Changelog
 - [3.35.7-ohos-1.0.3](../CHANGELOG_OHOS.md)
