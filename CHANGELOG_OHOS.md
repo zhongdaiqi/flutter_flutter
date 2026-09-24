@@ -1,5 +1,42 @@
 # Changelog
 
+<a id="version20260924"></a>
+
+## 3.35.7+ohos-1.0.5 - `2026-09-24`
+
+### Added
+
+- feat(flex_overflow): dynamic DPI overflow strategy，修复动态DPI下PlatformView点击事件坐标分布异常 [!1958](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/1958)
+- feat: parseOhosVersion supports +ohos build metadata format [!1765](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/1765)
+- feat(ohos): 完善GPU资源回收全流程日志埋点 [!1852](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/1852)
+- add:白屏渲染相关dfx日志 [!1760](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/1760)
+
+### Changed
+
+- 【3.35】change(Template): OHOS模板targetSdkVersion升级至26.0.0并统一compatibleSdkVersion至5.0.5(17) [!2027](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/2027)
+- 【3.35】change(Template): 更新oh flutter图标 [!2070](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/2070)
+
+### Fixed
+
+- 【3.35】修复StandardMessageCodec.writeValueInternal绕过子类覆写导致序列化失败 [!2100](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/2100)
+- fix:Fix the total frame count issue during sliding frame drops [!2080](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/2080)
+- 【3.35】修复channel传递递归数据导致jscrash [!2011](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/2011)
+- fix(ohos): restore plugin state after ability recreation [!2042](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/2042)
+- fix: physicalTouchSlop missing dpr conversion, touchSlop dropped to 1.4 [!2020](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/2020)
+- 【3.35】fix(Texture): implement SurfaceTextureEntry.release() via unregisterTexture [!1998](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/1998)
+- fix(Channel): send fallback error envelope when result decode fails, deliver error envelope when dart handler throws [!1969](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/1969)
+- fix: unregister preview callbacks, postInputEventWithStrategy支持失败回落postInputEvent [!1984](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/1984)
+- fix(safearea): correct safe area padding for edgeToEdge and freeform window exit [!1923](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/1923)
+- fix: pass --route parameter to hdc aa start via --ps route Want parameter [!1901](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/1901)
+- fix(memory_leak):Fix some memory leakage issues related to HarmonyOS adaptation [!1851](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/1851)
+- fix(DEPS_ohos): update skia_revision for font alias fix [!1800](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/1800)
+- fix(Accessibility): expose OHOS semantics to UiTest [!1792](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/1792)
+- fix: Refactor input method pre-input display [!1748](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/1748)
+- fix: 取消flutterView断言，避免crash [!1959](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/1959)
+- fix(input): 修复多引擎场景FlutterView#onWindowCreated未调用,导致输入法弹起时keyboardHeightChangeCallback不执行的问题 [!1941](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/1941)
+- Fix incorrect deadline time in DartVM [!1803](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/1803)
+- fix(integration_test): initialize OHOS test results static set [!1779](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/1779)
+
 <a id="version20260808"></a>
 
 ## 3.35.7-ohos-1.0.4 - `2026-08-17`
@@ -154,7 +191,3 @@
 - 解决在剪切操作后无法进行粘贴的问题[d3ddc4e0](https://gitcode.com/openharmony-tpc/flutter_flutter/commit/d3ddc4e0e361c9294ab4d2fd3a43768ea58dae8a?ref=fix_pasting&prId=803)
 - 修复ohos平台运行build命令，无法生成指定的文件夹[31d92a8c](https://gitcode.com/openharmony-tpc/flutter_flutter/commit/31d92a8c25389ad554c9f01b6f3176032b68b8d9?ref=oh-3.35.7-dev&prId=797)
 - 解决了在AndroidStudio 上某些断点无法断住的问题[c4ae8eff](https://gitcode.com/openharmony-tpc/flutter_flutter/commit/c4ae8eff5d0b41b9ccd6a81ccf026bd02c9c107d?ref=start_paused&prId=820)
-
-<!-- ===== 版本对比链接区 ===== -->
-[Unreleased]: https://gitcode.com/CPF-Flutter/flutter_flutter/compare/3.35.8-ohos-1.0.4...HEAD
-[3.35.7-ohos-1.0.4]: https://gitcode.com/CPF-Flutter/flutter_flutter/compare/3.35.8-ohos-1.0.3...3.35.8-ohos-1.0.4
