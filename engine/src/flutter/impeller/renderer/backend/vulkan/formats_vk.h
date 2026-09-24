@@ -180,7 +180,41 @@ constexpr vk::Format ToVKImageFormat(PixelFormat format) {
     case PixelFormat::kR32Float:
       return vk::Format::eR32Sfloat;
     case PixelFormat::kB10G10R10A2UNorm:
- 	    return vk::Format::eA2B10G10R10UnormPack32;
+      return vk::Format::eA2B10G10R10UnormPack32;
+    case PixelFormat::kBC1RGBAUNormInt:
+      return vk::Format::eBc1RgbaUnormBlock;
+    case PixelFormat::kBC1RGBAUNormIntSRGB:
+      return vk::Format::eBc1RgbaSrgbBlock;
+    case PixelFormat::kBC3RGBAUNormInt:
+      return vk::Format::eBc3UnormBlock;
+    case PixelFormat::kBC3RGBAUNormIntSRGB:
+      return vk::Format::eBc3SrgbBlock;
+    case PixelFormat::kBC5RGUNormInt:
+      return vk::Format::eBc5UnormBlock;
+    case PixelFormat::kBC7RGBAUNormInt:
+      return vk::Format::eBc7UnormBlock;
+    case PixelFormat::kBC7RGBAUNormIntSRGB:
+      return vk::Format::eBc7SrgbBlock;
+    case PixelFormat::kETC2RGB8UNormInt:
+      return vk::Format::eEtc2R8G8B8UnormBlock;
+    case PixelFormat::kETC2RGB8UNormIntSRGB:
+      return vk::Format::eEtc2R8G8B8SrgbBlock;
+    case PixelFormat::kETC2RGBA8UNormInt:
+      return vk::Format::eEtc2R8G8B8A8UnormBlock;
+    case PixelFormat::kETC2RGBA8UNormIntSRGB:
+      return vk::Format::eEtc2R8G8B8A8SrgbBlock;
+    case PixelFormat::kASTC4x4LDR:
+      return vk::Format::eAstc4x4UnormBlock;
+    case PixelFormat::kASTC4x4LDRSRGB:
+      return vk::Format::eAstc4x4SrgbBlock;
+    case PixelFormat::kASTC8x8LDR:
+      return vk::Format::eAstc8x8UnormBlock;
+    case PixelFormat::kASTC8x8LDRSRGB:
+      return vk::Format::eAstc8x8SrgbBlock;
+    case PixelFormat::kASTC4x4HDR:
+      return vk::Format::eAstc4x4SfloatBlock;
+    case PixelFormat::kASTC8x8HDR:
+      return vk::Format::eAstc8x8SfloatBlock;
   }
 
   FML_UNREACHABLE();
@@ -375,7 +409,6 @@ constexpr vk::IndexType ToVKIndexType(IndexType index_type) {
   }
 
   FML_UNREACHABLE();
-  return vk::IndexType::eUint16;
 }
 
 constexpr vk::PolygonMode ToVKPolygonMode(PolygonMode mode) {
@@ -386,7 +419,6 @@ constexpr vk::PolygonMode ToVKPolygonMode(PolygonMode mode) {
       return vk::PolygonMode::eLine;
   }
   FML_UNREACHABLE();
-  return vk::PolygonMode::eFill;
 }
 
 constexpr bool PrimitiveTopologySupportsPrimitiveRestart(
@@ -419,8 +451,8 @@ constexpr vk::PrimitiveTopology ToVKPrimitiveTopology(PrimitiveType primitive) {
     case PrimitiveType::kTriangleFan:
       return vk::PrimitiveTopology::eTriangleFan;
   }
+
   FML_UNREACHABLE();
-  return vk::PrimitiveTopology::eTriangleList;
 }
 
 constexpr bool PixelFormatIsDepthStencil(PixelFormat format) {
@@ -439,7 +471,24 @@ constexpr bool PixelFormatIsDepthStencil(PixelFormat format) {
     case PixelFormat::kB10G10R10XRSRGB:
     case PixelFormat::kB10G10R10A10XR:
     case PixelFormat::kR32Float:
- 	  case PixelFormat::kB10G10R10A2UNorm:
+    case PixelFormat::kB10G10R10A2UNorm:
+    case PixelFormat::kBC1RGBAUNormInt:
+    case PixelFormat::kBC1RGBAUNormIntSRGB:
+    case PixelFormat::kBC3RGBAUNormInt:
+    case PixelFormat::kBC3RGBAUNormIntSRGB:
+    case PixelFormat::kBC5RGUNormInt:
+    case PixelFormat::kBC7RGBAUNormInt:
+    case PixelFormat::kBC7RGBAUNormIntSRGB:
+    case PixelFormat::kETC2RGB8UNormInt:
+    case PixelFormat::kETC2RGB8UNormIntSRGB:
+    case PixelFormat::kETC2RGBA8UNormInt:
+    case PixelFormat::kETC2RGBA8UNormIntSRGB:
+    case PixelFormat::kASTC4x4LDR:
+    case PixelFormat::kASTC4x4LDRSRGB:
+    case PixelFormat::kASTC8x8LDR:
+    case PixelFormat::kASTC8x8LDRSRGB:
+    case PixelFormat::kASTC4x4HDR:
+    case PixelFormat::kASTC8x8HDR:
       return false;
     case PixelFormat::kS8UInt:
     case PixelFormat::kD24UnormS8Uint:
@@ -462,7 +511,6 @@ constexpr vk::CullModeFlags ToVKCullModeFlags(CullMode mode) {
       return vk::CullModeFlagBits::eBack;
   }
   FML_UNREACHABLE();
-  return vk::CullModeFlagBits::eNone;
 }
 
 constexpr vk::CompareOp ToVKCompareOp(CompareFunction op) {
@@ -485,7 +533,6 @@ constexpr vk::CompareOp ToVKCompareOp(CompareFunction op) {
       return vk::CompareOp::eGreaterOrEqual;
   }
   FML_UNREACHABLE();
-  return vk::CompareOp::eNever;
 }
 
 constexpr vk::StencilOp ToVKStencilOp(StencilOperation op) {
@@ -509,7 +556,6 @@ constexpr vk::StencilOp ToVKStencilOp(StencilOperation op) {
       break;
   }
   FML_UNREACHABLE();
-  return vk::StencilOp::eKeep;
 }
 
 constexpr vk::StencilOpState ToVKStencilOpState(
@@ -544,6 +590,23 @@ constexpr vk::ImageAspectFlags ToVKImageAspectFlags(PixelFormat format) {
     case PixelFormat::kB10G10R10A10XR:
     case PixelFormat::kR32Float:
     case PixelFormat::kB10G10R10A2UNorm:
+    case PixelFormat::kBC1RGBAUNormInt:
+    case PixelFormat::kBC1RGBAUNormIntSRGB:
+    case PixelFormat::kBC3RGBAUNormInt:
+    case PixelFormat::kBC3RGBAUNormIntSRGB:
+    case PixelFormat::kBC5RGUNormInt:
+    case PixelFormat::kBC7RGBAUNormInt:
+    case PixelFormat::kBC7RGBAUNormIntSRGB:
+    case PixelFormat::kETC2RGB8UNormInt:
+    case PixelFormat::kETC2RGB8UNormIntSRGB:
+    case PixelFormat::kETC2RGBA8UNormInt:
+    case PixelFormat::kETC2RGBA8UNormIntSRGB:
+    case PixelFormat::kASTC4x4LDR:
+    case PixelFormat::kASTC4x4LDRSRGB:
+    case PixelFormat::kASTC8x8LDR:
+    case PixelFormat::kASTC8x8LDRSRGB:
+    case PixelFormat::kASTC4x4HDR:
+    case PixelFormat::kASTC8x8HDR:
       return vk::ImageAspectFlagBits::eColor;
     case PixelFormat::kS8UInt:
       return vk::ImageAspectFlagBits::eStencil;
@@ -553,7 +616,6 @@ constexpr vk::ImageAspectFlags ToVKImageAspectFlags(PixelFormat format) {
              vk::ImageAspectFlagBits::eStencil;
   }
   FML_UNREACHABLE();
-  return vk::ImageAspectFlagBits::eColor;
 }
 
 constexpr uint32_t ToArrayLayerCount(TextureType type) {
@@ -568,7 +630,6 @@ constexpr uint32_t ToArrayLayerCount(TextureType type) {
           << "kTextureExternalOES can not be used with the Vulkan backend.";
   }
   FML_UNREACHABLE();
-  return 1u;
 }
 
 constexpr vk::ImageViewType ToVKImageViewType(TextureType type) {
@@ -583,7 +644,6 @@ constexpr vk::ImageViewType ToVKImageViewType(TextureType type) {
           << "kTextureExternalOES can not be used with the Vulkan backend.";
   }
   FML_UNREACHABLE();
-  return vk::ImageViewType::e2D;
 }
 
 constexpr vk::ImageCreateFlags ToVKImageCreateFlags(TextureType type) {
@@ -598,7 +658,6 @@ constexpr vk::ImageCreateFlags ToVKImageCreateFlags(TextureType type) {
           << "kTextureExternalOES can not be used with the Vulkan backend.";
   }
   FML_UNREACHABLE();
-  return {};
 }
 
 vk::PipelineDepthStencilStateCreateInfo ToVKPipelineDepthStencilStateCreateInfo(
@@ -624,6 +683,23 @@ constexpr vk::ImageAspectFlags ToImageAspectFlags(PixelFormat format) {
     case PixelFormat::kB10G10R10A10XR:
     case PixelFormat::kR32Float:
     case PixelFormat::kB10G10R10A2UNorm:
+    case PixelFormat::kBC1RGBAUNormInt:
+    case PixelFormat::kBC1RGBAUNormIntSRGB:
+    case PixelFormat::kBC3RGBAUNormInt:
+    case PixelFormat::kBC3RGBAUNormIntSRGB:
+    case PixelFormat::kBC5RGUNormInt:
+    case PixelFormat::kBC7RGBAUNormInt:
+    case PixelFormat::kBC7RGBAUNormIntSRGB:
+    case PixelFormat::kETC2RGB8UNormInt:
+    case PixelFormat::kETC2RGB8UNormIntSRGB:
+    case PixelFormat::kETC2RGBA8UNormInt:
+    case PixelFormat::kETC2RGBA8UNormIntSRGB:
+    case PixelFormat::kASTC4x4LDR:
+    case PixelFormat::kASTC4x4LDRSRGB:
+    case PixelFormat::kASTC8x8LDR:
+    case PixelFormat::kASTC8x8LDRSRGB:
+    case PixelFormat::kASTC4x4HDR:
+    case PixelFormat::kASTC8x8HDR:
       return vk::ImageAspectFlagBits::eColor;
     case PixelFormat::kS8UInt:
       return vk::ImageAspectFlagBits::eStencil;
@@ -633,7 +709,6 @@ constexpr vk::ImageAspectFlags ToImageAspectFlags(PixelFormat format) {
              vk::ImageAspectFlagBits::eStencil;
   }
   FML_UNREACHABLE();
-  return {};
 }
 
 }  // namespace impeller

@@ -312,7 +312,8 @@ vk::ImageView OHBTextureSourceVK::GetImageView() const {
   return image_view_.get();
 }
 
-vk::ImageView OHBTextureSourceVK::GetRenderTargetView() const {
+vk::ImageView OHBTextureSourceVK::GetRenderTargetView(uint32_t mip_level,
+                                                      uint32_t array_layer) const {
   return image_view_.get();  // Assuming same view can be used for render target
 }
 

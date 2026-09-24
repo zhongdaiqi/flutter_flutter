@@ -329,7 +329,17 @@ class CapabilitiesVK final : public Capabilities,
   bool Supports32BitPrimitiveIndices() const override;
 
   // |Capabilities|
+  bool SupportsManuallyMippedTextures() const override;
+
+  // |Capabilities|
   bool SupportsExtendedRangeFormats() const override;
+
+  // |Capabilities|
+  bool SupportsTextureCompression(
+      CompressedTextureFamily family) const override;
+
+  // |Capabilities|
+  bool SupportsFramebufferRenderMipmap() const override;
 
   // |Capabilities|
   PixelFormat GetDefaultColorFormat() const override;
@@ -347,11 +357,10 @@ class CapabilitiesVK final : public Capabilities,
   ISize GetMaximumRenderPassAttachmentSize() const override;
 
   // |Capabilities|
-  size_t GetMinimumUniformAlignment() const override;
-#ifdef __OHOS__
+  uint32_t GetMaxSamplerAnisotropy() const override;
+
   // |Capabilities|
-  bool SupportsFramebufferColorSampleCount2x() const override;
-#endif  // __OHOS__
+  size_t GetMinimumUniformAlignment() const override;
 
   // |Capabilities|
   size_t GetMinimumStorageBufferAlignment() const override;
@@ -386,38 +395,22 @@ class CapabilitiesVK final : public Capabilities,
   /// @brief      Update capabilities for the given set of workarounds.
   void ApplyWorkarounds(const WorkaroundsVK& workarounds);
 
+#ifdef __OHOS__
+  // |Capabilities|
+  bool SupportsFramebufferColorSampleCount2x() const override;
+#endif
+
  private:
   bool validations_enabled_ = false;
   std::map<std::string, std::set<std::string>> exts_;
   std::set<RequiredCommonDeviceExtensionVK> required_common_device_extensions_;
   std::set<RequiredAndroidDeviceExtensionVK>
       required_android_device_extensions_;
+  std::set<RequiredOHOSDeviceExtensionVK>
+      required_ohos_device_extensions_;
   std::set<OptionalAndroidDeviceExtensionVK>
       optional_android_device_extensions_;
   std::set<OptionalDeviceExtensionVK> optional_device_extensions_;
-  PixelFormat default_stencil_format_ = PixelFormat::kUnknown;
-  PixelFormat default_depth_stencil_format_ = PixelFormat::kUnknown;
-  vk::PhysicalDevice physical_device_;
-  vk::PhysicalDeviceProperties device_properties_;
-  size_t minimum_uniform_alignment_ = 256;
-  size_t minimum_storage_alignment_ = 256;
-  bool supports_compute_subgroups_ = false;
-  bool supports_device_transient_textures_ = false;
-  bool supports_texture_fixed_rate_compression_ = false;
-  ISize max_render_pass_attachment_size_ = ISize{0, 0};
-  bool has_triangle_fans_ = true;
-  bool has_primitive_restart_ = true;
-  bool has_framebuffer_fetch_ = true;
-  bool supports_external_fence_and_semaphore_ = false;
-  bool is_valid_ = false;
-
-  // The embedder.h API is responsible for providing the instance and device
-  // extensions.
-  bool use_embedder_extensions_ = false;
-  std::vector<std::string> embedder_instance_extensions_;
-  std::vector<std::string> embedder_device_extensions_;
-
-  std::set<RequiredOHOSDeviceExtensionVK> required_ohos_device_extensions_;
 #ifdef __OHOS__
   // This format is set during swapchain initialization and is used for creating
   // offscreen textures. On OHOS, offscreen textures are created before the
@@ -428,6 +421,32 @@ class CapabilitiesVK final : public Capabilities,
 #else
   mutable PixelFormat default_color_format_ = PixelFormat::kUnknown;
 #endif
+  PixelFormat default_stencil_format_ = PixelFormat::kUnknown;
+  PixelFormat default_depth_stencil_format_ = PixelFormat::kUnknown;
+  vk::PhysicalDevice physical_device_;
+  vk::PhysicalDeviceProperties device_properties_;
+  size_t minimum_uniform_alignment_ = 256;
+  size_t minimum_storage_alignment_ = 256;
+  bool supports_compute_subgroups_ = false;
+  bool supports_device_transient_textures_ = false;
+  bool supports_texture_fixed_rate_compression_ = false;
+  ISize max_render_pass_attachment_size_ = ISize{0, 0};
+  uint32_t max_sampler_anisotropy_ = 1;
+  bool has_triangle_fans_ = true;
+  bool has_primitive_restart_ = true;
+  bool has_framebuffer_fetch_ = true;
+  bool supports_external_fence_and_semaphore_ = false;
+  bool supports_texture_compression_bc_ = false;
+  bool supports_texture_compression_etc2_ = false;
+  bool supports_texture_compression_astc_ = false;
+  bool supports_texture_compression_astc_hdr_ = false;
+  bool is_valid_ = false;
+
+  // The embedder.h API is responsible for providing the instance and device
+  // extensions.
+  bool use_embedder_extensions_ = false;
+  std::vector<std::string> embedder_instance_extensions_;
+  std::vector<std::string> embedder_device_extensions_;
 
   bool HasExtension(const std::string& ext) const;
 

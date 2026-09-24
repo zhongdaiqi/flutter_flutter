@@ -133,11 +133,6 @@ CapabilitiesVK::GetEnabledInstanceExtensions() const {
     has_wsi = true;
   }
 
-  if (HasExtension("VK_OHOS_surface")) {
-    required.push_back("VK_OHOS_surface");
-    has_wsi = true;
-  }
-
   if (HasExtension("VK_KHR_xcb_surface")) {
     required.push_back("VK_KHR_xcb_surface");
     has_wsi = true;
@@ -150,6 +145,11 @@ CapabilitiesVK::GetEnabledInstanceExtensions() const {
 
   if (HasExtension("VK_KHR_wayland_surface")) {
     required.push_back("VK_KHR_wayland_surface");
+    has_wsi = true;
+  }
+
+  if (HasExtension("VK_OHOS_surface")) {
+    required.push_back("VK_OHOS_surface");
     has_wsi = true;
   }
 
@@ -207,22 +207,6 @@ static const char* GetExtensionName(RequiredAndroidDeviceExtensionVK ext) {
   FML_UNREACHABLE();
 }
 
-static const char* GetExtensionName(OptionalAndroidDeviceExtensionVK ext) {
-  switch (ext) {
-    case OptionalAndroidDeviceExtensionVK::kKHRExternalFenceFd:
-      return VK_KHR_EXTERNAL_FENCE_FD_EXTENSION_NAME;
-    case OptionalAndroidDeviceExtensionVK::kKHRExternalFence:
-      return VK_KHR_EXTERNAL_FENCE_EXTENSION_NAME;
-    case OptionalAndroidDeviceExtensionVK::kKHRExternalSemaphoreFd:
-      return VK_KHR_EXTERNAL_SEMAPHORE_FD_EXTENSION_NAME;
-    case OptionalAndroidDeviceExtensionVK::kKHRExternalSemaphore:
-      return VK_KHR_EXTERNAL_SEMAPHORE_EXTENSION_NAME;
-    case OptionalAndroidDeviceExtensionVK::kLast:
-      return "Unknown";
-  }
-  FML_UNREACHABLE();
-}
-
 static const char* GetExtensionName(RequiredOHOSDeviceExtensionVK ext) {
   switch (ext) {
     case RequiredOHOSDeviceExtensionVK::kOHOSNativeBuffer:
@@ -241,6 +225,21 @@ static const char* GetExtensionName(RequiredOHOSDeviceExtensionVK ext) {
       return "Unknown";
   }
   FML_UNREACHABLE();
+}
+
+static const char* GetExtensionName(OptionalAndroidDeviceExtensionVK ext) {
+  switch (ext) {
+    case OptionalAndroidDeviceExtensionVK::kKHRExternalFenceFd:
+      return VK_KHR_EXTERNAL_FENCE_FD_EXTENSION_NAME;
+    case OptionalAndroidDeviceExtensionVK::kKHRExternalFence:
+      return VK_KHR_EXTERNAL_FENCE_EXTENSION_NAME;
+    case OptionalAndroidDeviceExtensionVK::kKHRExternalSemaphoreFd:
+      return VK_KHR_EXTERNAL_SEMAPHORE_FD_EXTENSION_NAME;
+    case OptionalAndroidDeviceExtensionVK::kKHRExternalSemaphore:
+      return VK_KHR_EXTERNAL_SEMAPHORE_EXTENSION_NAME;
+    case OptionalAndroidDeviceExtensionVK::kLast:
+      return "Unknown";
+  }
 }
 
 static const char* GetExtensionName(OptionalDeviceExtensionVK ext) {
@@ -330,17 +329,6 @@ CapabilitiesVK::GetEnabledDeviceExtensions(
     return true;
   };
 
-  auto for_each_optional_android_extension =
-      [&](OptionalAndroidDeviceExtensionVK ext) {
-#ifdef FML_OS_ANDROID
-        auto name = GetExtensionName(ext);
-        if (exts.find(name) != exts.end()) {
-          enabled.push_back(name);
-        }
-#endif  //  FML_OS_ANDROID
-        return true;
-      };
-
   auto for_each_ohos_extension = [&](RequiredOHOSDeviceExtensionVK ext) {
 #ifdef FML_OS_OHOS
     auto name = GetExtensionName(ext);
@@ -353,6 +341,17 @@ CapabilitiesVK::GetEnabledDeviceExtensions(
 #endif  //  FML_OS_OHOS
     return true;
   };
+
+  auto for_each_optional_android_extension =
+      [&](OptionalAndroidDeviceExtensionVK ext) {
+#ifdef FML_OS_ANDROID
+        auto name = GetExtensionName(ext);
+        if (exts.find(name) != exts.end()) {
+          enabled.push_back(name);
+        }
+#endif  //  FML_OS_ANDROID
+        return true;
+      };
 
   auto for_each_optional_extension = [&](OptionalDeviceExtensionVK ext) {
     auto name = GetExtensionName(ext);
@@ -367,10 +366,10 @@ CapabilitiesVK::GetEnabledDeviceExtensions(
           for_each_common_extension) &&
       IterateExtensions<RequiredAndroidDeviceExtensionVK>(
           for_each_android_extension) &&
-      IterateExtensions<OptionalDeviceExtensionVK>(
-          for_each_optional_extension) &&
       IterateExtensions<RequiredOHOSDeviceExtensionVK>(
           for_each_ohos_extension) &&
+      IterateExtensions<OptionalDeviceExtensionVK>(
+          for_each_optional_extension) &&
       IterateExtensions<OptionalAndroidDeviceExtensionVK>(
           for_each_optional_android_extension);
 
@@ -407,7 +406,7 @@ static bool PhysicalDeviceSupportsRequiredFormats(
       HasSuitableColorFormat(device, vk::Format::eB8G8R8A8Unorm);
 #else
   const auto has_color_format =
-      HasSuitableColorFormat(device, vk::Format::eB8G8R8A8Unorm);
+      HasSuitableColorFormat(device, vk::Format::eR8G8B8A8Unorm);
 #endif
   const auto has_stencil_format =
       HasSuitableDepthStencilFormat(device, vk::Format::eD32SfloatS8Uint) ||
@@ -417,11 +416,12 @@ static bool PhysicalDeviceSupportsRequiredFormats(
 
 static bool HasRequiredProperties(const vk::PhysicalDevice& physical_device) {
   auto properties = physical_device.getProperties();
-  if (!(properties.limits.framebufferColorSampleCounts &
 #ifdef __OHOS__
+  if (!(properties.limits.framebufferColorSampleCounts &
         (vk::SampleCountFlagBits::e1 | vk::SampleCountFlagBits::e2 |
          vk::SampleCountFlagBits::e4))) {
 #else
+  if (!(properties.limits.framebufferColorSampleCounts &
         (vk::SampleCountFlagBits::e1 | vk::SampleCountFlagBits::e4))) {
 #endif
     return false;
@@ -498,6 +498,11 @@ CapabilitiesVK::GetEnabledDeviceFeatures(
     // We require this for enabling wireframes in the playground. But its not
     // necessarily a big deal if we don't have this feature.
     required.fillModeNonSolid = supported.fillModeNonSolid;
+
+    // Enable anisotropic filtering when available. Samplers with
+    // `max_anisotropy` greater than 1 may only be created when this feature
+    // is enabled.
+    required.samplerAnisotropy = supported.samplerAnisotropy;
   }
   // VK_KHR_sampler_ycbcr_conversion features.
   if (IsExtensionInList(
@@ -529,6 +534,8 @@ CapabilitiesVK::GetEnabledDeviceFeatures(
     required_chain
         .unlink<vk::PhysicalDeviceImageCompressionControlFeaturesEXT>();
   }
+
+
 
   // Vulkan 1.1
   {
@@ -569,6 +576,16 @@ bool CapabilitiesVK::SupportsPrimitiveRestart() const {
 bool CapabilitiesVK::Supports32BitPrimitiveIndices() const {
   return true;
 }
+
+bool CapabilitiesVK::SupportsManuallyMippedTextures() const {
+  return true;
+}
+
+#ifdef __OHOS__
+bool CapabilitiesVK::SupportsFramebufferColorSampleCount2x() const {
+  return true;
+}
+#endif
 
 void CapabilitiesVK::SetOffscreenFormat(PixelFormat pixel_format) const {
   default_color_format_ = pixel_format;
@@ -634,7 +651,6 @@ bool CapabilitiesVK::SetPhysicalDevice(
     required_android_device_extensions_.clear();
     optional_device_extensions_.clear();
     optional_android_device_extensions_.clear();
-    required_ohos_device_extensions_.clear();
 
     std::set<std::string> exts;
     if (!use_embedder_extensions_) {
@@ -694,9 +710,27 @@ bool CapabilitiesVK::SetPhysicalDevice(
           .get<vk::PhysicalDeviceImageCompressionControlFeaturesEXT>()
           .imageCompressionControl;
 
+  {
+    const auto& features = enabled_features.get().features;
+    supports_texture_compression_bc_ = features.textureCompressionBC;
+    supports_texture_compression_etc2_ = features.textureCompressionETC2;
+    supports_texture_compression_astc_ = features.textureCompressionASTC_LDR;
+  }
+
+  supports_texture_compression_astc_hdr_ = false;
+
   max_render_pass_attachment_size_ =
       ISize{device_properties_.limits.maxFramebufferWidth,
             device_properties_.limits.maxFramebufferHeight};
+
+  // Anisotropic filtering is gated on the samplerAnisotropy feature. When the
+  // feature is unavailable, report a maximum of 1 (disabled). The device limit
+  // is a float but is always an integer in practice, so floor it.
+  max_sampler_anisotropy_ =
+      enabled_features.get().features.samplerAnisotropy
+          ? static_cast<uint32_t>(
+                device_properties_.limits.maxSamplerAnisotropy)
+          : 1u;
 
   // Molten, Vulkan on Metal, cannot support triangle fans because Metal doesn't
   // support triangle fans.
@@ -897,12 +931,9 @@ ISize CapabilitiesVK::GetMaximumRenderPassAttachmentSize() const {
   return max_render_pass_attachment_size_;
 }
 
-#ifdef __OHOS__
-bool CapabilitiesVK::SupportsFramebufferColorSampleCount2x() const {
-  const auto supported = device_properties_.limits.framebufferColorSampleCounts;
-  return !!(supported & vk::SampleCountFlagBits::e2);
+uint32_t CapabilitiesVK::GetMaxSamplerAnisotropy() const {
+  return max_sampler_anisotropy_;
 }
-#endif  // __OHOS__
 
 void CapabilitiesVK::ApplyWorkarounds(const WorkaroundsVK& workarounds) {
   has_primitive_restart_ = !workarounds.slow_primitive_restart_performance;
@@ -914,6 +945,25 @@ bool CapabilitiesVK::SupportsExternalSemaphoreExtensions() const {
 }
 
 bool CapabilitiesVK::SupportsExtendedRangeFormats() const {
+  return false;
+}
+
+bool CapabilitiesVK::SupportsFramebufferRenderMipmap() const {
+  return true;
+}
+
+bool CapabilitiesVK::SupportsTextureCompression(
+    CompressedTextureFamily family) const {
+  switch (family) {
+    case CompressedTextureFamily::kBC:
+      return supports_texture_compression_bc_;
+    case CompressedTextureFamily::kETC2:
+      return supports_texture_compression_etc2_;
+    case CompressedTextureFamily::kASTC:
+      return supports_texture_compression_astc_;
+    case CompressedTextureFamily::kASTCHDR:
+      return supports_texture_compression_astc_hdr_;
+  }
   return false;
 }
 
