@@ -60,6 +60,7 @@ class FakeImpellerContext final : public impeller::Context {
   RuntimeStageBackend GetRuntimeStageBackend() const override {
     return RuntimeStageBackend::kVulkan;
   }
+  bool FinishQueue() override { return false; }
 
   int shutdown_count_ = 0;
 
