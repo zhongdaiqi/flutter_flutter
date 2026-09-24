@@ -1,5 +1,41 @@
 # Changelog
 
+<a id="version20260924"></a>
+## 3.22.3+ohos-1.1.6 - `2026-09-24`
+
+### Added
+
+- feat(flex_overflow): dynamic DPI overflow strategy with testing API and unit tests [!2059](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/2059)
+- feat: parseOhosVersion supports +ohos build metadata tag format [!1821](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/1821)
+- feat(ohos): 完善 GPU 资源回收全流程日志埋点 [!1513](https://gitcode.com/CPF-Flutter/flutter_engine/merge_requests/1513)
+- add:白屏渲染相关dfx日志 [!1481](https://gitcode.com/CPF-Flutter/flutter_engine/merge_requests/1481)
+
+### Changed
+
+- 【3.22】change(Template): OHOS模板targetSdkVersion升级至26.0.0并统一compatibleSdkVersion至5.0.5(17) [!2025](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/2025)
+- 【3.22】change(Template): 更新oh flutter图标 [!2068](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/2068)
+
+### Fixed
+
+- 【3.22】修复StandardMessageCodec.writeValueInternal 绕过子类覆写导致序列化失败 [!1557](https://gitcode.com/CPF-Flutter/flutter_engine/merge_requests/1557)
+- fix:Fix the total frame count issue during sliding frame drops [!1548](https://gitcode.com/CPF-Flutter/flutter_engine/merge_requests/1548)
+- 【3.22】修复channel传递递归数据导致jscrash [!1533](https://gitcode.com/CPF-Flutter/flutter_engine/merge_requests/1533)
+- Solve the problem of abnormal coordinate distribution for platformview click events under dynamic dpi [!1542](https://gitcode.com/CPF-Flutter/flutter_engine/merge_requests/1542)
+- fix(ohos): restore plugin state after ability recreation [!1544](https://gitcode.com/CPF-Flutter/flutter_engine/merge_requests/1544)
+- fix: physicalTouchSlop missing dpr conversion, touchSlop dropped to 1.4 [!1538](https://gitcode.com/CPF-Flutter/flutter_engine/merge_requests/1538)
+- 【3.22】fix(Texture): implement SurfaceTextureEntry.release() via unregisterTexture [!1534](https://gitcode.com/CPF-Flutter/flutter_engine/merge_requests/1534)
+- fix(Channel): deliver error envelope when dart handler throws and send fallback error envelope when result decode fails [!1530](https://gitcode.com/CPF-Flutter/flutter_engine/merge_requests/1530)
+- fix: unregister preview callbacks [!1531](https://gitcode.com/CPF-Flutter/flutter_engine/merge_requests/1531)
+- postInputEventWithStrategy支持失败回落postInputEvent [!1521](https://gitcode.com/CPF-Flutter/flutter_engine/merge_requests/1521)
+- fix(input): 修复多引擎场景FlutterView#onWindowCreated未调用,导致输入法弹起时keyboardHeightChangeCallback不执行的问题 [!1524](https://gitcode.com/CPF-Flutter/flutter_engine/merge_requests/1524)
+- fix: 取消flutterView断言，避免crash [!1520](https://gitcode.com/CPF-Flutter/flutter_engine/merge_requests/1520)
+- fix(memory_leak):Fix some memory leakage issues related to HarmonyOS adaptation [!1515](https://gitcode.com/CPF-Flutter/flutter_engine/merge_requests/1515)
+- fix(Accessibility): expose OHOS semantics to UiTest [!1504](https://gitcode.com/CPF-Flutter/flutter_engine/merge_requests/1504)
+- fix: Refactor input method pre-input display [!1506](https://gitcode.com/CPF-Flutter/flutter_engine/merge_requests/1506) [!1799](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/1799)
+- fix(DEPS_ohos): update skia_revision for font alias fix [!1507](https://gitcode.com/CPF-Flutter/flutter_engine/merge_requests/1507)
+- fix: pass --route parameter to hdc aa start via --ps route Want parameter [!1911](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/1911)
+- fix(integration_test): initialize OHOS test results static set [!1781](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/1781)
+
 <a id="version20260807"></a>
 ## 3.22.3-ohos-1.1.5 - `2026-08-17`
 
