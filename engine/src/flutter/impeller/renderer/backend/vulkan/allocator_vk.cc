@@ -630,7 +630,7 @@ Bytes AllocatorVK::DebugGetHeapUsage() const {
     const VmaBudget& budget = budgets[i];
     total_usage += budget.usage;
   }
-  return Bytes{static_cast<double>(total_usage)};
+  return Bytes{static_cast<uint64_t>(total_usage)};
 }
 
 void AllocatorVK::DebugTraceMemoryStatistics() const {

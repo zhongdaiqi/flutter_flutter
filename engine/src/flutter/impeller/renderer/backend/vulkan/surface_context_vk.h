@@ -127,6 +127,9 @@ class SurfaceContextVK : public Context,
 
   bool FlushCommandBuffers() override;
 
+  // |Context|
+  bool FinishQueue() override;
+
   bool GetAndResetChangedFlag() const {
     bool ret = swapchain_changed_;
     swapchain_changed_ = false;
