@@ -1,5 +1,46 @@
 # Changelog
 
+<a id="version20260924"></a>
+
+## 3.41.9+ohos-1.0.2 - `2026-09-24`
+
+### Added
+
+- feat(flex_overflow): dynamic DPI overflow strategy with testing API and unit tests; Solve the problem of abnormal coordinate distribution for platformview click events under dynamic dpi [!2061](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/2061)
+- feat: parseOhosVersion supports +ohos build metadata tag format [!1818](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/1818)
+- feat(ohos): 完善 GPU 资源回收全流程日志埋点 [!1853](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/1853)
+- add:白屏渲染相关dfx日志 [!1761](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/1761)
+
+### Changed
+
+- 【3.41】change(Template): 更新oh flutter图标 [!2071](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/2071)
+- 【3.41】change(Template): OHOS模板targetSdkVersion升级至26.0.0并统一compatibleSdkVersion至5.0.5(17) [!2028](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/2028)
+- LTPO feature is enabled by default [!1607](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/1607)
+
+### Fixed
+
+- 【3.41】修复StandardMessageCodec.writeValueInternal 绕过子类覆写导致序列化失败 [!2099](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/2099)
+- fix:Fix the total frame count issue during sliding frame drops [!2079](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/2079)
+- 【3.41】修复channel传递递归数据导致jscrash [!2012](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/2012)
+- fix(ohos): restore plugin state after ability recreation [!2044](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/2044)
+- fix: Remove shared rendering data from TextFrame [!2041](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/2041)
+- fix: physicalTouchSlop missing dpr conversion, touchSlop dropped to 1.4 [!2021](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/2021)
+- 【3.41】fix(Texture): implement SurfaceTextureEntry.release() via unregisterTexture [!1999](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/1999)
+- fix(Channel): send fallback error envelope when result decode fails; fix(Channel): deliver error envelope when dart handler throws [!1970](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/1970)
+- fix: unregister preview callbacks [!1985](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/1985)
+- fix(safearea): correct safe area padding for edgeToEdge and freeform window exit [!1967](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/1967)
+- postInputEventWithStrategy支持失败回落postInputEvent [!1933](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/1933)
+- update: 更新文件 FlutterPage.ets 取消flutterView断言，避免crash [!1960](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/1960)
+- fix(input): 修复多引擎场景FlutterView#onWindowCreated未调用,导致输入法弹起时keyboardHeightChangeCallback不执行的问题 [!1942](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/1942)
+- fix: pass --route parameter to hdc aa start via --ps route Want parameter [!1898](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/1898)
+- fix(memory_leak):Fix some memory leakage issues related to HarmonyOS adaptation [!1856](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/1856)
+- fix(Accessibility): expose OHOS semantics to UiTest [!1769](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/1769)
+- fix: Refactor input method pre-input display [!1809](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/1809)
+- fix(DEPS_ohos): update skia_revision for font alias and weight fixes [!1801](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/1801)
+- Fix incorrect deadline time in DartVM [!1795](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/1795)
+- fix(ohos): bundle NativeAssetsManifest.json into flutter_assets to align with android [!1956](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/1956)
+- Fixed: flutter drive execution failure [!1679](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/1679)
+
 <a id="version20260808"></a>
 
 ## 3.41.9-ohos-1.0.1 - `2026-08-17`
