@@ -12,8 +12,10 @@
 #include "flutter/fml/build_config.h"
 
 #include "impeller/display_list/paint.h"
+#include "impeller/entity/contents/content_context.h"
 #include "impeller/entity/contents/solid_color_contents.h"
 #include "impeller/entity/geometry/geometry.h"
+#include "impeller/renderer/backend/vulkan/test/mock_vulkan.h"
 
 #include "gtest/gtest.h"
 
@@ -28,9 +30,11 @@ TEST(PaintOhosTest, SolidColorContentsUsesSourceColorSpace) {
   paint.source_color_space = ColorSpace::kDisplayP3;
 
   // With no color_source set, CreateContents produces SolidColorContents.
+  auto context = MockVulkanContextBuilder().Build();
+  ContentContext renderer(context, nullptr);
   auto geom = Geometry::MakeCover();
   std::shared_ptr<ColorSourceContents> contents =
-      paint.CreateContents(geom.get());
+      paint.CreateContents(renderer, geom.get());
   ASSERT_TRUE(contents != nullptr);
   ASSERT_TRUE(contents->IsSolidColor());
 
