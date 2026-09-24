@@ -17,6 +17,26 @@ config("libcxxabi_config") {
     ldflags = [ "-Wl,-unexported_symbols_list," +
                 rebase_path("lib/new-delete.exp", root_build_dir) ]
   }
+
+  # OHOS: Link libunwind for C++ exception handling support (_Unwind_* functions).
+  # The libunwind.a is in the BiSheng compiler's arch-specific lib directory.
+  if (is_ohos) {
+    if (current_cpu == "arm64") {
+      _ohos_arch_dir = "aarch64-linux-ohos"
+    } else if (current_cpu == "arm") {
+      _ohos_arch_dir = "arm-linux-ohos"
+    } else if (current_cpu == "x86_64") {
+      _ohos_arch_dir = "x86_64-linux-ohos"
+    } else {
+      _ohos_arch_dir = "aarch64-linux-ohos"
+    }
+    _bisheng_lib_dir = "$custom_toolchain/lib/$_ohos_arch_dir"
+    ldflags = [
+      "-L" + rebase_path(_bisheng_lib_dir, root_build_dir),
+      "-lunwind",
+    ]
+    libs = [ "unwind" ]
+  }
 }
 
 source_set("libcxxabi") {
@@ -54,7 +74,10 @@ source_set("libcxxabi") {
   # No translation units in the engine are built with exceptions. But, using
   # Objective-C exceptions requires some infrastructure setup for exceptions.
   # Build support for the same in cxxabi on Darwin.
-  if (is_mac || is_ios) {
+  # OHOS: binaryen (wasm-opt) enables exceptions and needs real exception
+  # handling symbols (__cxa_allocate_exception, __cxa_throw, etc.) instead of
+  # the noexception stubs.
+  if (is_mac || is_ios || is_ohos) {
     configs -= [ "//build/config/gcc:no_exceptions" ]
     sources += [
       "src/cxa_exception.cpp",

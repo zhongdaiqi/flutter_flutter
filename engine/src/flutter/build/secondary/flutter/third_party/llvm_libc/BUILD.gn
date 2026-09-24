@@ -9,8 +9,11 @@ config("config") {
 }
 
 group("llvm_libc") {
-  # llvm-libc is only used as a dependency of libcxx.
-  visibility = [ "//flutter/third_party/libcxx" ]
+  # llvm-libc is only used as a dependency of libcxx and libcxx_ohos.
+  visibility = [
+    "//flutter/third_party/libcxx",
+    "//flutter/third_party/libcxx_ohos",
+  ]
 
   public_configs = [ ":config" ]
 }
