@@ -7,14 +7,14 @@
 #include <cstddef>
 #include <cstdint>
 #include <memory>
-#include <optional>
+#include <numeric>
 #include <utility>
 #include <vector>
 
 #include "flutter/fml/logging.h"
 #include "flutter/fml/trace_event.h"
+#include "fml/closure.h"
 
-#include "impeller/base/flags.h"
 #include "impeller/base/validation.h"
 #include "impeller/core/allocator.h"
 #include "impeller/core/buffer_view.h"
@@ -23,11 +23,9 @@
 #include "impeller/core/texture_descriptor.h"
 #include "impeller/geometry/rect.h"
 #include "impeller/geometry/size.h"
-#include "impeller/renderer/blit_pass.h"
 #include "impeller/renderer/command_buffer.h"
 #include "impeller/renderer/render_pass.h"
 #include "impeller/renderer/render_target.h"
-#include "impeller/typographer/backends/skia/glyph_atlas_parallelizer.h"
 #include "impeller/typographer/backends/skia/typeface_skia.h"
 #include "impeller/typographer/font_glyph_pair.h"
 #include "impeller/typographer/glyph.h"
@@ -35,12 +33,12 @@
 #include "impeller/typographer/rectangle_packer.h"
 #include "impeller/typographer/typographer_context.h"
 
+#include "third_party/abseil-cpp/absl/status/statusor.h"
 #include "third_party/skia/include/core/SkBitmap.h"
 #include "third_party/skia/include/core/SkBlendMode.h"
 #include "third_party/skia/include/core/SkCanvas.h"
 #include "third_party/skia/include/core/SkColor.h"
 #include "third_party/skia/include/core/SkFont.h"
-#include "third_party/skia/include/core/SkImageInfo.h"
 #include "third_party/skia/include/core/SkPaint.h"
 #include "third_party/skia/include/core/SkSize.h"
 #include "third_party/skia/include/core/SkSurface.h"
@@ -50,7 +48,6 @@ namespace impeller {
 constexpr auto kPadding = 2;
 
 namespace {
-
 SkPaint::Cap ToSkiaCap(Cap cap) {
   switch (cap) {
     case Cap::kButt:
@@ -74,15 +71,47 @@ SkPaint::Join ToSkiaJoin(Join join) {
   }
   FML_UNREACHABLE();
 }
-}  // namespace
 
-std::shared_ptr<TypographerContext> TypographerContextSkia::Make(
-    const Flags& flags) {
-  return std::make_shared<TypographerContextSkia>(flags);
+bool HasLightGlyphs(const GlyphAtlas& atlas,
+                    const std::vector<FontGlyphPair>& new_pairs,
+                    size_t start_index,
+                    size_t end_index) {
+  if (atlas.GetType() != GlyphAtlas::Type::kAlphaBitmap) {
+    return false;
+  }
+  for (size_t i = start_index; i < end_index; i++) {
+    if (new_pairs[i].glyph.properties.tone_or_color ==
+        GlyphProperties::kLightTone) {
+      return true;
+    }
+  }
+  return false;
 }
 
-TypographerContextSkia::TypographerContextSkia(const Flags& flags)
-    : flags_(flags) {}
+// Create an A8 bitmap from an color bitmap.
+absl::StatusOr<SkBitmap> ToA8Bitmap(const SkBitmap& src) {
+  FML_DCHECK(src.colorType() == kRGBA_8888_SkColorType);
+
+  SkBitmap a8_bitmap;
+  a8_bitmap.setInfo(SkImageInfo::MakeA8(src.width(), src.height()));
+  if (!a8_bitmap.tryAllocPixels()) {
+    return absl::Status(absl::StatusCode::kInternal,
+                        "Failed to allocate pixels for A8 bitmap");
+  }
+  if (!src.readPixels(a8_bitmap.pixmap())) {
+    return absl::Status(absl::StatusCode::kInternal,
+                        "Failed to read pixels into A8 bitmap");
+  }
+  return a8_bitmap;
+}
+
+}  // namespace
+
+std::shared_ptr<TypographerContext> TypographerContextSkia::Make() {
+  return std::make_shared<TypographerContextSkia>();
+}
+
+TypographerContextSkia::TypographerContextSkia() = default;
 
 TypographerContextSkia::~TypographerContextSkia() = default;
 
@@ -91,13 +120,21 @@ TypographerContextSkia::CreateGlyphAtlasContext(GlyphAtlas::Type type) const {
   return std::make_shared<GlyphAtlasContext>(type);
 }
 
-static SkImageInfo GetImageInfo(const GlyphAtlas& atlas, Size size) {
+SkImageInfo TypographerContextSkia::GetImageInfo(const GlyphAtlas& atlas,
+                                                 Size size,
+                                                 bool support_light_glyphs) {
+  SkISize skia_size = {static_cast<int32_t>(size.width),
+                       static_cast<int32_t>(size.height)};
+
   switch (atlas.GetType()) {
     case GlyphAtlas::Type::kAlphaBitmap:
-      return SkImageInfo::MakeA8(SkISize{static_cast<int32_t>(size.width),
-                                         static_cast<int32_t>(size.height)});
+      return support_light_glyphs
+                 ? SkImageInfo::Make(skia_size, kRGBA_8888_SkColorType,
+                                     kPremul_SkAlphaType)
+                 : SkImageInfo::MakeA8(skia_size);
     case GlyphAtlas::Type::kColorBitmap:
-      return SkImageInfo::MakeN32Premul(size.width, size.height);
+      return SkImageInfo::Make(skia_size, kRGBA_8888_SkColorType,
+                               kPremul_SkAlphaType);
   }
   FML_UNREACHABLE();
 }
@@ -218,8 +255,7 @@ static void DrawGlyph(SkCanvas* canvas,
                       const ScaledFont& scaled_font,
                       const SubpixelGlyph& glyph,
                       const Rect& scaled_bounds,
-                      const std::optional<GlyphProperties>& prop,
-                      bool has_color) {
+                      const GlyphProperties& prop) {
   const auto& metrics = scaled_font.font.GetMetrics();
   SkGlyphID glyph_id = glyph.glyph.index;
 
@@ -232,23 +268,27 @@ static void DrawGlyph(SkCanvas* canvas,
   sk_font.setSubpixel(true);
   sk_font.setSize(sk_font.getSize() * static_cast<Scalar>(scaled_font.scale));
 
-  auto glyph_color = prop.has_value() ? prop->color.ToARGB() : SK_ColorBLACK;
+  SkColor glyph_color;
+  if (prop.tone_or_color == GlyphProperties::kDarkTone) {
+    glyph_color = SK_ColorBLACK;
+  } else if (prop.tone_or_color == GlyphProperties::kLightTone) {
+    glyph_color = SK_ColorWHITE;
+  } else {
+    FML_DCHECK(std::holds_alternative<Color>(prop.tone_or_color));
+    glyph_color = std::get<Color>(prop.tone_or_color).ToARGB();
+  }
 
   SkPaint glyph_paint;
   glyph_paint.setColor(glyph_color);
   glyph_paint.setBlendMode(SkBlendMode::kSrc);
-  if (prop.has_value()) {
-    auto stroke = prop->stroke;
-    if (stroke.has_value()) {
-      glyph_paint.setStroke(true);
-      glyph_paint.setStrokeWidth(stroke->width *
-                                 static_cast<Scalar>(scaled_font.scale));
-      glyph_paint.setStrokeCap(ToSkiaCap(stroke->cap));
-      glyph_paint.setStrokeJoin(ToSkiaJoin(stroke->join));
-      glyph_paint.setStrokeMiter(stroke->miter_limit);
-    } else {
-      glyph_paint.setStroke(false);
-    }
+  if (prop.stroke.has_value()) {
+    auto stroke = prop.stroke;
+    glyph_paint.setStroke(true);
+    glyph_paint.setStrokeWidth(stroke->width *
+                               static_cast<Scalar>(scaled_font.scale));
+    glyph_paint.setStrokeCap(ToSkiaCap(stroke->cap));
+    glyph_paint.setStrokeJoin(ToSkiaJoin(stroke->join));
+    glyph_paint.setStrokeMiter(stroke->miter_limit);
   }
   canvas->save();
   Point subpixel_offset = SubpixelPositionToPoint(glyph.subpixel_offset);
@@ -276,10 +316,12 @@ static bool BulkUpdateAtlasBitmap(const GlyphAtlas& atlas,
                                   size_t end_index) {
   TRACE_EVENT0("impeller", __FUNCTION__);
 
-  bool has_color = atlas.GetType() == GlyphAtlas::Type::kColorBitmap;
+  bool has_light_glyphs =
+      HasLightGlyphs(atlas, new_pairs, start_index, end_index);
 
   SkBitmap bitmap;
-  bitmap.setInfo(GetImageInfo(atlas, Size(texture->GetSize())));
+  bitmap.setInfo(TypographerContextSkia::GetImageInfo(
+      atlas, Size(texture->GetSize()), has_light_glyphs));
   if (!bitmap.tryAllocPixels()) {
     return false;
   }
@@ -307,8 +349,16 @@ static bool BulkUpdateAtlasBitmap(const GlyphAtlas& atlas,
     }
 
     DrawGlyph(canvas, SkPoint::Make(pos.GetLeft(), pos.GetTop()),
-              pair.scaled_font, pair.glyph, bounds, pair.glyph.properties,
-              has_color);
+              pair.scaled_font, pair.glyph, bounds, pair.glyph.properties);
+  }
+
+  if (has_light_glyphs) {
+    auto a8_bitmap_status = ToA8Bitmap(bitmap);
+    if (!a8_bitmap_status.ok()) {
+      VALIDATION_LOG << a8_bitmap_status.status().message();
+      return false;
+    }
+    bitmap = a8_bitmap_status.value();
   }
 
   // Writing to a malloc'd buffer and then copying to the staging buffers
@@ -326,8 +376,7 @@ static bool BulkUpdateAtlasBitmap(const GlyphAtlas& atlas,
                                             texture->GetSize().height));
 }
 
-static bool UpdateAtlasBitmap(const Flags& flags,
-                              const GlyphAtlas& atlas,
+static bool UpdateAtlasBitmap(const GlyphAtlas& atlas,
                               std::shared_ptr<BlitPass>& blit_pass,
                               HostBuffer& data_host_buffer,
                               const std::shared_ptr<Texture>& texture,
@@ -336,46 +385,35 @@ static bool UpdateAtlasBitmap(const Flags& flags,
                               size_t end_index) {
   TRACE_EVENT0("impeller", __FUNCTION__);
 
-  bool has_color = atlas.GetType() == GlyphAtlas::Type::kColorBitmap;
-  std::vector<std::optional<PendingAtlasUpload>> pending_uploads(end_index -
-                                                                 start_index);
-
-  auto scan_fn = [&](size_t i) -> std::optional<ParallelGlyphWorkItem> {
+  for (size_t i = start_index; i < end_index; i++) {
     const FontGlyphPair& pair = new_pairs[i];
     auto data = atlas.FindFontGlyphBounds(pair);
     if (!data.has_value()) {
-      return std::nullopt;
+      continue;
     }
     auto [pos, bounds, placeholder] = data.value();
     FML_DCHECK(!placeholder);
 
     Size size = pos.GetSize();
     if (size.IsEmpty()) {
-      return std::nullopt;
+      continue;
     }
+    // The uploaded bitmap is expanded by 1px of padding
+    // on each side.
     size.width += 2;
     size.height += 2;
-    return ParallelGlyphWorkItem{
-        .index = i,
-        .pos = pos,
-        .bounds = bounds,
-        .size = size,
-        .cost = (has_color ? kColorGlyphBaseCost : kOutlineGlyphBaseCost),
-    };
-  };
 
-  auto rasterize_fn = [&](const ParallelGlyphWorkItem& item,
-                          PendingAtlasUpload& out) -> bool {
-    const FontGlyphPair& pair = new_pairs[item.index];
-    out.destination =
-        IRect::MakeXYWH(item.pos.GetLeft() - 1, item.pos.GetTop() - 1,
-                        item.size.width, item.size.height);
-    out.size = item.size;
-    out.bitmap.setInfo(GetImageInfo(atlas, item.size));
-    if (!out.bitmap.tryAllocPixels()) {
+    SkBitmap bitmap;
+    bool is_light_glyph =
+        pair.glyph.properties.tone_or_color == GlyphProperties::kLightTone;
+
+    bitmap.setInfo(
+        TypographerContextSkia::GetImageInfo(atlas, size, is_light_glyph));
+    if (!bitmap.tryAllocPixels()) {
       return false;
     }
-    auto surface = SkSurfaces::WrapPixels(out.bitmap.pixmap());
+
+    auto surface = SkSurfaces::WrapPixels(bitmap.pixmap());
     if (!surface) {
       return false;
     }
@@ -383,53 +421,42 @@ static bool UpdateAtlasBitmap(const Flags& flags,
     if (!canvas) {
       return false;
     }
-    DrawGlyph(canvas, SkPoint::Make(1, 1), pair.scaled_font, pair.glyph,
-              item.bounds, pair.glyph.properties, has_color);
-    return true;
-  };
 
-  if (!GlyphAtlasParallelizer::Rasterize(flags, start_index, end_index, scan_fn,
-                                         rasterize_fn, pending_uploads)) {
-    return false;
-  }
+    DrawGlyph(canvas, SkPoint::Make(1, 1), pair.scaled_font, pair.glyph, bounds,
+              pair.glyph.properties);
 
-  std::vector<BufferToTextureCopy> copies;
-  copies.reserve(pending_uploads.size());
-
-  {
-    TRACE_EVENT0("impeller", "UpdateAtlasBitmap::MergeUploads");
-    for (auto& pending_upload_opt : pending_uploads) {
-      if (!pending_upload_opt.has_value()) {
-        continue;
+    if (is_light_glyph) {
+      auto a8_bitmap_status = ToA8Bitmap(bitmap);
+      if (!a8_bitmap_status.ok()) {
+        VALIDATION_LOG << a8_bitmap_status.status().message();
+        return false;
       }
-      PendingAtlasUpload& pending_upload = pending_upload_opt.value();
-      const auto upload_size =
-          pending_upload.size.Area() *
-          BytesPerPixelForPixelFormat(
-              atlas.GetTexture()->GetTextureDescriptor().format);
-
-      BufferView buffer_view;
-      buffer_view =
-          data_host_buffer.Emplace(pending_upload.bitmap.getAddr(0, 0),
-                                   upload_size,
-                                   data_host_buffer.GetMinimumUniformAlignment());
-
-      BufferToTextureCopy copy;
-      copy.source = std::move(buffer_view);
-      copy.destination_region = pending_upload.destination;
-      copies.push_back(std::move(copy));
+      bitmap = a8_bitmap_status.value();
     }
-  }
 
-  {
-    TRACE_EVENT2_INT("impeller", "UpdateAtlasBitmap::AddCopies", "GlyphCount",
-                     end_index - start_index, "CopyCount", copies.size());
-    if (!blit_pass->AddCopies(std::move(copies), texture, /*label=*/"",
-                              /*convert_to_read=*/false)) {
+    // Writing to a malloc'd buffer and then copying to the staging buffers
+    // benchmarks as substantially faster on a number of Android devices.
+    BufferView buffer_view = data_host_buffer.Emplace(
+        bitmap.getAddr(0, 0),
+        size.Area() * BytesPerPixelForPixelFormat(
+                          atlas.GetTexture()->GetTextureDescriptor().format),
+        data_host_buffer.GetMinimumUniformAlignment());
+
+    // convert_to_read is set to false so that the texture remains in a transfer
+    // dst layout until we finish writing to it below. This only has an impact
+    // on Vulkan where we are responsible for managing image layouts.
+    if (!blit_pass->AddCopy(std::move(buffer_view),  //
+                            texture,                 //
+                            IRect::MakeXYWH(pos.GetLeft() - 1, pos.GetTop() - 1,
+                                            size.width, size.height),  //
+                            /*label=*/"",                              //
+                            /*mip_level=*/0,                           //
+                            /*slice=*/0,                               //
+                            /*convert_to_read=*/false                  //
+                            )) {
       return false;
     }
   }
-
   return blit_pass->ConvertTextureToShaderRead(texture);
 }
 
@@ -438,12 +465,12 @@ static Rect ComputeGlyphSize(const SkFont& font,
                              Scalar scale) {
   SkRect scaled_bounds;
   SkPaint glyph_paint;
-  if (glyph.properties.has_value() && glyph.properties->stroke) {
+  if (glyph.properties.stroke.has_value()) {
     glyph_paint.setStroke(true);
-    glyph_paint.setStrokeWidth(glyph.properties->stroke->width * scale);
-    glyph_paint.setStrokeCap(ToSkiaCap(glyph.properties->stroke->cap));
-    glyph_paint.setStrokeJoin(ToSkiaJoin(glyph.properties->stroke->join));
-    glyph_paint.setStrokeMiter(glyph.properties->stroke->miter_limit);
+    glyph_paint.setStrokeWidth(glyph.properties.stroke->width * scale);
+    glyph_paint.setStrokeCap(ToSkiaCap(glyph.properties.stroke->cap));
+    glyph_paint.setStrokeJoin(ToSkiaJoin(glyph.properties.stroke->join));
+    glyph_paint.setStrokeMiter(glyph.properties.stroke->miter_limit);
   }
   // Get bounds for a single glyph
   font.getBounds({&glyph.glyph.index, 1}, {&scaled_bounds, 1}, &glyph_paint);
@@ -456,7 +483,7 @@ static Rect ComputeGlyphSize(const SkFont& font,
   return Rect::MakeLTRB(scaled_bounds.fLeft - adjustment, scaled_bounds.fTop,
                         scaled_bounds.fRight + adjustment,
                         scaled_bounds.fBottom);
-}
+};
 
 std::pair<std::vector<FontGlyphPair>, std::vector<Rect>>
 TypographerContextSkia::CollectNewGlyphs(
@@ -584,7 +611,7 @@ std::shared_ptr<GlyphAtlas> TypographerContextSkia::CreateGlyphAtlas(
     // Step 4a: Draw new font-glyph pairs into the a host buffer and encode
     // the uploads into the blit pass.
     // ---------------------------------------------------------------------------
-    if (!UpdateAtlasBitmap(flags_, *last_atlas, blit_pass, data_host_buffer,
+    if (!UpdateAtlasBitmap(*last_atlas, blit_pass, data_host_buffer,
                            last_atlas->GetTexture(), new_glyphs, 0,
                            first_missing_index)) {
       return nullptr;
