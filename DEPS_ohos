@@ -17,7 +17,7 @@ vars = {
   'llvm_git': 'https://llvm.googlesource.com',
   'ohos_git': 'https://gitcode.com/zhong_ning',
   'dart_ai_rev': '9c96bfe5f091c9451eff5b59c9bffeb2e806b875',
-  'skia_revision': '95e8afd7251530737811441e80442342bb44431f',
+  'skia_revision': '03ea5ff5d4c7c21b82342b121663a45aa76b1e43',
 
   # Do not download the Emscripten SDK by default.
   # This prevents us from downloading the Emscripten toolchain for builds
@@ -245,10 +245,10 @@ deps = {
    Var('llvm_git') + '/llvm-project/libcxxabi' + '@' + 'a4dda1589d37a7e4b4f7a81ebad01b1083f2e726',
 
   'engine/src/flutter/third_party/libcxx_ohos':
-   Var('ohos_git') + '/fluttertpc_libcxx_ZN_WHL' + '@' + 'eae383e63c8f16e64f0b0bfae45de1c9c4d37c7a',
+   Var('ohos_git') + '/fluttertpc_libcxx_ZN_WHL' + '@' + '98f5ffbfe302be8d2757a82f6cce94d0916c6ecb',
 
   'engine/src/flutter/third_party/libcxxabi_ohos':
-   Var('ohos_git') + '/fluttertpc_libcxxabi_ZN_WHL' + '@' + 'ce6f4ce0a5c05deb48df4059d76eda3b42c50435',
+   Var('ohos_git') + '/fluttertpc_libcxxabi_ZN_WHL' + '@' + '57a15c79566a8454a002acc05f76d16afcda9420',
 
   'engine/src/flutter/third_party/llvm_libc':
    Var('llvm_git') + '/llvm-project/libc' + '@' + '5af39a19a1ad51ce93972cdab206dcd3ff9b6afa',
@@ -289,8 +289,11 @@ deps = {
   'engine/src/flutter/third_party/boringssl/src':
   'https://boringssl.googlesource.com/boringssl.git' + '@' + Var('dart_boringssl_rev'),
 
+  'engine/src/flutter/third_party/ai':
+   Var('dart_git') + '/ai.git' + '@' + Var('dart_ai_rev'),
+
   'engine/src/flutter/third_party/dart':
-   Var('ohos_git') + '/fluttertpc_dart_sdk_ZN_WHL.git' + '@' + '3b0ac665a28eb1d905bf5f80a628bf5a28d1a86c',
+   Var('ohos_git') + '/fluttertpc_dart_sdk_ZN_WHL.git' + '@' + '7c530d50ae368b8820e0ed6e25068121c7652f9c',
 
   # WARNING: Unused Dart dependencies in the list below till "WARNING:" marker are removed automatically - see create_updated_flutter_deps.py.
 
@@ -302,9 +305,6 @@ deps = {
 
   'engine/src/flutter/third_party/dart/third_party/perfetto/src':
    Var('chromium_git') + '/external/github.com/google/perfetto' + '@' + Var('dart_perfetto_rev'),
-
-  'engine/src/flutter/third_party/dart/third_party/pkg/ai':
-   Var('dart_git') + '/ai.git' + '@' + Var('dart_ai_rev'),
 
   'engine/src/flutter/third_party/dart/third_party/pkg/core':
    Var('dart_git') + '/core.git' + '@' + Var('dart_core_rev'),

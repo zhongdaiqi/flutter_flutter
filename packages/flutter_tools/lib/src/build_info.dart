@@ -949,7 +949,6 @@ List<DarwinArch> getDarwinArchsFromEnv(Map<String, String> defines) {
       defaultDarwinArchitectures;
 }
 
->>>>>>> oh-3.44.9-dev
 AndroidArch getAndroidArchForName(String platform) {
   return switch (platform) {
     'android-arm' => AndroidArch.armeabi_v7a,
