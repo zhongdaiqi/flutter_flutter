@@ -26,6 +26,7 @@ import 'package:flutter_tools/src/convert.dart';
 import 'package:flutter_tools/src/features.dart';
 import 'package:flutter_tools/src/ios/plist_parser.dart';
 import 'package:flutter_tools/src/macos/xcode.dart';
+import 'package:flutter_tools/src/ohos/ohos_sdk.dart';
 import 'package:flutter_tools/src/project.dart';
 import 'package:flutter_tools/src/resident_runner.dart';
 import 'package:flutter_tools/src/version.dart';
@@ -534,6 +535,7 @@ class FakeFlutterVersion implements FlutterVersion {
 // config. If not otherwise specified, all values default to false.
 class TestFeatureFlags implements FeatureFlags {
   TestFeatureFlags({
+    this.isOhosEnabled = false,
     this.isLinuxEnabled = false,
     this.isMacOSEnabled = false,
     this.isWebEnabled = false,
@@ -555,6 +557,9 @@ class TestFeatureFlags implements FeatureFlags {
     this.isRiscv64SupportEnabled = false,
     this.isMacOSArm64OnlyEnabled = false,
   });
+
+  @override
+  final bool isOhosEnabled;
 
   @override
   final bool isLinuxEnabled;
@@ -619,6 +624,7 @@ class TestFeatureFlags implements FeatureFlags {
   @override
   bool isEnabled(Feature feature) {
     return switch (feature) {
+      flutterOhosFeature => isOhosEnabled,
       flutterWebFeature => isWebEnabled,
       flutterLinuxDesktopFeature => isLinuxEnabled,
       flutterMacOSDesktopFeature => isMacOSEnabled,
@@ -644,6 +650,7 @@ class TestFeatureFlags implements FeatureFlags {
 
   @override
   List<Feature> get allFeatures => const <Feature>[
+    flutterOhosFeature,
     flutterWebFeature,
     flutterLinuxDesktopFeature,
     flutterMacOSDesktopFeature,
@@ -788,6 +795,28 @@ class FakeAndroidSdk extends Fake implements AndroidSdk {
 
   @override
   AndroidSdkVersion? latestVersion;
+}
+
+class FakeHmosSdk extends Fake implements HmosSdk {
+  FakeHmosSdk({this.sdkPath = '/fake/hmos/sdk'});
+
+  @override
+  final String sdkPath;
+
+  @override
+  String get name => 'HarmonyOSSDK';
+
+  @override
+  String? get hdcPath => null;
+
+  @override
+  String? get npmPath => null;
+
+  @override
+  List<String> get apiAvailable => <String>[];
+
+  @override
+  bool get isValidDirectory => true;
 }
 
 class FakeAndroidStudio extends Fake implements AndroidStudio {

@@ -28,6 +28,7 @@
 #include "impeller/typographer/typographer_context.h"
 
 namespace impeller {
+
 /// Pipeline state configuration.
 ///
 /// Each unique combination of these options requires a different pipeline state
@@ -323,6 +324,16 @@ class ContentContext {
 
   TextShadowCache& GetTextShadowCache() const { return *text_shadow_cache_; }
 
+#ifdef FML_OS_OHOS
+  void SetTargetColorSpace(ColorSpace color_space) {
+    target_color_space_ = color_space;
+  }
+
+  ColorSpace GetTargetColorSpace() const {
+    return target_color_space_;
+  }
+#endif
+
  protected:
   // Visible for testing.
   void SetTransientsIndexesBuffer(std::shared_ptr<HostBuffer> host_buffer) {
@@ -382,6 +393,9 @@ class ContentContext {
   std::shared_ptr<HostBuffer> indexes_host_buffer_;
   std::shared_ptr<Texture> empty_texture_;
   std::unique_ptr<TextShadowCache> text_shadow_cache_;
+#ifdef FML_OS_OHOS
+  ColorSpace target_color_space_ = ColorSpace::kSRGB;
+#endif
 
   bool is_texture_caching_enabled_ = false;
   mutable std::unordered_map<const flutter::DlImage*, std::shared_ptr<Texture>>

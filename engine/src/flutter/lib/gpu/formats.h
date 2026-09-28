@@ -65,6 +65,7 @@ enum class FlutterGPUPixelFormat {
   kS8UInt,
   kD24UnormS8Uint,
   kD32FloatS8UInt,
+  kB10G10R10A2UNorm,
   // Block-compressed formats. Sample-only; support is per-family.
   kBC1RGBAUNormInt,
   kBC1RGBAUNormIntSRGB,
@@ -144,6 +145,8 @@ constexpr impeller::PixelFormat ToImpellerPixelFormat(
       return impeller::PixelFormat::kD24UnormS8Uint;
     case FlutterGPUPixelFormat::kD32FloatS8UInt:
       return impeller::PixelFormat::kD32FloatS8UInt;
+    case FlutterGPUPixelFormat::kB10G10R10A2UNorm:
+      return impeller::PixelFormat::kB10G10R10A2UNorm;
     case FlutterGPUPixelFormat::kBC1RGBAUNormInt:
       return impeller::PixelFormat::kBC1RGBAUNormInt;
     case FlutterGPUPixelFormat::kBC1RGBAUNormIntSRGB:
@@ -215,6 +218,8 @@ constexpr FlutterGPUPixelFormat FromImpellerPixelFormat(
     case impeller::PixelFormat::kB10G10R10A10XR:
       // Apple-only extended-range formats, not exposed by the Flutter GPU API.
       return FlutterGPUPixelFormat::kUnknown;
+    case impeller::PixelFormat::kB10G10R10A2UNorm:
+      return FlutterGPUPixelFormat::kB10G10R10A2UNorm;
     case impeller::PixelFormat::kS8UInt:
       return FlutterGPUPixelFormat::kS8UInt;
     case impeller::PixelFormat::kD24UnormS8Uint:

@@ -93,6 +93,9 @@ class CleanCommand extends FlutterCommand {
     deleteFile(flutterProject.macos.ephemeralDirectory);
     deleteFile(flutterProject.windows.ephemeralDirectory);
     deleteFile(flutterProject.flutterPluginsDependenciesFile);
+
+    await flutterProject.ohos.deleteOhModulesCache();
+    deleteFile(flutterProject.ohos.ephemeralDirectory);
   }
 
   Future<void> _cleanXcode(XcodeBasedProject xcodeProject) async {

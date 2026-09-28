@@ -70,6 +70,18 @@ class BackgroundCommandPoolVK final {
 };
 
 CommandPoolVK::~CommandPoolVK() {
+  std::shared_ptr<DeviceHolderVK> device_holder = device_holder_.lock();
+  if (!device_holder) {
+    pool_.release();
+    for (auto& buffer : collected_buffers_) {
+      buffer.release();
+    }
+    for (auto& buffer : unused_command_buffers_) {
+      buffer.release();
+    }
+    return;
+  }
+
   if (!pool_) {
     return;
   }

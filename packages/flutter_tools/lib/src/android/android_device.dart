@@ -234,6 +234,10 @@ class AndroidDevice extends Device {
       case TargetPlatform.web_javascript:
       case TargetPlatform.windows_x64:
       case TargetPlatform.windows_arm64:
+      case TargetPlatform.ohos:
+      case TargetPlatform.ohos_arm:
+      case TargetPlatform.ohos_arm64:
+      case TargetPlatform.ohos_x64:
       case TargetPlatform.unsupported:
         throw UnsupportedError('Invalid target platform for Android');
     }
@@ -559,6 +563,10 @@ class AndroidDevice extends Device {
       case TargetPlatform.web_javascript:
       case TargetPlatform.windows_arm64:
       case TargetPlatform.windows_x64:
+      case TargetPlatform.ohos:
+      case TargetPlatform.ohos_arm:
+      case TargetPlatform.ohos_arm64:
+      case TargetPlatform.ohos_x64:
       case TargetPlatform.unsupported:
         _logger.printError('Android platforms are only supported.');
         return LaunchResult.failed();

@@ -171,3 +171,6 @@ app.*.symbols
 .agents/rules/personal-*
 .agents/skills/personal-*
 /.agent-shell/
+/dev/integration_tests/flavors/ohos/har/flutter.har
+engine/src/flutter/shell/platform/ohos/flutter_embedding/flutter/libs
+engine/src/flutter/shell/platform/ohos/flutter_embedding/flutter/src/ohosTest/resources/rawfile/flutter_assets

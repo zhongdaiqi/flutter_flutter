@@ -53,6 +53,7 @@ dependencies:
   http_multi_server: 3.2.2
   convert: 3.1.2
   async: 2.13.1
+  json5: ^0.8.0
   unified_analytics: 8.0.15
   pubspec_parse: 1.5.0
 
@@ -128,3 +129,15 @@ dartdoc:
   nodoc: true
 
 # PUBSPEC CHECKSUM: 8d140k
+
+dependency_overrides:
+  code_assets:
+    git:
+      url: https://gitcode.com/zhong_ning/fluttertpc_dart_native_ZN_WHL
+      path: pkgs/code_assets
+      ref: flutter_3.47.5_deps
+  hooks_runner:
+    git:
+      url: https://gitcode.com/zhong_ning/fluttertpc_dart_native_ZN_WHL
+      path: pkgs/hooks_runner
+      ref: flutter_3.47.5_deps
