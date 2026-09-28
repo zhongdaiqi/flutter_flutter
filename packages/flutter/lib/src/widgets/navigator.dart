@@ -40,8 +40,8 @@ import 'restoration_properties.dart';
 import 'routes.dart';
 import 'split_view_config.dart';
 import 'split_view_manager.dart';
+import 'indexed_stack.dart';
 import 'ticker_provider.dart';
-import 'visibility.dart';
 
 part 'split_view_navigator_policy.dart';
 

@@ -328,7 +328,7 @@ class InstallCodeAssets extends Target {
         '${getBuildDirectory()}/native_assets/ohos/',
       );
       await installCodeAssets(
-        dartHookResult: dartHookResult,
+        dartHookResult: combinedResult,
         environmentDefines: environment.defines,
         targetPlatform: targetPlatform,
         projectUri: projectUri,
