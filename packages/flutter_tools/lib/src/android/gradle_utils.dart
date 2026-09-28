@@ -331,6 +331,36 @@ String? parseGradleVersionFromDistributionUrl(String? distributionUrl) {
   return zipParts[1];
 }
 
+/// Returns the gradle-wrapper.properties value from the passed in [directory].
+///
+/// If gradle version is not found in the file, null is returned.
+/// [directory] should be an android directory.
+Future<String?> getGradleVersionFromFile(Directory directory, Logger logger) async {
+  final File propertiesFile = getGradleWrapperFile(directory);
+
+  if (propertiesFile.existsSync()) {
+    final String wrapperFileContent = propertiesFile.readAsStringSync();
+
+    final RegExpMatch? distributionUrl = distributionUrlRegex.firstMatch(wrapperFileContent);
+    if (distributionUrl != null) {
+      final String? gradleVersion = parseGradleVersionFromDistributionUrl(distributionUrl.group(0));
+      if (gradleVersion != null) {
+        return gradleVersion;
+      } else {
+        // Did not find gradle zip url. Likely this is a bug in our parsing.
+        logger.printWarning(_formatParseWarning(wrapperFileContent, type: 'gradle'));
+      }
+    } else {
+      // If no distributionUrl log then treat as if there was no propertiesFile.
+      logger.printTrace('$propertiesFile does not provide a Gradle version.');
+    }
+  } else {
+    // Could not find properties file.
+    logger.printTrace('$propertiesFile does not exist.');
+  }
+  return null;
+}
+
 /// Returns either the gradle-wrapper.properties value from the passed in
 /// [directory] or if not present the version available in local path.
 ///

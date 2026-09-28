@@ -17,6 +17,7 @@ import '../build_system/build_system.dart';
 import '../build_system/targets/ohos.dart';
 import '../cache.dart';
 import '../dart/package_map.dart';
+import '../flutter_plugins.dart';
 import '../globals.dart' as globals;
 import '../project.dart';
 import 'application_package.dart';
@@ -441,6 +442,13 @@ class OhosDartBuilder implements OhosBuilder {
     await checkOhosPluginsDependencies(project);
     await addPluginsModules(project);
     await addFlutterModuleAndPluginsSrcOverrides(project);
+
+    // Generate GeneratedPluginRegistrant.ets for OHOS platform.
+    await injectPlugins(
+      project,
+      ohosPlatform: true,
+      releaseMode: ohosBuildInfo.buildInfo.mode.isRelease,
+    );
 
     parseData(project, _logger);
 

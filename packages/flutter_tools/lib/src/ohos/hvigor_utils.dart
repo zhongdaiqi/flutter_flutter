@@ -7,6 +7,8 @@ import 'dart:convert';
 
 import 'package:json5/json5.dart';
 
+import 'package:unified_analytics/unified_analytics.dart';
+
 import '../base/common.dart';
 import '../base/file_system.dart';
 
@@ -15,7 +17,6 @@ import '../build_info.dart';
 import '../cache.dart';
 import '../globals.dart' as globals;
 import '../project.dart';
-import '../reporting/reporting.dart';
 import 'ohos_sdk.dart';
 
 const String FLAVOR_DEFAULT = 'default';
@@ -108,12 +109,13 @@ void writeLocalProperties(File properties) {
 }
 
 void exitWithNoSdkMessage() {
-  BuildEvent(
-    'unsupported-project',
-    type: 'hvigor',
-    eventError: 'hos-sdk-not-found',
-    flutterUsage: globals.flutterUsage,
-  ).send();
+  globals.analytics.send(
+    Event.flutterBuildInfo(
+      label: 'unsupported-project',
+      buildType: 'hvigor',
+      settings: 'hos-sdk-not-found',
+    ),
+  );
   throwToolExit(
     '${globals.logger.terminal.warningMark} No Hmos SDK found. '
     'Try setting the HOS_SDK_HOME environment variable.',

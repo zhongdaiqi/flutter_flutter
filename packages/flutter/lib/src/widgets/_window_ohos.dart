@@ -90,18 +90,18 @@ class WindowingOwnerOHOS extends WindowingOwner {
   @override
   RegularWindowController createRegularWindowController({
     required RegularWindowControllerDelegate delegate,
-    Size? preferredSize,
-    BoxConstraints? preferredConstraints,
+    Size? size,
+    BoxConstraints? constraints,
+    required bool resizable,
     String? title,
-    bool decorated = true,
   }) {
     final RegularWindowControllerOHOS controller = RegularWindowControllerOHOS(
       owner: this,
       delegate: delegate,
-      preferredSize: preferredSize,
-      preferredConstraints: preferredConstraints,
+      preferredSize: size,
+      preferredConstraints: constraints,
       title: title,
-      decorated: decorated,
+      decorated: true,
     );
     return controller;
   }
@@ -109,20 +109,20 @@ class WindowingOwnerOHOS extends WindowingOwner {
   @override
   DialogWindowController createDialogWindowController({
     required DialogWindowControllerDelegate delegate,
-    Size? preferredSize,
-    BoxConstraints? preferredConstraints,
+    Size? size,
+    BoxConstraints? constraints,
+    required bool resizable,
     BaseWindowController? parent,
     String? title,
-    bool decorated = true,
   }) {
     final DialogWindowControllerOHOS controller = DialogWindowControllerOHOS(
       owner: this,
       delegate: delegate,
-      preferredSize: preferredSize,
-      preferredConstraints: preferredConstraints,
+      preferredSize: size,
+      preferredConstraints: constraints,
       parent: parent,
       title: title,
-      decorated: decorated,
+      decorated: true,
     );
     return controller;
   }
@@ -131,7 +131,7 @@ class WindowingOwnerOHOS extends WindowingOwner {
   @override
   TooltipWindowController createTooltipWindowController({
     required TooltipWindowControllerDelegate delegate,
-    required BoxConstraints preferredConstraints,
+    required BoxConstraints constraints,
     required Rect anchorRect,
     required WindowPositioner positioner,
     required BaseWindowController parent,
@@ -139,7 +139,7 @@ class WindowingOwnerOHOS extends WindowingOwner {
     final TooltipWindowControllerOHOS controller = TooltipWindowControllerOHOS(
       owner: this,
       delegate: delegate,
-      contentSizeConstraints: preferredConstraints,
+      contentSizeConstraints: constraints,
       anchorRect: anchorRect,
       positioner: positioner,
       parent: parent,
@@ -151,7 +151,7 @@ class WindowingOwnerOHOS extends WindowingOwner {
   @override
   PopupWindowController createPopupWindowController({
     required PopupWindowControllerDelegate delegate,
-    required BoxConstraints preferredConstraints,
+    required BoxConstraints constraints,
     required Rect anchorRect,
     required WindowPositioner positioner,
     required BaseWindowController parent,
@@ -159,7 +159,7 @@ class WindowingOwnerOHOS extends WindowingOwner {
     final PopupWindowControllerOHOS controller = PopupWindowControllerOHOS(
       owner: this,
       delegate: delegate,
-      contentSizeConstraints: preferredConstraints,
+      contentSizeConstraints: constraints,
       parent: parent,
       anchorRect: anchorRect,
       positioner: positioner,
@@ -184,8 +184,9 @@ class WindowingOwnerOHOS extends WindowingOwner {
     required BaseWindowController parent,
     required WindowPositioner initialPositioner,
     Rect? initialAnchorRect,
-    Size? preferredSize,
-    BoxConstraints? preferredConstraints,
+    Size? size,
+    BoxConstraints? constraints,
+    required bool resizable,
     String? title,
   }) {
     throw UnimplementedError('Satellite windows are not yet implemented on OHOS.');

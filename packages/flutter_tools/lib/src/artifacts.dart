@@ -808,7 +808,7 @@ class CachedArtifacts implements Artifacts {
       case Artifact.flutterEngineHar:
         return _fileSystem.path.join(
           _getEngineArtifactsPath(platform, mode)!,
-          _artifactToFileName(artifact, _platform, mode),
+          'flutter.har',
         );
       case Artifact.flutterToolsFileGenerators:
         return _getFileGeneratorsPath();
