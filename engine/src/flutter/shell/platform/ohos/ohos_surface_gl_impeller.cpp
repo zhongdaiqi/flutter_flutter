@@ -197,8 +197,7 @@ std::unique_ptr<Surface> OHOSSurfaceGLImpeller::CreateGPUSurface(
   auto surface = std::make_unique<GPUSurfaceGLImpeller>(
       this,                              // delegate
       impeller_context_,                 // context
-      true,                              // bool render_to_surface
-      ohos_context_->GetImpellerFlags()  // flags
+      true                               // render_to_surface
   );
   if (!surface->IsValid()) {
     return nullptr;
