@@ -45,6 +45,7 @@
 #include <memory>
 #include <set>
 #include "flutter/display_list/skia/dl_sk_canvas.h"
+#include "flutter/display_list/image/dl_image_skia.h"
 #include "flutter/fml/log_settings.h"
 #include "flutter/shell/platform/ohos/ohos_external_texture_vulkan.h"
 #include "flutter/shell/platform/ohos/test_stubs/ace_graphic_ndk_stub.h"
@@ -115,7 +116,7 @@ sk_sp<flutter::DlImage> MakeRasterDlImage(SkColor color) {
   SkBitmap bitmap;
   bitmap.allocN32Pixels(8, 8);
   bitmap.eraseColor(color);
-  return flutter::DlImage::Make(SkImages::RasterFromBitmap(bitmap));
+  return flutter::DlImageSkia::Make(SkImages::RasterFromBitmap(bitmap));
 }
 
 class ScopedCharDevFstat {
