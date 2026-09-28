@@ -30,6 +30,7 @@ struct MockCommandBuffer {
       : called_functions_(std::move(called_functions)) {}
   std::shared_ptr<std::vector<std::string>> called_functions_;
   std::vector<VkImageMemoryBarrier> image_memory_barriers_;
+  std::vector<VkViewport> recorded_viewports_;
 };
 
 struct MockQueryPool {};
@@ -651,6 +652,9 @@ void vkCmdSetViewport(VkCommandBuffer commandBuffer,
   MockCommandBuffer* mock_command_buffer =
       reinterpret_cast<MockCommandBuffer*>(commandBuffer);
   mock_command_buffer->called_functions_->push_back("vkCmdSetViewport");
+  for (uint32_t i = 0; i < viewportCount; ++i) {
+    mock_command_buffer->recorded_viewports_.push_back(pViewports[i]);
+  }
 }
 
 void vkFreeCommandBuffers(VkDevice device,
@@ -1214,6 +1218,12 @@ std::vector<VkImageMemoryBarrier>& GetImageMemoryBarriers(
   MockCommandBuffer* mock_command_buffer =
       reinterpret_cast<MockCommandBuffer*>(buffer);
   return mock_command_buffer->image_memory_barriers_;
+}
+
+const std::vector<VkViewport>& GetRecordedViewports(VkCommandBuffer buffer) {
+  MockCommandBuffer* mock_command_buffer =
+      reinterpret_cast<MockCommandBuffer*>(buffer);
+  return mock_command_buffer->recorded_viewports_;
 }
 
 }  // namespace testing

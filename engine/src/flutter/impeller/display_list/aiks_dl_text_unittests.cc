@@ -735,7 +735,7 @@ TEST_P(AiksTest, TextContentsMismatchedTransformTest) {
         text_frame,     //
         preroll_point,  //
         preroll_matrix,
-        std::nullopt  //
+        GlyphProperties{}  //
     );
   }
 
