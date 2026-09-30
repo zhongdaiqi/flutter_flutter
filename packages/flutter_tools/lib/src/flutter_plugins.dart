@@ -1457,7 +1457,6 @@ Future<void> injectPlugins(
   PubspecCache? pubspecCache,
   PackageGraph? packageGraph,
   PackageConfig? packageConfig,
-  Iterable<String>? allowedPlugins,
   bool ohosPlatform = false,
 }) async {
   final List<Plugin> plugins = await findPlugins(
