@@ -26,6 +26,34 @@ function makeView(id: string): FlutterView {
   return new FlutterView(id, getContext() as common.Context);
 }
 
+class FakeUiContext {
+  vpPerPx: number;
+
+  constructor(vpPerPx: number) {
+    this.vpPerPx = vpPerPx;
+  }
+
+  px2vp(value: number): number {
+    return value * this.vpPerPx;
+  }
+}
+
+class ThrowingUiContext {
+  px2vp(value: number): number {
+    throw new Error('px2vp unavailable');
+  }
+}
+
+function stubUiContext(view: FlutterView, uiContext: object | undefined): void {
+  const v: Any = view;
+  v['tryGetUIContext'] = (): object | undefined => uiContext;
+}
+
+function invokeGetEffectiveDensity(view: FlutterView): number {
+  const v: Any = view;
+  return v['getEffectiveDensity']() as number;
+}
+
 class TestFirstFrameListener implements FirstFrameListener {
   called: boolean = false;
 
@@ -544,6 +572,50 @@ export default function flutterViewTest() {
       const view = new FlutterView('cb03', getContext() as common.Context);
       view.onAreaChange(null);
       expect(view).not().assertNull();
+    });
+  });
+
+  describe('FlutterViewEffectiveDensityTest', () => {
+    it('inverts_px2vp_to_window_density', 0, () => {
+      const view = makeView('effective_density_invert_view');
+      stubUiContext(view, new FakeUiContext(1 / 3.0));
+      expect(Math.abs(invokeGetEffectiveDensity(view) - 3.0) < 1e-6).assertTrue();
+    });
+
+    it('inverts_px2vp_for_non_default_density', 0, () => {
+      const view = makeView('effective_density_pinned_view');
+      stubUiContext(view, new FakeUiContext(0.5));
+      expect(Math.abs(invokeGetEffectiveDensity(view) - 2.0) < 1e-6).assertTrue();
+    });
+
+    it('falls_back_to_system_density_without_uicontext', 0, () => {
+      const view = makeView('effective_density_no_context_view');
+      stubUiContext(view, undefined);
+      expect(invokeGetEffectiveDensity(view)).assertEqual(display.getDefaultDisplaySync().densityPixels);
+    });
+
+    it('falls_back_to_system_density_when_px2vp_returns_zero', 0, () => {
+      const view = makeView('effective_density_zero_view');
+      stubUiContext(view, new FakeUiContext(0));
+      expect(invokeGetEffectiveDensity(view)).assertEqual(display.getDefaultDisplaySync().densityPixels);
+    });
+
+    it('falls_back_to_system_density_when_px2vp_returns_nan', 0, () => {
+      const view = makeView('effective_density_nan_view');
+      stubUiContext(view, new FakeUiContext(NaN));
+      expect(invokeGetEffectiveDensity(view)).assertEqual(display.getDefaultDisplaySync().densityPixels);
+    });
+
+    it('falls_back_to_system_density_when_px2vp_returns_infinity', 0, () => {
+      const view = makeView('effective_density_inf_view');
+      stubUiContext(view, new FakeUiContext(Infinity));
+      expect(invokeGetEffectiveDensity(view)).assertEqual(display.getDefaultDisplaySync().densityPixels);
+    });
+
+    it('falls_back_to_system_density_when_px2vp_throws', 0, () => {
+      const view = makeView('effective_density_throw_view');
+      stubUiContext(view, new ThrowingUiContext());
+      expect(invokeGetEffectiveDensity(view)).assertEqual(display.getDefaultDisplaySync().densityPixels);
     });
   });
 }
