@@ -2,22 +2,33 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+import 'dart:typed_data';
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:leak_tracker_flutter_testing/leak_tracker_flutter_testing.dart';
 
-import '../../painting/mocks_for_image_cache.dart';
+import '../../image_data.dart';
 
-List<int> selectedTabs;
+late List<int> selectedTabs;
 
 void main() {
+  // TODO(polina-c): dispose ImageStreamCompleterHandle, https://github.com/flutter/flutter/issues/145599 [leaks-to-clean]
+  LeakTesting.settings = LeakTesting.settings.withIgnoredAll();
+
   setUp(() {
     selectedTabs = <int>[];
   });
 
   testWidgets('Last tab gets focus', (WidgetTester tester) async {
     // 2 nodes for 2 tabs
-    final List<FocusNode> focusNodes = <FocusNode>[FocusNode(), FocusNode()];
+    final List<FocusNode> focusNodes = <FocusNode>[];
+    for (int i = 0; i < 2; i++) {
+      final FocusNode focusNode = FocusNode();
+      focusNodes.add(focusNode);
+      addTearDown(focusNode.dispose);
+    }
 
     await tester.pumpWidget(
       MaterialApp(
@@ -51,9 +62,12 @@ void main() {
   });
 
   testWidgets('Do not affect focus order in the route', (WidgetTester tester) async {
-    final List<FocusNode> focusNodes = <FocusNode>[
-      FocusNode(), FocusNode(), FocusNode(), FocusNode(),
-    ];
+    final List<FocusNode> focusNodes = <FocusNode>[];
+    for (int i = 0; i < 4; i++) {
+      final FocusNode focusNode = FocusNode();
+      focusNodes.add(focusNode);
+      addTearDown(focusNode.dispose);
+    }
 
     await tester.pumpWidget(
       MaterialApp(
@@ -166,12 +180,12 @@ void main() {
       matching: find.byType(RichText),
     ));
     // Tab 2 should still be selected after changing theme.
-    expect(tab1.text.style.color.value, 0xFF757575);
+    expect(tab1.text.style!.color!.value, 0xFF757575);
     final RichText tab2 = tester.widget(find.descendant(
       of: find.text('Tab 2'),
       matching: find.byType(RichText),
     ));
-    expect(tab2.text.style.color.value, CupertinoColors.systemRed.darkColor.value);
+    expect(tab2.text.style!.color!.value, CupertinoColors.systemRed.darkColor.value);
   });
 
   testWidgets('dark mode background color', (WidgetTester tester) async {
@@ -198,10 +212,10 @@ void main() {
       find.descendant(
         of: find.byType(CupertinoTabScaffold),
         matching: find.byType(DecoratedBox),
-      )
+      ),
     ).decoration as BoxDecoration;
 
-    expect(tabDecoration.color.value, backgroundColor.color.value);
+    expect(tabDecoration.color!.value, backgroundColor.color.value);
 
     // Dark mode
     await tester.pumpWidget(
@@ -221,10 +235,10 @@ void main() {
       find.descendant(
         of: find.byType(CupertinoTabScaffold),
         matching: find.byType(DecoratedBox),
-      )
+      ),
     ).decoration as BoxDecoration;
 
-    expect(tabDecoration.color.value, backgroundColor.darkColor.value);
+    expect(tabDecoration.color!.value, backgroundColor.darkColor.value);
   });
 
   testWidgets('Does not lose state when focusing on text input', (WidgetTester tester) async {
@@ -232,9 +246,7 @@ void main() {
 
     await tester.pumpWidget(
       MediaQuery(
-        data: const MediaQueryData(
-          viewInsets:  EdgeInsets.only(bottom: 0),
-        ),
+        data: const MediaQueryData(),
         child: MaterialApp(
           home: Material(
             child: CupertinoTabScaffold(
@@ -279,13 +291,14 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         home: Builder(builder: (BuildContext context) {
-          return MediaQuery(
-            data: MediaQuery.of(context).copyWith(textScaleFactor: 99),
+          return MediaQuery.withClampedTextScaling(
+            minScaleFactor: 99,
+            maxScaleFactor: 99,
             child: CupertinoTabScaffold(
               tabBar: CupertinoTabBar(
                 items: List<BottomNavigationBarItem>.generate(
                   10,
-                  (int i) => BottomNavigationBarItem(icon: const ImageIcon(TestImageProvider(24, 23)), title: Text('$i')),
+                  (int i) => BottomNavigationBarItem(icon: ImageIcon(MemoryImage(Uint8List.fromList(kTransparentImage))), label: '$i'),
                 ),
               ),
               tabBuilder: (BuildContext context, int index) => const Text('content'),
@@ -311,23 +324,23 @@ void main() {
     );
 
     expect(barItems.length, greaterThan(0));
-    expect(barItems.any((RichText t) => t.textScaleFactor != 1), isFalse);
+    expect(barItems, isNot(contains(predicate((RichText t) => t.textScaler != TextScaler.noScaling))));
 
     expect(contents.length, greaterThan(0));
-    expect(contents.any((RichText t) => t.textScaleFactor != 99), isFalse);
+    expect(contents, isNot(contains(predicate((RichText t) => t.textScaler != const TextScaler.linear(99.0)))));
   });
 }
 
 CupertinoTabBar _buildTabBar({ int selectedTab = 0 }) {
   return CupertinoTabBar(
-    items: const <BottomNavigationBarItem>[
+    items: <BottomNavigationBarItem>[
       BottomNavigationBarItem(
-        icon: ImageIcon(TestImageProvider(24, 24)),
-        title: Text('Tab 1'),
+        icon: ImageIcon(MemoryImage(Uint8List.fromList(kTransparentImage))),
+        label: 'Tab 1',
       ),
       BottomNavigationBarItem(
-        icon: ImageIcon(TestImageProvider(24, 24)),
-        title: Text('Tab 2'),
+        icon: ImageIcon(MemoryImage(Uint8List.fromList(kTransparentImage))),
+        label: 'Tab 2',
       ),
     ],
     currentIndex: selectedTab,

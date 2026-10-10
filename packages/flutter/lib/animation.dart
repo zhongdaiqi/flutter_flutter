@@ -131,8 +131,8 @@
 /// another. For example, let's say you want to animate the background of a
 /// widget from yellow to green and then, after a short pause, to red. For this
 /// you can specify three tweens within a tween sequence: One [ColorTween]
-/// animating from blue to green, one [ConstantTween] that just holds the color
-/// green, and another [ColorTween] animating from green to yellow. For each
+/// animating from yellow to green, one [ConstantTween] that just holds the color
+/// green, and another [ColorTween] animating from green to red. For each
 /// tween you need to pick a weight indicating the ratio of time spent on that
 /// tween compared to all other tweens. If we assign a weight of 2 to both of
 /// the [ColorTween]s and a weight of 1 to the [ConstantTween] the transition
@@ -152,7 +152,7 @@
 ///    on flutter.dev.
 ///  * [Animations tutorial](https://flutter.dev/docs/development/ui/animations/tutorial)
 ///    on flutter.dev.
-///  * [Sample app](https://github.com/flutter/samples/tree/master/animations),
+///  * [Sample app](https://github.com/flutter/samples/tree/main/animations),
 ///    which showcases Flutter's animation features.
 ///  * [ImplicitlyAnimatedWidget] and its subclasses, which are [Widget]s that
 ///    implicitly animate changes to their properties.
@@ -160,8 +160,12 @@
 ///    explicit [Animation] to animate their properties.
 library animation;
 
+// AnimationController can throw TickerCanceled
+export 'package:flutter/scheduler.dart' show TickerCanceled;
+
 export 'src/animation/animation.dart';
 export 'src/animation/animation_controller.dart';
+export 'src/animation/animation_style.dart';
 export 'src/animation/animations.dart';
 export 'src/animation/curves.dart';
 export 'src/animation/listener_helpers.dart';

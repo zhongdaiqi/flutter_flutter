@@ -18,5 +18,14 @@
   "cutButtonLabel": "Knippen",
   "copyButtonLabel": "Kopiëren",
   "pasteButtonLabel": "Plakken",
-  "selectAllButtonLabel": "Alles selecteren"
+  "selectAllButtonLabel": "Alles selecteren",
+  "tabSemanticsLabel": "Tabblad $tabIndex van $tabCount",
+  "modalBarrierDismissLabel": "Sluiten",
+  "searchTextFieldPlaceholderLabel": "Zoeken",
+  "noSpellCheckReplacementsLabel": "Geen vervangingen gevonden",
+  "menuDismissLabel": "Menu sluiten",
+  "lookUpButtonLabel": "Opzoeken",
+  "searchWebButtonLabel": "Op internet zoeken",
+  "shareButtonLabel": "Delen...",
+  "clearButtonLabel": "Clear"
 }

@@ -4,9 +4,9 @@
 
 import 'dart:async';
 
-import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   testWidgets('Positioned constructors', (WidgetTester tester) async {
@@ -71,13 +71,14 @@ void main() {
       duration: const Duration(seconds: 10),
       vsync: tester,
     );
+    addTearDown(controller.dispose);
     final List<Size> sizes = <Size>[];
     final List<Offset> positions = <Offset>[];
     final GlobalKey key = GlobalKey();
 
     void recordMetrics() {
-      final RenderBox box = key.currentContext.findRenderObject() as RenderBox;
-      final BoxParentData boxParentData = box.parentData as BoxParentData;
+      final RenderBox box = key.currentContext!.findRenderObject()! as RenderBox;
+      final BoxParentData boxParentData = box.parentData! as BoxParentData;
       sizes.add(box.size);
       positions.add(boxParentData.offset);
     }
@@ -86,7 +87,7 @@ void main() {
       Directionality(
         textDirection: TextDirection.ltr,
         child: Center(
-          child: Container(
+          child: SizedBox(
             height: 100.0,
             width: 100.0,
             child: Stack(
