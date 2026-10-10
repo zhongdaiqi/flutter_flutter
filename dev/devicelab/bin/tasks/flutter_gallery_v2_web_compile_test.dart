@@ -2,11 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import 'dart:io';
-
 import 'package:flutter_devicelab/framework/framework.dart';
+import 'package:flutter_devicelab/framework/task_result.dart';
 import 'package:flutter_devicelab/framework/utils.dart';
-
 import 'package:flutter_devicelab/tasks/perf_tests.dart' show WebCompileTest;
 
 Future<void> main() async {
@@ -22,22 +20,25 @@ class NewGalleryWebCompileTest {
 
   /// Runs the test.
   Future<TaskResult> run() async {
-    await gitClone(path: 'temp', repo: 'https://github.com/flutter/gallery.git');
-
     final Map<String, Object> metrics = await inDirectory<Map<String, int>>(
-      'temp/gallery',
+      '${flutterDirectory.path}/dev/integration_tests/new_gallery/',
       () async {
         await flutter('doctor');
 
-        return await WebCompileTest.runSingleBuildTest(
-          directory: 'temp/gallery',
+        await flutter('create', options: <String>[
+          '--platforms',
+          'web,android,ios',
+          '--no-overwrite',
+          '.'
+        ]);
+
+        return WebCompileTest.runSingleBuildTest(
+          directory: '${flutterDirectory.path}/dev/integration_tests/new_gallery/',
           metric: metricKeyPrefix,
           measureBuildTime: true,
         );
       },
     );
-
-    rmTree(Directory('temp'));
 
     return TaskResult.success(metrics, benchmarkScoreKeys: metrics.keys.toList());
   }
