@@ -6,17 +6,13 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:path/path.dart' as path;
-
 import 'package:flutter_devicelab/framework/framework.dart';
+import 'package:flutter_devicelab/framework/task_result.dart';
 import 'package:flutter_devicelab/framework/utils.dart';
 
 Future<void> main() async {
   await task(const NewGalleryChromeRunTest().run);
 }
-
-/// URI for the New Flutter Gallery repository.
-const String galleryRepo = 'https://github.com/flutter/gallery.git';
 
 /// After the gallery loads, a duration of [durationToWaitForError]
 /// is waited, allowing any possible exceptions to be thrown.
@@ -36,9 +32,13 @@ class NewGalleryChromeRunTest {
 
   /// Runs the test.
   Future<TaskResult> run() async {
-    await gitClone(path: 'temp', repo: galleryRepo);
-
-    final TaskResult result = await inDirectory<TaskResult>('temp/gallery', () async {
+    final TaskResult result = await inDirectory<TaskResult>('${flutterDirectory.path}/dev/integration_tests/new_gallery/', () async {
+      await flutter('create', options: <String>[
+        '--platforms',
+        'web,android,ios',
+        '--no-overwrite',
+        '.'
+      ]);
       await flutter('doctor');
       await flutter('packages', options: <String>['get']);
 
@@ -50,9 +50,9 @@ class NewGalleryChromeRunTest {
       ]);
 
       final List<String> options = <String>['-d', 'chrome', '--verbose', '--resident'];
-      final Process process = await startProcess(
-        path.join(flutterDirectory.path, 'bin', 'flutter'),
-        flutterCommandArgs('run', options),
+      final Process process = await startFlutter(
+        'run',
+        options: options,
       );
 
       final Completer<void> stdoutDone = Completer<void>();
@@ -101,8 +101,6 @@ class NewGalleryChromeRunTest {
         return TaskResult.failure('An exception was thrown.');
       }
     });
-
-    rmTree(Directory('temp'));
 
     return result;
   }

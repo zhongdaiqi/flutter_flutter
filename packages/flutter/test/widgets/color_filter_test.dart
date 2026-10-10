@@ -2,9 +2,17 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import 'package:flutter_test/flutter_test.dart';
+// This file is run as part of a reduced test set in CI on Mac and Windows
+// machines.
+@Tags(<String>['reduced-test-set'])
+@TestOn('!chrome')
+library;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+import 'package:flutter_test/flutter_test.dart';
+
+import '../impeller_test_helpers.dart';
 
 void main() {
   testWidgets('Color filter - red', (WidgetTester tester) async {
@@ -34,8 +42,9 @@ void main() {
         child: ColorFiltered(
           colorFilter: sepia,
           child: MaterialApp(
+            debugShowCheckedModeBanner: false, // https://github.com/flutter/flutter/issues/143616
             title: 'Flutter Demo',
-            theme: ThemeData(primarySwatch: Colors.blue),
+            theme: ThemeData(primarySwatch: Colors.blue, useMaterial3: false),
             home: Scaffold(
               appBar: AppBar(
                 title: const Text('Sepia ColorFilter Test'),
@@ -57,7 +66,7 @@ void main() {
       find.byType(ColorFiltered),
       matchesGoldenFile('color_filter_sepia.png'),
     );
-  });
+  }, skip: impellerEnabled); // https://github.com/flutter/flutter/issues/143616
 
   testWidgets('Color filter - reuses its layer', (WidgetTester tester) async {
     Future<void> pumpWithColor(Color color) async {
@@ -73,7 +82,7 @@ void main() {
 
     await pumpWithColor(Colors.red);
     final RenderObject renderObject = tester.firstRenderObject(find.byType(ColorFiltered));
-    final ColorFilterLayer originalLayer = renderObject.debugLayer as ColorFilterLayer;
+    final ColorFilterLayer originalLayer = renderObject.debugLayer! as ColorFilterLayer;
     expect(originalLayer, isNotNull);
 
     // Change color to force a repaint.
