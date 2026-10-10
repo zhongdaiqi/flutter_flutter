@@ -206,6 +206,12 @@ class PvUtKnobGuard {
 
 class PvOhosRecordingDelegate : public NullDelegate {
  public:
+  // Upstream PlatformView::Delegate grew a pure-virtual hit-test entry point.
+  flutter::HitTestResponse OnPlatformViewHitTest(
+      int64_t view_id,
+      const flutter::PointData offset) override {
+    return {.has_platform_view = false};
+  }
   void OnPlatformViewCreated(std::unique_ptr<Surface> surface) override {
     std::lock_guard<std::mutex> lock(mutex_);
     created_count_++;
@@ -474,6 +480,12 @@ class WbNullDelegate : public PlatformView::Delegate {
 
 class WbRecordingDelegate : public WbNullDelegate {
  public:
+  // Upstream PlatformView::Delegate grew a pure-virtual hit-test entry point.
+  flutter::HitTestResponse OnPlatformViewHitTest(
+      int64_t view_id,
+      const flutter::PointData offset) override {
+    return {.has_platform_view = false};
+  }
   void OnPlatformViewCreated(std::unique_ptr<Surface>) override {
     Bump(created_);
   }

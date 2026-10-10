@@ -293,7 +293,7 @@ deps = {
    Var('dart_git') + '/ai.git' + '@' + Var('dart_ai_rev'),
 
   'engine/src/flutter/third_party/dart':
-   Var('ohos_git') + '/fluttertpc_dart_sdk_zn_whl_1009.git' + '@' + '0042dda35fe4b725b84469a4cf5e5526d8ee1cb2',
+   Var('ohos_git') + '/fluttertpc_dart_sdk_zn_whl_1009.git' + '@' + '4be2051ca46c33e537bec2af56092ec66143ddb5',
 
   # WARNING: Unused Dart dependencies in the list below till "WARNING:" marker are removed automatically - see create_updated_flutter_deps.py.
 

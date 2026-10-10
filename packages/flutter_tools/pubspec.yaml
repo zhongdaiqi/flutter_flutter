@@ -128,16 +128,16 @@ dartdoc:
   # Exclude this package from the hosted API docs.
   nodoc: true
 
-# PUBSPEC CHECKSUM: 8d140k
+# PUBSPEC CHECKSUM: rgk7nj
 
 dependency_overrides:
   code_assets:
     git:
-      url: https://gitcode.com/zhong_ning/fluttertpc_dart_native_ZN_WHL
+      url: https://gitcode.com/zhong_ning/fluttertpc_dart_native_zn_whl_1009
       path: pkgs/code_assets
-      ref: flutter_3.47.5_deps
+      ref: flutter_3.47.7_deps
   hooks_runner:
     git:
-      url: https://gitcode.com/zhong_ning/fluttertpc_dart_native_ZN_WHL
+      url: https://gitcode.com/zhong_ning/fluttertpc_dart_native_zn_whl_1009
       path: pkgs/hooks_runner
-      ref: flutter_3.47.5_deps
+      ref: flutter_3.47.7_deps
