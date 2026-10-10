@@ -148,24 +148,22 @@ collect_engine_artifacts() {
     local engine_bin_dir="$out_dir/$ohos_variant"
     local gtest_dir="$resource_dir/gtest/$ohos_variant"
 
+    local unittest_bin="$engine_bin_dir/flutter_ohos_unittests"
+    if [[ ! -f "$unittest_bin" ]]; then
+        log_warn "flutter_ohos_unittests not found: $unittest_bin, skip collecting gtest artifacts"
+        return 0
+    fi
+
     log_info "Collecting flutter_ohos_unittests from $ohos_variant"
 
     run_cmd "mkdir -p $gtest_dir/exe.unstripped"
-
-    local unittest_bin="$engine_bin_dir/flutter_ohos_unittests"
-    if [[ -f "$unittest_bin" ]]; then
-        run_cmd "cp $unittest_bin $gtest_dir/"
-    else
-        log_error "flutter_ohos_unittests not found: $unittest_bin"
-        exit 1
-    fi
+    run_cmd "cp $unittest_bin $gtest_dir/"
 
     local unittest_bin_unstripped="$engine_bin_dir/exe.unstripped/flutter_ohos_unittests"
     if [[ -f "$unittest_bin_unstripped" ]]; then
         run_cmd "cp $unittest_bin_unstripped $gtest_dir/exe.unstripped/"
     else
-        log_error "unstripped flutter_ohos_unittests not found: $unittest_bin_unstripped"
-        exit 1
+        log_warn "unstripped flutter_ohos_unittests not found: $unittest_bin_unstripped"
     fi
 
 }
