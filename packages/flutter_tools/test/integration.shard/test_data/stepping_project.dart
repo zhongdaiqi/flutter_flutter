@@ -8,6 +8,8 @@ class SteppingProject extends Project {
   @override
   final String pubspec = '''
   name: test
+  environment:
+    sdk: '>=3.2.0-0 <4.0.0'
   dependencies:
     flutter:
       sdk: flutter
@@ -19,7 +21,7 @@ class SteppingProject extends Project {
 
   import 'package:flutter/material.dart';
 
-  void main() => runApp(new MyApp());
+  void main() => runApp(MyApp());
 
   class MyApp extends StatefulWidget {
     @override
@@ -35,17 +37,17 @@ class SteppingProject extends Project {
 
     Future<void> doAsyncStuff() async {
       print("test"); // BREAKPOINT
-      await new Future.value(true); // STEP 1 // STEP 2
-      await new Future.microtask(() => true); // STEP 3 // STEP 4
-      await new Future.delayed(const Duration(milliseconds: 1)); // STEP 5 // STEP 6
+      await Future.value(true); // STEP 1 // STEP 2
+      await Future.microtask(() => true); // STEP 3 // STEP 4
+      await Future.delayed(const Duration(milliseconds: 1)); // STEP 5 // STEP 6
       print("done!"); // STEP 7
     } // STEP 8
 
     @override
     Widget build(BuildContext context) {
-      return new MaterialApp(
+      return MaterialApp(
         title: 'Flutter Demo',
-        home: new Container(),
+        home: Container(),
       );
     }
   }
@@ -56,4 +58,60 @@ class SteppingProject extends Project {
   int lineForStep(int i) => lineContaining(main, '// STEP $i');
 
   final int numberOfSteps = 8;
+}
+
+class WebSteppingProject extends Project {
+  @override
+  final String pubspec = '''
+  name: test
+  environment:
+    sdk: '>=3.2.0-0 <4.0.0'
+  dependencies:
+    flutter:
+      sdk: flutter
+  ''';
+
+  @override
+  final String main = r'''
+  import 'dart:async';
+
+  import 'package:flutter/material.dart';
+
+  void main() => runApp(MyApp());
+
+  class MyApp extends StatefulWidget {
+    @override
+    _MyAppState createState() => _MyAppState();
+  }
+
+  class _MyAppState extends State<MyApp> {
+    @override
+    void initState() {
+      doAsyncStuff();
+      super.initState();
+    }
+
+    Future<void> doAsyncStuff() async {
+      print("test"); // BREAKPOINT
+      await Future.value(true); // STEP 1
+      await Future.microtask(() => true); // STEP 2
+      await Future.delayed(const Duration(milliseconds: 1));  // STEP 3
+      print("done!"); // STEP 4
+    } // STEP 5
+
+    @override
+    Widget build(BuildContext context) {
+      return MaterialApp(
+        title: 'Flutter Demo',
+        home: Container(),
+      );
+    }
+  }
+  ''';
+
+  Uri get breakpointUri => mainDart;
+  int get breakpointLine => lineContaining(main, '// BREAKPOINT');
+  int lineForStep(int i) => lineContaining(main, '// STEP $i');
+
+  final int numberOfSteps = 5;
 }
