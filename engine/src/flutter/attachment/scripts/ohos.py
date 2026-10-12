@@ -183,7 +183,7 @@ def engineConfig(buildInfo, args):
     )
   OPT = "--unoptimized " if buildInfo.unoptimized else ""
   LTO = "--no-lto " if buildInfo.buildType == "debug" else ""
-  UNUSE_BISHENG = "--unuse-bisheng" if args.unuse_bisheng else ""
+  UNUSE_BISHENG = "--unuse-bisheng " if args.unuse_bisheng else ""
 
   runCommand(
       "%s " % os.path.join("src", "flutter", "tools", "gn") + "--ohos " +
@@ -192,7 +192,7 @@ def engineConfig(buildInfo, args):
       "--embedder-for-target " + "--disable-desktop-embeddings " + "--no-build-embedder-examples " +
       "--ohos-api-int %s " % args.ohos_api_int + "--verbose " + UNUSE_BISHENG +
       args.gn_extra_param.replace("\\", ""),
-      checkCode=False,
+      checkCode=True,
       timeout=600,
   )
 
@@ -365,7 +365,7 @@ def buildLocalEngine(buildType, args):
       OPT + LTO + "--no-goma " + "--no-prebuilt-dart-sdk " + "--full-dart-sdk " +
       "--disable-desktop-embeddings " + "--no-build-embedder-examples " + "--verbose " +
       hostAppend + extraParam.replace("\\", ""),
-      checkCode=False,
+      checkCode=True,
       timeout=600,
   )
   append1 = "_unopt" if args.unoptimized else ""
