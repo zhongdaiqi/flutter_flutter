@@ -64,7 +64,6 @@ vars = {
   'dart_binaryen_rev': '9926156a583cec3d22d521232b31c70fa9a87dc1',
   'dart_boringssl_rev': '2e508c973d634b3aa51b71db5062bc6b096e5031',
   'dart_core_rev': 'be0b1531c445a185d3e93887b8d0355fc766c314',
-  'dart_devtools_rev': '12d595649f189f1896722623f72599077f476848',
   'dart_ecosystem_rev': '848b3bf3b757d2e9ae4d60030eeed5756c87783f',
   'dart_http_rev': '5d94ef52582867e077bf41c3fa20fb8b1d1d834e',
   'dart_i18n_rev': 'd0683bdea253d19a4350f5bc2be9017aba61837f',
@@ -301,7 +300,7 @@ deps = {
    Var('chromium_git') + '/external/github.com/WebAssembly/binaryen.git' + '@' + Var('dart_binaryen_rev'),
 
   'engine/src/flutter/third_party/dart/third_party/devtools':
-   {'dep_type': 'cipd', 'packages': [{'package': 'dart/third_party/flutter/devtools', 'version': 'git_revision:12d595649f189f1896722623f72599077f476848'}]},
+   'https://gitcode.com/zhong_ning/devtools_artifacts_1015.git' + '@' + '10904c8379113c467ca058d89fcc192c4678ef55',
 
   'engine/src/flutter/third_party/dart/third_party/perfetto/src':
    Var('chromium_git') + '/external/github.com/google/perfetto' + '@' + Var('dart_perfetto_rev'),
