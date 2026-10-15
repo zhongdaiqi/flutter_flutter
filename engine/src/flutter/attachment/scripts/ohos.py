@@ -184,7 +184,7 @@ def engineConfig(buildInfo, args):
     )
   OPT = "--unoptimized " if buildInfo.unoptimized else ""
   LTO = "--no-lto " if buildInfo.buildType == "debug" else ""
-  UNUSE_BISHENG = "--unuse-bisheng" if (args.unuse_bisheng or args.llvm18) else ""
+  UNUSE_BISHENG = "--unuse-bisheng " if (args.unuse_bisheng or args.llvm18) else ""
 
   runCommand(
       "%s " % os.path.join("src", "flutter", "tools", "gn") + "--ohos " +
@@ -193,17 +193,17 @@ def engineConfig(buildInfo, args):
       "--embedder-for-target " + "--disable-desktop-embeddings " + "--no-build-embedder-examples " +
       "--ohos-api-int %s " % args.ohos_api_int + "--verbose " +
       ("--llvm18 " if args.llvm18 else "") + UNUSE_BISHENG + args.gn_extra_param.replace("\\", ""),
-      checkCode=False,
+      checkCode=True,
       timeout=600,
   )
 
 
 # 执行engine编译操作
-def engineCompile(buildInfo):
+def engineCompile(buildInfo, args):
   command = "ninja -C %s default " % os.path.join("src", "out", getOutput(buildInfo))
   if IS_WINDOWS and buildInfo.buildType != "debug":
     command += "flutter/build/archives:archive_win_gen_snapshot "
-  if not IS_WINDOWS:
+  if not IS_WINDOWS and "--coverage" in (args.gn_extra_param or ""):
     command += "flutter/shell/platform/ohos:flutter_ohos_unittests "
     command += "flutter/shell/platform/ohos:flutter_ohos_app_test "
   runCommand(command)
@@ -369,7 +369,7 @@ def buildLocalEngine(buildType, args):
       OPT + LTO + "--no-goma " + "--no-prebuilt-dart-sdk " + "--full-dart-sdk " +
       "--disable-desktop-embeddings " + "--no-build-embedder-examples " + "--verbose " +
       hostAppend + extraParam.replace("\\", ""),
-      checkCode=False,
+      checkCode=True,
       timeout=600,
   )
   append1 = "_unopt" if args.unoptimized else ""
@@ -401,7 +401,7 @@ def buildByNameAndType(args):
       elif "har" == buildName:
         harBuild(buildInfo, args)
       elif "compile" == buildName:
-        engineCompile(buildInfo)
+        engineCompile(buildInfo, args)
       elif "zip" == buildName:
         zipFiles(buildInfo, False, args)
       elif "zip2" == buildName:

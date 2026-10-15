@@ -323,6 +323,31 @@ export class FlutterView {
   private isXComponentAttachedToEngine: boolean = false
   private viewportMetrics = new ViewportMetrics();
   private displayInfo?: display.Display;
+
+  /**
+   * Returns the effective density of the current window.
+   *
+   * display.getDefaultDisplaySync().densityPixels is the global system density and does not
+   * reflect the density of a window adjusted via WindowStage.setDefaultDensityEnabled or
+   * setCustomDensity; the uiObserver densityUpdate event is not emitted when the system
+   * display-size setting changes. Derive the window density from UIContext.px2vp(1) instead:
+   * a window pinned to the default density reports the default density, other windows follow
+   * the system density. Falls back to the system density when no UIContext is available
+   * (previous behavior).
+   */
+  private getEffectiveDensity(): number {
+    const sysDensity = display.getDefaultDisplaySync().densityPixels;
+    try {
+      const uiContext = this.tryGetUIContext();
+      const vpPerPx = uiContext?.px2vp(1) ?? 0;
+      if (vpPerPx > 0 && Number.isFinite(vpPerPx)) {
+        return 1 / vpPerPx;
+      }
+    } catch (e) {
+      Log.e(TAG, 'getEffectiveDensity error: ' + JSON.stringify(e));
+    }
+    return sysDensity;
+  }
   private keyboardManager: KeyboardManager | null = null;
   private statusBarClickChannel: StatusBarClickChannel | null = null;
   private mainWindow: window.Window | null = null;
@@ -393,6 +418,10 @@ export class FlutterView {
     this.mFirstFrameListeners = new ArrayList<FirstFrameListener>();
     this.mFirstPreloadFrameListeners = new ArrayList<FirstPreloadFrameListener>();
     this.registerDefaultCallbacks();
+  }
+
+  getContext(): Context {
+    return this.context;
   }
 
   onBackPressCallback = () => {
@@ -572,10 +601,10 @@ export class FlutterView {
           // If DPI has been customized, do not process system DPI changes
           this.displayInfo = display.getDefaultDisplaySync();
           this.flutterEngine?.getFlutterNapi()?.updateDensity(this.displayInfo.densityPixels);
-          this.flutterEngine?.getTextInputChannel()?.setDevicePixelRatio(this.displayInfo.densityPixels);
+          this.flutterEngine?.getTextInputChannel()?.setDevicePixelRatio(this.getEffectiveDensity());
 
-        let devicePixelRatio: number = this.displayInfo.densityPixels;
-        Log.i(TAG, `windowSizeChangeCallback devicePixelRatio: ${devicePixelRatio}, viewportMetrics.devicePixelRatio: ${this.viewportMetrics.devicePixelRatio}`);
+          let devicePixelRatio: number = this.getEffectiveDensity();
+          Log.i(TAG, `windowSizeChangeCallback devicePixelRatio: ${devicePixelRatio}, viewportMetrics.devicePixelRatio: ${this.viewportMetrics.devicePixelRatio}`);
 
         if (devicePixelRatio !== this.viewportMetrics.devicePixelRatio) {
           this.viewportMetrics.devicePixelRatio = devicePixelRatio;
@@ -621,8 +650,8 @@ export class FlutterView {
       Log.d(TAG, "Skipping display change callback due to custom DPI setting");
       return;
     }
-    this.flutterEngine?.getTextInputChannel()?.setDevicePixelRatio(this.displayInfo.densityPixels);
-    let devicePixelRatio: number = this.displayInfo?.densityPixels;
+    this.flutterEngine?.getTextInputChannel()?.setDevicePixelRatio(this.getEffectiveDensity());
+    let devicePixelRatio: number = this.getEffectiveDensity();
     Log.i(TAG, "Display on: " + JSON.stringify(this.displayInfo) + ". Display id:" + JSON.stringify(data))
     if (devicePixelRatio != this.viewportMetrics.devicePixelRatio) {
       this.viewportMetrics.devicePixelRatio = devicePixelRatio;
@@ -1139,6 +1168,8 @@ export class FlutterView {
     this.flutterEngine?.getPlatformViewsController()?.detachTextInputPlugin();
     this.flutterEngine = null;
     this.keyboardManager = null;
+    this.mouseCursorPlugin?.destroy();
+    this.mouseCursorPlugin = undefined;
     this.textInputPlugin?.destroy();
   }
 
@@ -1187,7 +1218,6 @@ export class FlutterView {
     if (this.uiContext !== undefined && this.autofillUiContext === undefined) {
       this.applyAutofillUiContext(this.uiContext);
     }
-    FlutterManager.getInstance().decorateTitleButtons(this.id);
     Log.d(TAG, "uiContext init and sendSettings finished.");
   }
 
