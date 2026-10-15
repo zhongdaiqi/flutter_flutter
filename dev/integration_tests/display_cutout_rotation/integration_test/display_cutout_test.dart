@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+import 'dart:io' show Platform;
 import 'dart:ui';
 
 import 'package:display_cutout_rotation/main.dart';
@@ -34,8 +35,12 @@ void main() {
       }
       final Iterable<DisplayFeature> displayFeatures = getCutouts(tester, context);
       if (displayFeatures.isEmpty) {
-        // ohos has no cutout-injection mechanism; a panel without a cutout
-        // has nothing to assert.
+        // OHOS has no cutout-injection mechanism; a panel without a cutout
+        // has nothing to assert. Other platforms always report a cutout
+        // (injected by the harness), so an empty list there is a regression.
+        if (!Platform.isOhos) {
+          fail('No cutout display feature reported by this device');
+        }
         print('No cutout display feature reported by this device; skipping.');
         return;
       }
@@ -63,6 +68,9 @@ void main() {
       // Verify that app code reports the cutout in landscape too.
       final Iterable<DisplayFeature> displayFeatures = getCutouts(tester, context);
       if (displayFeatures.isEmpty) {
+        if (!Platform.isOhos) {
+          fail('No cutout display feature reported by this device');
+        }
         print('No cutout display feature reported by this device; skipping.');
         return;
       }
@@ -86,6 +94,9 @@ void main() {
       }
       Iterable<DisplayFeature> displayFeatures = getCutouts(tester, context);
       if (displayFeatures.isEmpty) {
+        if (!Platform.isOhos) {
+          fail('No cutout display feature reported by this device');
+        }
         print('No cutout display feature reported by this device; skipping.');
         return;
       }

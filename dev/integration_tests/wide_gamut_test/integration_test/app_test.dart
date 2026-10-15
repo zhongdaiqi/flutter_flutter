@@ -212,7 +212,7 @@ bool _findColor(
       color,
       epsilon: epsilon,
     ),
-    _ => fail('Unsupported pixel format: $format'),
+    _ => throw StateError('Unsupported pixel format: $format'),
   };
 }
 

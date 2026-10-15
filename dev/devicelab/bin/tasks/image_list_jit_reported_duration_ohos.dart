@@ -14,7 +14,7 @@ Future<void> main() async {
       ReportedDurationTestFlavor.debug,
       '${flutterDirectory.path}/examples/image_list',
       'lib/main.dart',
-      'com.example.image_list',
+      ohosBundleName('${flutterDirectory.path}/examples/image_list'),
       RegExp(r'===image_list=== all loaded in ([\d]+)ms.'),
     ).run,
   );
