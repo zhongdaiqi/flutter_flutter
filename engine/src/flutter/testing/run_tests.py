@@ -889,7 +889,8 @@ def run_ohos_unittest(
 
 
 def _filter_coverage_source_files(cov_binary, unstripped_exe, merged_profile, source_regex):
-  """Returns source files matching source_regex, excluding third_party/unittest/fixture/test_stubs/generated."""
+  """Returns source files matching source_regex, excluding
+  third_party/unittest/fixture/test_stubs/generated."""
   report_output = subprocess.check_output(
       [cov_binary, 'report', '-object', unstripped_exe,
        '-instr-profile=%s' % merged_profile],
@@ -992,8 +993,8 @@ def _get_ohos_llvm_bin_dir(build_dir):
   args_gn_path = os.path.join(build_dir, 'args.gn')
   if not os.path.exists(args_gn_path):
     return None
-  with open(args_gn_path, 'r') as f:
-    content = f.read()
+  with open(args_gn_path, 'r') as args_file:
+    content = args_file.read()
   match = re.search(r'custom_toolchain\s*=\s*"([^"]+)"', content)
   if match:
     return os.path.join(match.group(1), 'bin')

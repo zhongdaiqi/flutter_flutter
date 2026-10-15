@@ -2742,6 +2742,7 @@ const Set<String> kExecutableAllowlist = <String>{
   'ci/scripts/compile_engine.sh',
   'ci/scripts/compile_hello_world.sh',
   'ci/scripts/compile_web.sh',
+  'ci/scripts/engine_analyze.sh',
   'ci/scripts/gclient_sync.sh',
   'ci/scripts/init_flutter_test_env.sh',
   'ci/scripts/pack_flutter.sh',
