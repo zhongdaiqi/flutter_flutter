@@ -459,7 +459,8 @@ class FlutterProject {
         linuxPlatform ||
         macOSPlatform ||
         windowsPlatform ||
-        webPlatform;
+        webPlatform ||
+        ohosPlatform;
     if (isPlugin || !anyPlatformEnabled) {
       return;
     }
