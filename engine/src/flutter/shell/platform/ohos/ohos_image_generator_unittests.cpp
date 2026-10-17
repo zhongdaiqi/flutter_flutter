@@ -44,6 +44,81 @@ sk_sp<SkData> Bytes(const std::vector<uint8_t>& bytes) {
   return SkData::MakeWithCopy(bytes.data(), bytes.size());
 }
 
+// Builds a minimal GIF byte stream: the GIF89a header, a placeholder
+// logical screen descriptor, and an optional NETSCAPE2.0 / ANIMEXTS1.0
+// application extension (a null app_id means no looping extension).
+std::vector<uint8_t> MakeGifBytes(const char* app_id, uint16_t loop) {
+  std::vector<uint8_t> bytes = {'G', 'I', 'F', '8', '9', 'a'};
+  const uint8_t kDescriptor[] = {0x01, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00};
+  bytes.insert(bytes.end(), kDescriptor, kDescriptor + sizeof(kDescriptor));
+  if (app_id != nullptr) {
+    const uint8_t kExtHeader[] = {0x21, 0xFF, 0x0B};
+    bytes.insert(bytes.end(), kExtHeader, kExtHeader + sizeof(kExtHeader));
+    while (*app_id != '\0') {
+      bytes.push_back(static_cast<uint8_t>(*app_id++));
+    }
+    bytes.push_back(0x03);
+    bytes.push_back(0x01);
+    bytes.push_back(static_cast<uint8_t>(loop & 0xFF));
+    bytes.push_back(static_cast<uint8_t>(loop >> 8));
+    bytes.push_back(0x00);
+  }
+  bytes.push_back(0x3B);  // trailer
+  return bytes;
+}
+
+// Inserts a comment extension containing the "NETSCAPE2.0" text as a decoy
+// before the real extension, to verify that only a structurally valid
+// application extension is recognized.
+std::vector<uint8_t> MakeGifWithDecoy() {
+  std::vector<uint8_t> bytes = {'G', 'I', 'F', '8', '9', 'a'};
+  const char kDecoyText[] = "see NETSCAPE2.0 here";
+  bytes.push_back(0x21);
+  bytes.push_back(0xFE);  // comment extension
+  bytes.push_back(static_cast<uint8_t>(sizeof(kDecoyText) - 1));
+  bytes.insert(bytes.end(), kDecoyText, kDecoyText + sizeof(kDecoyText) - 1);
+  bytes.push_back(0x00);
+  const auto real = MakeGifBytes("NETSCAPE2.0", 2);
+  bytes.insert(bytes.end(), real.begin() + 6, real.end());
+  return bytes;
+}
+
+// Builds a minimal WebP: a RIFF/WEBP container with a VP8X chunk and an
+// optional ANIM chunk.
+std::vector<uint8_t> MakeWebpBytes(uint16_t loop, bool with_anim = true) {
+  auto push_chunk = [](std::vector<uint8_t>& out, const char* tag,
+                       const std::vector<uint8_t>& payload) {
+    out.insert(out.end(), tag, tag + 4);
+    const uint32_t size = static_cast<uint32_t>(payload.size());
+    for (int i = 0; i < 4; ++i) {
+      out.push_back(static_cast<uint8_t>((size >> (8 * i)) & 0xFF));
+    }
+    out.insert(out.end(), payload.begin(), payload.end());
+    if (size & 1) {
+      out.push_back(0x00);  // RIFF chunks are padded to even sizes
+    }
+  };
+
+  std::vector<uint8_t> body = {'W', 'E', 'B', 'P'};
+  push_chunk(body, "VP8X", {0x02, 0, 0, 0, 0, 0, 0, 0, 0, 0});
+  if (with_anim) {
+    const std::vector<uint8_t> anim = {0,
+                                       0,
+                                       0,
+                                       0,  // background color
+                                       static_cast<uint8_t>(loop & 0xFF),
+                                       static_cast<uint8_t>(loop >> 8)};
+    push_chunk(body, "ANIM", anim);
+  }
+  std::vector<uint8_t> bytes = {'R', 'I', 'F', 'F'};
+  const uint32_t size = static_cast<uint32_t>(body.size());
+  for (int i = 0; i < 4; ++i) {
+    bytes.push_back(static_cast<uint8_t>((size >> (8 * i)) & 0xFF));
+  }
+  bytes.insert(bytes.end(), body.begin(), body.end());
+  return bytes;
+}
+
 sk_sp<SkData> RealPngData() {
   static const uint8_t kPng[] = {
       137, 80, 78,  71, 13, 10, 26,  10, 0,  0,   0,   13, 73,  72,  68,  82,
@@ -404,7 +479,17 @@ TEST_F(OHOSImageGeneratorTest, GetPlayCountAndFrameInfo) {
   EXPECT_EQ(generator->GetPlayCount(), 1u);
   generator->frame_count_ = 3;
   EXPECT_EQ(generator->GetPlayCount(), ImageGenerator::kInfinitePlayCount);
+  generator->play_count_ = 3;
+  EXPECT_EQ(generator->GetPlayCount(), 3u);
+  generator->play_count_ = 2;
+  EXPECT_EQ(generator->GetPlayCount(), 2u);
+  generator->play_count_ = 0;
+  EXPECT_EQ(generator->GetPlayCount(), ImageGenerator::kInfinitePlayCount);
+  generator->play_count_ = -1;
+  EXPECT_EQ(generator->GetPlayCount(), ImageGenerator::kInfinitePlayCount);
+  generator->play_count_ = 3;
   generator->frame_count_ = 1;
+  EXPECT_EQ(generator->GetPlayCount(), 1u);
 
   generator->frame_time_duration_ = {16, -5};
   EXPECT_EQ(generator->GetFrameInfo(0).duration, 16u);
@@ -568,6 +653,74 @@ TEST_F(OHOSImageGeneratorTest, CreateExternalTextureSourceConsistency) {
     EXPECT_NO_FATAL_FAILURE(generator->CreateExternalTextureSource(
         SkISize::Make(2, 2), 0, std::nullopt));
   }
+}
+
+// ===== Animation loop count parsing (pure functions, no device required) =====
+
+TEST_F(OHOSImageGeneratorTest, ParseEncodedPlayCountGifScenarios) {
+  // A NETSCAPE2.0 wire loop count N means "repeat N times after the first
+  // play", so the total play count is N + 1.
+  EXPECT_EQ(OHOSImageGenerator::ParseEncodedPlayCount(
+                Bytes(MakeGifBytes("NETSCAPE2.0", 2))),
+            3);
+  EXPECT_EQ(OHOSImageGenerator::ParseEncodedPlayCount(
+                Bytes(MakeGifBytes("NETSCAPE2.0", 1))),
+            2);
+  // A loop count of 0 means infinite.
+  EXPECT_EQ(OHOSImageGenerator::ParseEncodedPlayCount(
+                Bytes(MakeGifBytes("NETSCAPE2.0", 0))),
+            0);
+  // Without a looping extension every frame plays exactly once (matching the
+  // Skia path).
+  EXPECT_EQ(OHOSImageGenerator::ParseEncodedPlayCount(
+                Bytes(MakeGifBytes(nullptr, 0))),
+            1);
+  // ANIMEXTS1.0 is an equivalent alternative application identifier.
+  EXPECT_EQ(OHOSImageGenerator::ParseEncodedPlayCount(
+                Bytes(MakeGifBytes("ANIMEXTS1.0", 2))),
+            3);
+  // Truncated data with only the file signature is treated as having no
+  // extension.
+  EXPECT_EQ(OHOSImageGenerator::ParseEncodedPlayCount(
+                Bytes(std::vector<uint8_t>{'G', 'I', 'F', '8', '9', 'a'})),
+            1);
+  // The "NETSCAPE2.0" text inside a comment extension must not be mistaken
+  // for a looping extension.
+  EXPECT_EQ(
+      OHOSImageGenerator::ParseEncodedPlayCount(Bytes(MakeGifWithDecoy())), 3);
+}
+
+TEST_F(OHOSImageGeneratorTest, ParseEncodedPlayCountWebpScenarios) {
+  // The WebP ANIM loop count is the total play count (0 = infinite).
+  EXPECT_EQ(OHOSImageGenerator::ParseEncodedPlayCount(Bytes(MakeWebpBytes(2))),
+            2);
+  EXPECT_EQ(OHOSImageGenerator::ParseEncodedPlayCount(Bytes(MakeWebpBytes(1))),
+            1);
+  EXPECT_EQ(OHOSImageGenerator::ParseEncodedPlayCount(Bytes(MakeWebpBytes(0))),
+            0);
+  // A static WebP without an ANIM chunk is not animated.
+  EXPECT_EQ(
+      OHOSImageGenerator::ParseEncodedPlayCount(Bytes(MakeWebpBytes(2, false))),
+      -1);
+  // A truncated ANIM chunk is treated as unknown.
+  auto webp = MakeWebpBytes(2);
+  webp.resize(webp.size() - 3);
+  EXPECT_EQ(OHOSImageGenerator::ParseEncodedPlayCount(Bytes(webp)), -1);
+  // Non-animated format (PNG signature).
+  const uint8_t kPng[] = {0x89, 'P', 'N', 'G', '\r', '\n', 0x1A, '\n'};
+  EXPECT_EQ(OHOSImageGenerator::ParseEncodedPlayCount(
+                Bytes(std::vector<uint8_t>(kPng, kPng + sizeof(kPng)))),
+            -1);
+}
+
+// Directly exercise the two format-specific parsers (exposed as members for
+// testing).
+TEST_F(OHOSImageGeneratorTest, ParseGifAndWebpLoopCountDirect) {
+  EXPECT_EQ(OHOSImageGenerator::ParseGifLoopCount(
+                Bytes(MakeGifBytes("NETSCAPE2.0", 5))),
+            6);
+  EXPECT_EQ(OHOSImageGenerator::ParseWebpAnimLoopCount(Bytes(MakeWebpBytes(7))),
+            7);
 }
 
 }  // namespace testing
