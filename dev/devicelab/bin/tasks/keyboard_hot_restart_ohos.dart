@@ -7,8 +7,6 @@ import 'package:flutter_devicelab/framework/framework.dart';
 import 'package:flutter_devicelab/tasks/keyboard_hot_restart_test.dart';
 
 Future<void> main() async {
-  await task(() async {
-    deviceOperatingSystem = DeviceOperatingSystem.ohos;
-    return createKeyboardHotRestartTest()();
-  });
+  deviceOperatingSystem = DeviceOperatingSystem.ohos;
+  await task(createKeyboardHotRestartTest());
 }

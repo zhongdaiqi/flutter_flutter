@@ -12,7 +12,7 @@ class HelloWorldOhosMemoryTest extends MemoryTest {
     : super(
         '${flutterDirectory.path}/examples/hello_world',
         'lib/main.dart',
-        'io.flutter.examples.hello_world',
+        ohosBundleName('${flutterDirectory.path}/examples/hello_world'),
       );
 
   /// Launch an app with no instrumentation and measure its memory usage after

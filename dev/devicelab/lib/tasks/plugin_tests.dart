@@ -451,6 +451,10 @@ public class $pluginClass: NSObject, FlutterPlugin {
             0) {
           throw TaskResult.failure('Platform unit tests failed');
         }
+      case 'hap':
+        // OHOS native plugin unit tests are not wired to hvigor yet; the
+        // hap build above still compiles the native side.
+        print('OHOS native plugin unit tests are not wired up yet; skipping.');
     }
   }
 
