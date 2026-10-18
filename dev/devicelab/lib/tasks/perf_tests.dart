@@ -108,6 +108,50 @@ TaskFunction createAndroidTextureScrollPerfTest({bool? enableImpeller}) {
   ).run;
 }
 
+TaskFunction createOhosPlatformViewScrollPerfTest({bool? enableImpeller}) {
+  return PerfTest(
+    '${flutterDirectory.path}/dev/benchmarks/platform_views_layout',
+    'test_driver/android_view_scroll_perf.dart',
+    'platform_views_scroll_perf',
+    testDriver: 'test_driver/scroll_perf_test.dart',
+    needsFullTimeline: false,
+    enableImpeller: enableImpeller,
+  ).run;
+}
+
+TaskFunction createOhosAdBannersScrollPerfTest({bool? enableImpeller}) {
+  return PerfTest(
+    '${flutterDirectory.path}/dev/benchmarks/platform_views_layout',
+    'test_driver/uikit_view_scroll_perf_ad_banners.dart',
+    'platform_views_scroll_perf_ad_banners',
+    testDriver: 'test_driver/scroll_perf_ad_banners_test.dart',
+    needsFullTimeline: false,
+    enableImpeller: enableImpeller,
+  ).run;
+}
+
+TaskFunction createOhosBottomAdBannerScrollPerfTest({bool? enableImpeller}) {
+  return PerfTest(
+    '${flutterDirectory.path}/dev/benchmarks/platform_views_layout',
+    'test_driver/uikit_view_scroll_perf_bottom_ad_banner.dart',
+    'platform_views_scroll_perf_bottom_ad_banner',
+    testDriver: 'test_driver/scroll_perf_bottom_ad_banner_test.dart',
+    needsFullTimeline: false,
+    enableImpeller: enableImpeller,
+  ).run;
+}
+
+TaskFunction createOhosHcppScrollPerfTest() {
+  return PerfTest(
+    '${flutterDirectory.path}/dev/benchmarks/platform_views_layout',
+    'test_driver/scroll_perf_hcpp.dart',
+    'platform_views_hcpp_scroll_perf',
+    testDriver: 'test_driver/scroll_perf_hcpp_test.dart',
+    needsFullTimeline: false,
+    enableImpeller: true,
+  ).run;
+}
+
 TaskFunction createAndroidHCPPScrollPerfTest() {
   return PerfTest(
     '${flutterDirectory.path}/dev/benchmarks/platform_views_layout',
@@ -1005,6 +1049,7 @@ class StartupTest {
           case DeviceOperatingSystem.fake:
           case DeviceOperatingSystem.fuchsia:
           case DeviceOperatingSystem.linux:
+          case DeviceOperatingSystem.ohos:
             break;
           case DeviceOperatingSystem.ios:
           case DeviceOperatingSystem.macos:
@@ -1173,6 +1218,7 @@ class DevtoolsStartupTest {
         case DeviceOperatingSystem.fuchsia:
         case DeviceOperatingSystem.linux:
         case DeviceOperatingSystem.macos:
+        case DeviceOperatingSystem.ohos:
         case DeviceOperatingSystem.webServer:
         case DeviceOperatingSystem.windows:
           break;
@@ -1403,6 +1449,8 @@ class PerfTest {
         );
       }
 
+      final isOhos = deviceOperatingSystem == DeviceOperatingSystem.ohos;
+
       var changedPlist = false;
       var changedManifest = false;
 
@@ -1429,7 +1477,7 @@ class PerfTest {
       }
 
       try {
-        if (enableImpeller ?? false) {
+        if ((enableImpeller ?? false) && !isOhos) {
           changedManifest = true;
           _addVulkanGPUTracingToManifest(testDirectory);
           if (forceOpenGLES ?? false) {
@@ -1445,7 +1493,7 @@ class PerfTest {
             _addLazyShaderMode(testDirectory);
           }
         }
-        if (disablePartialRepaint || enableMergedPlatformThread) {
+        if ((disablePartialRepaint || enableMergedPlatformThread) && !isOhos) {
           changedPlist = true;
           _updateManifestSettings(
             testDirectory,
@@ -1509,6 +1557,7 @@ class PerfTest {
         case DeviceOperatingSystem.android:
         case DeviceOperatingSystem.androidArm:
         case DeviceOperatingSystem.androidArm64:
+        case DeviceOperatingSystem.ohos:
           recordGPU = true;
         case DeviceOperatingSystem.fake:
         case DeviceOperatingSystem.fuchsia:
@@ -1532,13 +1581,15 @@ class PerfTest {
               'average_vsync_transitions_missed',
               '90th_percentile_vsync_transitions_missed',
               '99th_percentile_vsync_transitions_missed',
-              if (measureCpuGpu && !isAndroid) ...<String>[
+              if (measureCpuGpu && !isAndroid && !isOhos) ...<String>[
                 // See https://github.com/flutter/flutter/issues/68888
+                // OHOS: DevTools does not support CPU/GPU usage collection on OHOS.
                 if (data['average_cpu_usage'] != null) 'average_cpu_usage',
                 if (data['average_gpu_usage'] != null) 'average_gpu_usage',
               ],
-              if (measureMemory && !isAndroid) ...<String>[
+              if (measureMemory && !isAndroid && !isOhos) ...<String>[
                 // See https://github.com/flutter/flutter/issues/68888
+                // OHOS: DevTools does not support memory usage collection on OHOS.
                 if (data['average_memory_usage'] != null) 'average_memory_usage',
                 if (data['90th_percentile_memory_usage'] != null) '90th_percentile_memory_usage',
                 if (data['99th_percentile_memory_usage'] != null) '99th_percentile_memory_usage',
@@ -1726,6 +1777,10 @@ class CompileTest {
   Future<TaskResult> run() async {
     return inDirectory<TaskResult>(testDirectory, () async {
       await flutter('packages', options: <String>['get']);
+
+      if (deviceOperatingSystem == DeviceOperatingSystem.ohos) {
+        await injectOhosSigningConfig(testDirectory);
+      }
 
       // "initial" compile required downloading and creating the `android/.gradle` directory while "full"
       // compiles only run `flutter clean` between runs.
@@ -2033,6 +2088,15 @@ class CompileTest {
         throw Exception('Unsupported option for Fuchsia devices');
       case DeviceOperatingSystem.linux:
         throw Exception('Unsupported option for Linux devices');
+      case DeviceOperatingSystem.ohos:
+        options.insert(0, 'hap');
+        options.add('--tree-shake-icons');
+        options.add('--split-debug-info=infos/');
+        watch.start();
+        await flutter('build', options: options);
+        watch.stop();
+        final File hap = _findOhosHap(dir(path.join(cwd, 'build')), dir(path.join(cwd, 'ohos')));
+        releaseSizeInBytes = hap.lengthSync();
       case DeviceOperatingSystem.webServer:
         throw Exception('Unsupported option for Web Server devices');
       case DeviceOperatingSystem.windows:
@@ -2099,6 +2163,8 @@ class CompileTest {
         throw Exception('Unsupported option for Fuchsia devices');
       case DeviceOperatingSystem.linux:
         throw Exception('Unsupported option for Linux devices');
+      case DeviceOperatingSystem.ohos:
+        options.insert(0, 'hap');
       case DeviceOperatingSystem.macos:
         unawaited(stderr.flush());
         options.insert(0, 'macos');
@@ -2136,6 +2202,7 @@ class CompileTest {
       case DeviceOperatingSystem.fake:
       case DeviceOperatingSystem.fuchsia:
       case DeviceOperatingSystem.linux:
+      case DeviceOperatingSystem.ohos:
       case DeviceOperatingSystem.webServer:
       case DeviceOperatingSystem.windows:
         throw Exception('Called ${CompileTest.getSizesFromDarwinApp} with $operatingSystem.');
@@ -2172,6 +2239,21 @@ class CompileTest {
       'license_uncompressed_bytes': license.uncompressedSize,
       'license_compressed_bytes': license.compressedSize,
     };
+  }
+}
+
+/// Resolves the effective OHOS bundle name of [projectPath] by reading
+/// `ohos/AppScope/app.json5` at runtime.
+///
+/// The CI runner may rewrite `bundleName` in that file when injecting signing
+/// configs, so OHOS tasks must not hardcode the value the project declares.
+String ohosBundleName(String projectPath) {
+  final appJson5 = File(path.join(projectPath, 'ohos', 'AppScope', 'app.json5'));
+  try {
+    final appConfig = json.decode(appJson5.readAsStringSync()) as Map<String, dynamic>;
+    return (appConfig['app'] as Map<String, dynamic>)['bundleName'] as String;
+  } catch (error) {
+    throw StateError('Failed to read bundleName from ${appJson5.path}: $error');
   }
 }
 
@@ -2266,6 +2348,12 @@ class MemoryTest {
     await receivedNextMessage;
   }
 
+  /// The location to tap when waking the application.
+  ///
+  /// Override this to change the tap location, e.g. to avoid the status bar
+  /// on certain platforms.
+  math.Point<int> get tapLocation => const math.Point<int>(100, 100);
+
   /// Taps the application and looks for acknowledgement.
   ///
   /// This is used by several tests to ensure scrolling gestures are installed.
@@ -2283,7 +2371,7 @@ class MemoryTest {
           }
           tapCount += 1;
           print('tapping device... [$tapCount]');
-          await device!.tap(100, 100);
+          await device!.tap(tapLocation.x, tapLocation.y);
           await Future<void>.delayed(const Duration(milliseconds: 100));
         }
       }(),
@@ -2535,4 +2623,27 @@ String? _findDarwinAppInBuildDirectory(String searchDirectory) {
     }
   }
   return null;
+}
+
+File _findOhosHap(Directory buildDir, Directory ohosDir) {
+  // The HAP output path varies by project configuration. Check known locations.
+  final knownPaths = <String>[
+    path.join(buildDir.path, 'ohos', 'hap', 'entry-default-signed.hap'),
+    path.join(
+      ohosDir.path,
+      'entry',
+      'build',
+      'default',
+      'outputs',
+      'default',
+      'entry-default-signed.hap',
+    ),
+  ];
+  for (final candidatePath in knownPaths) {
+    final File candidate = file(candidatePath);
+    if (candidate.existsSync()) {
+      return candidate;
+    }
+  }
+  throw 'Failed to find entry-default-signed.hap in ${buildDir.path} or ${ohosDir.path}';
 }
