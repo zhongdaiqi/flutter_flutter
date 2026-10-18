@@ -116,7 +116,6 @@ TaskFunction createOhosPlatformViewScrollPerfTest({bool? enableImpeller}) {
     testDriver: 'test_driver/scroll_perf_test.dart',
     needsFullTimeline: false,
     enableImpeller: enableImpeller,
-    enableMergedPlatformThread: true,
   ).run;
 }
 
@@ -150,8 +149,6 @@ TaskFunction createOhosHcppScrollPerfTest() {
     testDriver: 'test_driver/scroll_perf_hcpp_test.dart',
     needsFullTimeline: false,
     enableImpeller: true,
-    enableSurfaceControl: true,
-    enableMergedPlatformThread: true,
   ).run;
 }
 
@@ -393,8 +390,6 @@ TaskFunction createBasicMaterialCompileTest() {
     if (!sampleDir.existsSync()) {
       throw 'Failed to create default Flutter app in ${sampleDir.path}';
     }
-
-    await injectOhosSigningConfig(sampleDir.path);
 
     return CompileTest(sampleDir.path).run();
   };
@@ -2220,6 +2215,22 @@ class CompileTest {
   }
 }
 
+/// Resolves the effective OHOS bundle name of [projectPath] by reading
+/// `ohos/AppScope/app.json5` at runtime.
+///
+/// The CI runner may rewrite `bundleName` in that file when injecting signing
+/// configs, so OHOS tasks must not hardcode the value the project declares.
+String ohosBundleName(String projectPath) {
+  final File appJson5 = File(path.join(projectPath, 'ohos', 'AppScope', 'app.json5'));
+  try {
+    final Map<String, dynamic> appConfig =
+        json.decode(appJson5.readAsStringSync()) as Map<String, dynamic>;
+    return (appConfig['app'] as Map<String, dynamic>)['bundleName'] as String;
+  } catch (error) {
+    throw StateError('Failed to read bundleName from ${appJson5.path}: $error');
+  }
+}
+
 /// Measure application memory usage.
 class MemoryTest {
   MemoryTest(this.project, this.test, this.package, {this.requiresTapToStart = false});
@@ -2628,8 +2639,15 @@ Future<void> injectOhosSigningConfig(String projectPath) async {
   if (!configFile.existsSync()) {
     return;
   }
-  final Map<String, dynamic> config =
-      json.decode(configFile.readAsStringSync()) as Map<String, dynamic>;
+  final Map<String, dynamic> config;
+  try {
+    config = json.decode(configFile.readAsStringSync()) as Map<String, dynamic>;
+  } catch (error) {
+    throw StateError('Failed to parse OHOS signing config at "$configPath": $error');
+  }
+  if (config['signingConfigs'] is! List) {
+    throw StateError('OHOS signing config at "$configPath" has no "signingConfigs" list');
+  }
 
   final File bpFile = File(path.join(projectPath, 'ohos', 'build-profile.json5'));
   if (bpFile.existsSync()) {

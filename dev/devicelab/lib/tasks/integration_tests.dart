@@ -147,9 +147,15 @@ TaskFunction createDisplayCutoutTest() {
     '${flutterDirectory.path}/dev/integration_tests/display_cutout_rotation/',
     'integration_test/display_cutout_test.dart',
     setup: (Device device) async {
+      if (device is OhosDevice) {
+        // OHOS has no synthetic-notch overlay command; the physical
+        // punch-hole reported by getCutoutInfo() is the feature under test.
+        print('OHOS device: testing the physical cutout from getCutoutInfo().');
+        return;
+      }
       if (device is! AndroidDevice) {
-        // Only android devices support this cutoutTest.
-        throw TaskResult.failure('This test should only target android');
+        // Only android and ohos devices support this cutoutTest.
+        throw TaskResult.failure('This test should only target android or ohos');
       }
       // Test requires developer settings added in 28 and behavior added in 30.
       final String sdkResult = await device.shellEval('getprop', <String>['ro.build.version.sdk']);

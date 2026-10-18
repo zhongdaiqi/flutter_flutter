@@ -74,7 +74,7 @@ void main() {
         await device.unlock();
         expectLog(<CommandArgs>[
           cmd(command: 'power-shell', arguments: <String>['wakeup']),
-          cmd(command: 'uitest', arguments: <String>['uiInput', 'dircFling', '3', '40000', '10']),
+          cmd(command: 'uitest', arguments: <String>['uiInput', 'dircFling', '2', '40000', '10']),
         ]);
       });
     });

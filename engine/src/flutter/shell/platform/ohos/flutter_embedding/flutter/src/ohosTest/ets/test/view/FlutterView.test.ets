@@ -26,6 +26,34 @@ function makeView(id: string): FlutterView {
   return new FlutterView(id, getContext() as common.Context);
 }
 
+class FakeUiContext {
+  vpPerPx: number;
+
+  constructor(vpPerPx: number) {
+    this.vpPerPx = vpPerPx;
+  }
+
+  px2vp(value: number): number {
+    return value * this.vpPerPx;
+  }
+}
+
+class ThrowingUiContext {
+  px2vp(value: number): number {
+    throw new Error('px2vp unavailable');
+  }
+}
+
+function stubUiContext(view: FlutterView, uiContext: object | undefined): void {
+  const v: Any = view;
+  v['tryGetUIContext'] = (): object | undefined => uiContext;
+}
+
+function invokeGetEffectiveDensity(view: FlutterView): number {
+  const v: Any = view;
+  return v['getEffectiveDensity']() as number;
+}
+
 class TestFirstFrameListener implements FirstFrameListener {
   called: boolean = false;
 
@@ -431,24 +459,47 @@ export default function flutterViewTest() {
     });
   });
 
-  describe('FlutterView.unRegisterAllCallbacks', () => {
-    it('returns early when callbacks were never registered', 0, () => {
-      const view = new FlutterView('7001', getContext() as common.Context);
+  describe('FlutterView.unRegisterDefaultCallbacks', () => {
+    it('returns early when default callbacks were never registered', 0, () => {
+      const view = new FlutterView('unreg-def-1', getContext() as common.Context);
       const v: Any = view;
-      v['isAllCallbacksRegistered'] = false;
+      v['isDefaultCallbacksRegistered'] = false;
       let threw = false;
-      try { v['unRegisterAllCallbacks'](); } catch (e) { threw = true; }
+      try { v['unRegisterDefaultCallbacks'](); } catch (e) { threw = true; }
       expect(threw).assertEqual(false);
+      expect(v['isDefaultCallbacksRegistered']).assertEqual(false);
     });
 
-    it('unregisters everything and resets the flag', 0, () => {
-      const view = new FlutterView('7002', getContext() as common.Context);
+    it('unregisters default callbacks and resets the flag', 0, () => {
+      const view = new FlutterView('unreg-def-2', getContext() as common.Context);
       const v: Any = view;
-      v['isAllCallbacksRegistered'] = true;
+      v['isDefaultCallbacksRegistered'] = true;
       let threw = false;
-      try { v['unRegisterAllCallbacks'](); } catch (e) { threw = true; }
+      try { v['unRegisterDefaultCallbacks'](); } catch (e) { threw = true; }
       expect(threw).assertEqual(false);
-      expect(v['isAllCallbacksRegistered']).assertEqual(false);
+      expect(v['isDefaultCallbacksRegistered']).assertEqual(false);
+    });
+  });
+
+  describe('FlutterView.unRegisterUiCallbacks', () => {
+    it('returns early when ui callbacks were never registered', 0, () => {
+      const view = new FlutterView('unreg-ui-1', getContext() as common.Context);
+      const v: Any = view;
+      v['isUiCallbacksRegistered'] = false;
+      let threw = false;
+      try { v['unRegisterUiCallbacks'](); } catch (e) { threw = true; }
+      expect(threw).assertEqual(false);
+      expect(v['isUiCallbacksRegistered']).assertEqual(false);
+    });
+
+    it('unregisters ui callbacks and resets the flag', 0, () => {
+      const view = new FlutterView('unreg-ui-2', getContext() as common.Context);
+      const v: Any = view;
+      v['isUiCallbacksRegistered'] = true;
+      let threw = false;
+      try { v['unRegisterUiCallbacks'](); } catch (e) { threw = true; }
+      expect(threw).assertEqual(false);
+      expect(v['isUiCallbacksRegistered']).assertEqual(false);
     });
   });
   describe('FlutterView.setActive', () => {
@@ -521,6 +572,50 @@ export default function flutterViewTest() {
       const view = new FlutterView('cb03', getContext() as common.Context);
       view.onAreaChange(null);
       expect(view).not().assertNull();
+    });
+  });
+
+  describe('FlutterViewEffectiveDensityTest', () => {
+    it('inverts_px2vp_to_window_density', 0, () => {
+      const view = makeView('effective_density_invert_view');
+      stubUiContext(view, new FakeUiContext(1 / 3.0));
+      expect(Math.abs(invokeGetEffectiveDensity(view) - 3.0) < 1e-6).assertTrue();
+    });
+
+    it('inverts_px2vp_for_non_default_density', 0, () => {
+      const view = makeView('effective_density_pinned_view');
+      stubUiContext(view, new FakeUiContext(0.5));
+      expect(Math.abs(invokeGetEffectiveDensity(view) - 2.0) < 1e-6).assertTrue();
+    });
+
+    it('falls_back_to_system_density_without_uicontext', 0, () => {
+      const view = makeView('effective_density_no_context_view');
+      stubUiContext(view, undefined);
+      expect(invokeGetEffectiveDensity(view)).assertEqual(display.getDefaultDisplaySync().densityPixels);
+    });
+
+    it('falls_back_to_system_density_when_px2vp_returns_zero', 0, () => {
+      const view = makeView('effective_density_zero_view');
+      stubUiContext(view, new FakeUiContext(0));
+      expect(invokeGetEffectiveDensity(view)).assertEqual(display.getDefaultDisplaySync().densityPixels);
+    });
+
+    it('falls_back_to_system_density_when_px2vp_returns_nan', 0, () => {
+      const view = makeView('effective_density_nan_view');
+      stubUiContext(view, new FakeUiContext(NaN));
+      expect(invokeGetEffectiveDensity(view)).assertEqual(display.getDefaultDisplaySync().densityPixels);
+    });
+
+    it('falls_back_to_system_density_when_px2vp_returns_infinity', 0, () => {
+      const view = makeView('effective_density_inf_view');
+      stubUiContext(view, new FakeUiContext(Infinity));
+      expect(invokeGetEffectiveDensity(view)).assertEqual(display.getDefaultDisplaySync().densityPixels);
+    });
+
+    it('falls_back_to_system_density_when_px2vp_throws', 0, () => {
+      const view = makeView('effective_density_throw_view');
+      stubUiContext(view, new ThrowingUiContext());
+      expect(invokeGetEffectiveDensity(view)).assertEqual(display.getDefaultDisplaySync().densityPixels);
     });
   });
 }

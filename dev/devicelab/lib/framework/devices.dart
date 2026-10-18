@@ -1408,7 +1408,7 @@ class OhosDeviceDiscovery implements DeviceDiscovery {
       throw const DeviceException('No OHOS devices detected');
     }
 
-    _workingDevice = allDevices[0];
+    _workingDevice = allDevices[math.Random().nextInt(allDevices.length)];
     print('Device chosen: $_workingDevice');
   }
 
@@ -1505,7 +1505,7 @@ class OhosDevice extends Device {
     await hdcShellExec('uitest', <String>[
       'uiInput',
       'dircFling',
-      '3', // direction: down
+      '2', // direction: up (0=left, 1=right, 2=up, 3=down)
       '40000', // velocity
       '10', // steps
     ]);
