@@ -56,7 +56,7 @@ export function flutterHvigorPlugin(flutterProjectPath: string, flutterProjectTy
       const sdkPath = properties['flutter.sdk']
       const productName = appContext.getCurrentProduct().getProductName()
       const targetPlatforms = getParameters(TARGET_PLATFORM, DEFAULT_PLATFORMS)
-      const buildMode = appContext.getBuildMode()
+      const buildMode = buildModeFor(appContext.getBuildMode())
       rootNode.afterNodeEvaluate(node => {
         // app.json5
         if (flutterProjectType === 0) {
@@ -67,7 +67,7 @@ export function flutterHvigorPlugin(flutterProjectPath: string, flutterProjectTy
         }
         // build-profile.json5
         const overrides = appContext.getOverrides() ?? {}
-        setFlutterHarInOverrides(overrides, targetPlatforms!, sdkPath, buildMode == 'test' ? 'debug' : buildMode)
+        setFlutterHarInOverrides(overrides, targetPlatforms!, sdkPath, buildMode)
         nativePlugins.forEach(nativePlugin => {
           overrides[nativePlugin.name] =
             `file:${path.join(nativePlugin.path, 'ohos')}`
@@ -91,7 +91,7 @@ export function flutterHvigorPlugin(flutterProjectPath: string, flutterProjectTy
             const dependenciesOpt = hapContext.getDependenciesOpt()
             if (flutterProjectType == 0) {
               hapContext.targets((target: Target) => {
-                registerFlutterTask(node, sdkPath, buildMode == 'test' ? 'debug' : buildMode, flutterProjectPath, target)
+                registerFlutterTask(node, sdkPath, buildMode, flutterProjectPath, target)
               })
             } else if (flutterProjectType == 1) {
               dependenciesOpt['@ohos/flutter_module'] = `file:${path.join(flutterProjectPath, '.ohos', 'flutter_module')}`
@@ -111,7 +111,7 @@ export function flutterHvigorPlugin(flutterProjectPath: string, flutterProjectTy
 
           if (subNodeName === 'flutter_module' && flutterProjectType === 1) {
             harContext.targets((target: Target) => {
-              registerFlutterTask(node, sdkPath, buildMode == 'test' ? 'debug' : buildMode, flutterProjectPath, target)
+              registerFlutterTask(node, sdkPath, buildMode, flutterProjectPath, target)
             })
             const dependenciesOpt = harContext.getDependenciesOpt()
             setFlutterHarInDependencies(dependenciesOpt, targetPlatforms)
@@ -142,6 +142,16 @@ function setFlutterHarInDependencies(dependenciesOpt: any, targetPlatforms: stri
     .forEach(arch => {
       dependenciesOpt[`flutter_native_${arch}`] = ''
     })
+}
+
+function buildModeFor(buildMode: string): string {
+  if (buildMode === 'profile') {
+    return 'profile';
+  }
+  if (buildMode === 'debug' || buildMode === 'test') {
+    return 'debug';
+  }
+  return 'release';
 }
 
 function setFlutterHarInOverrides(
