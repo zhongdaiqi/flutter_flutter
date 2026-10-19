@@ -328,6 +328,13 @@ export default class FlutterManager implements WindowHostContext {
     return flutterView;
   }
 
+  /**
+   * Records the UIAbility a (numeric) view lives in and feeds a
+   * materialized host its window, ability and view — SPAWNED hosts receive
+   * all three here (a duplicate main-ability claim is ignored).
+   * @param viewId - The engine numeric view id
+   * @param ability - The UIAbility hosting the view
+   */
   registerViewAbility(viewId: number, ability: UIAbility): void {
     const holder = ability as FlutterAbility;
     if (viewId === IMPLICIT_VIEW_ID && this.viewAbilities.has(IMPLICIT_VIEW_ID)) {
@@ -348,6 +355,7 @@ export default class FlutterManager implements WindowHostContext {
   // ---- Per-archetype window creation (same names as the C++ facade / win32;
   // the typed request IS the archetype — no discriminator int) ---------------
 
+  /** Regular: SPAWN a sibling UIAbility-backed host (own task-center card). */
   createRegularWindow(viewId: number, req: RegularWindowCreationRequest): void {
     const request = new RegularWindowCreationRequest(req);
     Log.d(TAG, `createRegularWindow viewId=${viewId}`);
@@ -357,6 +365,8 @@ export default class FlutterManager implements WindowHostContext {
     host.attach();
   }
 
+  /** Dialog: modal (parentViewId set) → SubWindow host; modeless (sentinel)
+   * → UIAbility spawn. */
   createDialogWindow(viewId: number, req: DialogWindowCreationRequest): void {
     const request = new DialogWindowCreationRequest(req);
     Log.d(TAG, `createDialogWindow viewId=${viewId}`);
@@ -380,6 +390,7 @@ export default class FlutterManager implements WindowHostContext {
     host.attach();
   }
 
+  /** Popup: anchored, parent-bound SubWindow. */
   createPopupWindow(viewId: number, req: PopupWindowCreationRequest): void {
     const request = new PopupWindowCreationRequest(req);
     Log.d(TAG, `createPopupWindow viewId=${viewId}`);
@@ -388,6 +399,8 @@ export default class FlutterManager implements WindowHostContext {
     host.attach();
   }
 
+  /** Re-runs the positioner of the given TOOLTIP host (Dart pushed a fresh
+   * anchorRect/positioner); non-tooltip views only log. */
   updateTooltipPosition(viewId: number): void {
     const host = this.windowHosts.get(viewId);
     if (host instanceof TooltipWindowHost) {
@@ -436,16 +449,22 @@ export default class FlutterManager implements WindowHostContext {
     return this.windowHosts.get(viewId);
   }
 
+  /** The UIAbility registered for a (numeric) view id, or undefined when the
+   * view has no ability of its own (sub-window views, or not SPAWNED yet). */
   getAbilityByView(viewId: number): UIAbility | undefined {
     return this.viewAbilities.get(viewId);
   }
 
   // ---- WindowHostContext: service surface for the window/ host classes ----
+
+  /** (WindowHostContext) Records a FlutterView and feeds it to a
+   * materialized host (if any). */
   registerFlutterView(viewId: string, flutterView: FlutterView): void {
     this.putFlutterView(viewId, flutterView);
     this.windowHosts.get(numericViewId(viewId))?.setFlutterView(flutterView);
   }
 
+  /** (WindowHostContext) Removes a host from the registry (idempotent). */
   removeHost(viewId: number): void {
     this.windowHosts.delete(viewId);
   }
@@ -476,6 +495,8 @@ export default class FlutterManager implements WindowHostContext {
     return this.regularWindowAbilityName;
   }
 
+  /** Sets the SPAWNED-host ability class name (same config-surface pattern
+   * as setSubWindowPageName; empty names are ignored). */
   setSpawnedAbilityName(name: string): void {
     if (name && name.length > 0) {
       this.regularWindowAbilityName = name;
