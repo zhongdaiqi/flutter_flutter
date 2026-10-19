@@ -196,6 +196,7 @@ void main() {
       final environmentDefines = <String, String>{kBuildMode: BuildMode.release.cliName};
       final DartHooksResult dartHookResult = await runFlutterSpecificHooks(
         environmentDefines: environmentDefines,
+        recordedUsesFile: null,
         targetPlatform: TargetPlatform.ohos_arm64,
         projectUri: projectUri,
         fileSystem: fileSystem,
@@ -225,7 +226,7 @@ void main() {
         targetUri: projectUri.resolve('${getBuildDirectory()}/native_assets/test/'),
       );
 
-      expect(testLogger.traceText, contains('Building native assets for ohos_arm64.'));
+      expect(testLogger.traceText, contains('Running build hooks for ohos_arm64.'));
       expect(buildHookSawCompatibleTargetOS, isTrue);
       expect(linkHookSawCompatibleTargetOS, isTrue);
       expect(

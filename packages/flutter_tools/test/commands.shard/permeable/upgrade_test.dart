@@ -1394,7 +1394,9 @@ void main() {
         processManager.addCommand(
           FakeCommand(
             command: <String>[
-              globals.fs.path.join('bin', 'flutter'),
+              // The runner resolves the reentrant flutter binary against its
+              // working directory, so the command is absolute here.
+              globals.fs.path.join('/flutter', 'bin', 'flutter'),
               'upgrade',
               '--continue',
               '--continue-started-at',

@@ -31,6 +31,7 @@ import 'focus_scope.dart';
 import 'focus_traversal.dart';
 import 'framework.dart';
 import 'heroes.dart';
+import 'indexed_stack.dart';
 import 'media_query.dart';
 import 'modal_barrier.dart';
 import 'notification_listener.dart';
@@ -40,7 +41,6 @@ import 'restoration_properties.dart';
 import 'routes.dart';
 import 'split_view_config.dart';
 import 'split_view_manager.dart';
-import 'indexed_stack.dart';
 import 'ticker_provider.dart';
 
 part 'split_view_navigator_policy.dart';

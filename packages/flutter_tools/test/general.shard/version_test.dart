@@ -1676,6 +1676,22 @@ void main() {
         processManager.addCommand(
           FakeCommand(command: <String>['git', 'tag', '--points-at', headRevision]),
         );
+        // OHOS: when no tag points at HEAD, the fork first resolves the
+        // current version via `git describe` before discovering the newest tag.
+        processManager.addCommand(
+          FakeCommand(
+            command: <String>[
+              'git',
+              'describe',
+              '--match',
+              '*.*.*',
+              '--long',
+              '--tags',
+              headRevision,
+            ],
+            stdout: '1.0.0-10-gREVISION_A',
+          ),
+        );
         // determine newest tag
         processManager.addCommand(
           const FakeCommand(
@@ -1951,6 +1967,23 @@ void main() {
           const FakeCommand(
             command: <String>['git', 'tag', '--points-at', 'REVISION_A'],
             environment: <String, String>{'PATH': '/usr/bin'}, // GIT_DIR should be missing
+          ),
+        );
+        // OHOS: when no tag points at HEAD, the fork first resolves the
+        // current version via `git describe` before discovering the newest tag.
+        processManager.addCommand(
+          const FakeCommand(
+            command: <String>[
+              'git',
+              'describe',
+              '--match',
+              '*.*.*',
+              '--long',
+              '--tags',
+              'REVISION_A',
+            ],
+            stdout: '1.0.0-10-gREVISION_A',
+            environment: <String, String>{'PATH': '/usr/bin'},
           ),
         );
         processManager.addCommand(

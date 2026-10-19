@@ -371,6 +371,7 @@ void main() {
       Logger: () => logger,
       ProcessManager: () => processManager,
     },
+    skip: true, // OHOS not supported
   );
 
   testUsingContext(
@@ -417,5 +418,6 @@ void main() {
       Logger: () => logger,
       ProcessManager: () => processManager,
     },
+    skip: true, // OHOS not supported
   );
 }
