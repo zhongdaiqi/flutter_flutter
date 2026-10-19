@@ -420,6 +420,7 @@ export class FlutterView {
     this.registerDefaultCallbacks();
   }
 
+  /** The ability/application context this view was created with. */
   getContext(): Context {
     return this.context;
   }

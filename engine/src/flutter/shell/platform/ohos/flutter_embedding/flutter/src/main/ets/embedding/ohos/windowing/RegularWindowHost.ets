@@ -18,6 +18,7 @@ import { DialogWindowCreationRequest, IMPLICIT_VIEW_ID, NO_PARENT_VIEW_ID,
 
 const TAG = 'RegularWindowHost'
 
+/** How a Regular host obtained its OS window. */
 export enum AbilityHostMode {
   /** The FIRST top-level window ADOPTS the EntryAbility's pre-created main
    * window + implicit view 0 instead of spawning a sibling UIAbility. */
@@ -39,6 +40,15 @@ export class RegularWindowHost extends FlutterWindowHost {
   // the sentinel parent case) requests; ADOPTED takes Regular.
   private readonly request: RegularWindowCreationRequest | DialogWindowCreationRequest;
 
+  /**
+   * Constructs a RegularWindowHost.
+   * @param ctx - The manager-facing service surface
+   * @param viewId - The engine numeric view id
+   * @param mode - ADOPTED (bind the EntryAbility main window) or SPAWNED
+   * @param request - Creation fields (preferred size / constraints / title)
+   * @param archetype - REGULAR, or DIALOG for a modeless dialog spawn
+   * @param ability - The backing UIAbility, when already known (ADOPTED)
+   */
   constructor(ctx: WindowHostContext,
               viewId: number,
               mode: AbilityHostMode,
@@ -53,10 +63,16 @@ export class RegularWindowHost extends FlutterWindowHost {
     this.ability = ability;
   }
 
+  /** The backing UIAbility (ADOPTED: the EntryAbility; SPAWNED: set by
+   * registerViewAbility once the ability reports in), or undefined before
+   * that. */
   getAbility(): UIAbility | undefined {
     return this.ability;
   }
 
+  /** FlutterWindowHost.attach: SPAWNED takes the startAbility path (shared
+   * by Regular and modeless Dialog); ADOPTED claims the EntryAbility's
+   * pre-created main window. */
   async attach(): Promise<void> {
     if (this.mode === AbilityHostMode.SPAWNED) {
       // Spawn path shared by Regular and modeless Dialog — attachRegularWindow
@@ -70,6 +86,8 @@ export class RegularWindowHost extends FlutterWindowHost {
     this.attachMainWindow();
   }
 
+  /** ADOPT path: seed the host with the EntryAbility's existing FlutterView
+   * and main window, watch WINDOW_DESTROYED, then apply the birth size. */
   private attachMainWindow(): void {
     const mainView = (this.ability as FlutterAbility)?.getFlutterView();
     if (mainView === null) {
@@ -101,6 +119,8 @@ export class RegularWindowHost extends FlutterWindowHost {
     this.applyPreferredSize();
   }
 
+  /** Applies the request's preferred size to the adopted main window
+   * (no-op without a meaningful preference). */
   private applyPreferredSize(): void {
     const size = this.request.preferredSize;
     if (!size.hasPreferredViewSize ||
@@ -110,6 +130,9 @@ export class RegularWindowHost extends FlutterWindowHost {
     this.setWindowSize(size.preferredViewWidth, size.preferredViewHeight);
   }
 
+  /** SPAWN path: startAbility the configured RegularWindowAbility with the
+   * view id / preferred size / constraints / title as launch parameters —
+   * the spawned ability then reports back via registerViewAbility. */
   private async attachRegularWindow(): Promise<void> {
     const mainHost = this.ctx.getHostWindowByView(IMPLICIT_VIEW_ID);
     const launcher = mainHost instanceof RegularWindowHost ? mainHost.getAbility() : undefined;
@@ -180,6 +203,8 @@ export class RegularWindowHost extends FlutterWindowHost {
     }
   }
 
+  /** failAttach override: SPAWNED hosts additionally terminate the
+   * half-spawned ability before the base bookkeeping cleanup. */
   protected failAttach(where: string): void {
     this.closeHost(); // SPAWNED: best-effort terminate of the half-spawned ability
     super.failAttach(where);
@@ -202,6 +227,8 @@ export class RegularWindowHost extends FlutterWindowHost {
     }
   }
 
+  /** Best-effort terminateSelf of the SPAWNED ability (closeHost /
+   * closeHostForCascade); a never-launched ability is only logged. */
   private terminateAbility(where: string): void {
     // SPAWNED abilities register in the manager before/without setAbility.
     const ability = this.ability ?? this.ctx.getAbilityByView(this.viewId);
@@ -218,6 +245,7 @@ export class RegularWindowHost extends FlutterWindowHost {
     }
   }
 
+  /** Sets the OS window title (hosts with a title bar only). */
   setWindowTitle(title?: string): void {
     const win = this.getWindow();
     if (win === null) {

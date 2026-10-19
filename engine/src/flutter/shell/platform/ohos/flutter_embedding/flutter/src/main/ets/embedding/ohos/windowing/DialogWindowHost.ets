@@ -29,12 +29,21 @@ export class DialogWindowHost extends FlutterWindowHost {
   protected readonly request: DialogWindowCreationRequest;
   private readonly parentWnd: window.Window | undefined;
 
+  /**
+   * Constructs a DialogWindowHost.
+   * @param ctx - The manager-facing service surface
+   * @param viewId - The engine numeric view id
+   * @param request - Creation fields; parentViewId is always a valid parent
+   */
   constructor(ctx: WindowHostContext, viewId: number, request: DialogWindowCreationRequest) {
     super(ctx, viewId, request.parentViewId, request.title, WindowArchetype.DIALOG);
     this.request = request;
     this.parentWnd = ctx.getHostWindowByView(request.parentViewId)?.getWindow() ?? undefined;
   }
 
+  /** Creates the modal SubWindow (cascade-offset from the parent, centered
+   * when both size and owner are known), attaches the view to the parent's
+   * engine, loads the app's sub-window page and shows the dialog. */
   async attach(): Promise<void> {
     if (this.parentWnd === undefined) {
       Log.e(TAG, `attach: no parent window for parentViewId=${this.parentViewId}`);
@@ -91,6 +100,9 @@ export class DialogWindowHost extends FlutterWindowHost {
     }
   }
 
+  /** Creates-or-reuses the dialog's FlutterView and attaches it to the SAME
+   * engine as the parent view (single-engine, multi-view); false (after
+   * failAttach) when the parent view/engine is unavailable. */
   private viewAttachEngine(): boolean {
     const parentView = this.ctx.getHostWindowByView(this.parentViewId)?.getFlutterView() ?? null;
     if (parentView === null) {
