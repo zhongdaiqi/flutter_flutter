@@ -39,7 +39,7 @@ logging.basicConfig(
 def safeGetPath(filePath, isDirectory=True):
   createPath = (filePath if isDirectory else os.path.abspath(os.path.join(filePath, os.pardir)))
   if not os.path.exists(createPath):
-    os.makedirs(createPath)
+    os.makedirs(createPath, exist_ok=True)
   return os.path.abspath(filePath)
 
 
@@ -184,13 +184,14 @@ def engineConfig(buildInfo, args):
   OPT = "--unoptimized " if buildInfo.unoptimized else ""
   LTO = "--no-lto " if buildInfo.buildType == "debug" else ""
   UNUSE_BISHENG = "--unuse-bisheng " if args.unuse_bisheng else ""
+  USE_CCACHE = "--ccache " if args.use_ccache else ""
 
   runCommand(
       "%s " % os.path.join("src", "flutter", "tools", "gn") + "--ohos " +
       "--ohos-cpu %s " % buildInfo.targetArch + "--runtime-mode %s " % buildInfo.buildType + OPT +
       LTO + unixCommand + "--no-goma " + "--no-prebuilt-dart-sdk " + "--full-dart-sdk " +
       "--embedder-for-target " + "--disable-desktop-embeddings " + "--no-build-embedder-examples " +
-      "--ohos-api-int %s " % args.ohos_api_int + "--verbose " + UNUSE_BISHENG +
+      "--ohos-api-int %s " % args.ohos_api_int + "--verbose " + UNUSE_BISHENG + USE_CCACHE +
       args.gn_extra_param.replace("\\", ""),
       checkCode=True,
       timeout=600,
@@ -332,6 +333,12 @@ def addParseParam(parser):
   parser.add_argument(
       "--unuse-bisheng", action="store_true", help="Build without BiSheng compiler."
   )
+  parser.add_argument(
+      "--use-ccache",
+      action="store_true",
+      help="Enable ccache for compilation. Requires ccache to be installed. "
+      "Not supported for host engine builds on Windows.",
+  )
 
 
 def updateCode(args):
@@ -360,11 +367,16 @@ def buildLocalEngine(buildType, args):
   extraParam = args.gn_extra_param
   osName = platform.system().lower()
   hostAppend = f"--mac-cpu {args.host_cpu} " if osName == "darwin" else ""
+  useCcache = "--ccache " if args.use_ccache and not IS_WINDOWS else ""
+  if args.use_ccache and IS_WINDOWS:
+    logging.warning(
+        "ccache is not supported on Windows, ignoring --use-ccache for host engine builds"
+    )
   runCommand(
       "%s " % os.path.join("src", "flutter", "tools", "gn") + "--runtime-mode %s " % buildType +
       OPT + LTO + "--no-goma " + "--no-prebuilt-dart-sdk " + "--full-dart-sdk " +
       "--disable-desktop-embeddings " + "--no-build-embedder-examples " + "--verbose " +
-      hostAppend + extraParam.replace("\\", ""),
+      hostAppend + useCcache + extraParam.replace("\\", ""),
       checkCode=True,
       timeout=600,
   )
