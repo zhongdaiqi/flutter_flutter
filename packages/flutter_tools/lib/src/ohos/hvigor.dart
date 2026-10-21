@@ -525,8 +525,6 @@ class OhosHvigorBuilder implements OhosBuilder {
 
     final Status status = _logger.startProgress('Running Hvigor task assembleHar...');
 
-    updateLocalProperties(project: project, buildInfo: ohosBuildInfo.buildInfo);
-
     parseData(project, _logger);
 
     if (ohosBuildInfo.enableImpellerFlag != null) {
