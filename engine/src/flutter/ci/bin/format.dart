@@ -1260,16 +1260,20 @@ Future<String> _getDiffBaseRevision(ProcessManager processManager, Directory rep
     defaultWorkingDirectory: repoDir,
     processManager: processManager,
   );
-  var upstream = 'upstream';
-  final String upstreamUrl = await _runGit(
-    <String>['remote', 'get-url', upstream],
-    processRunner,
-    failOk: true,
-  );
-  if (upstreamUrl.isEmpty) {
-    upstream = 'origin';
+  var upstream = 'origin';
+  for (final candidate in const <String>['upstream', 'gitcode', 'origin']) {
+    final String url = await _runGit(
+      <String>['remote', 'get-url', candidate],
+      processRunner,
+      failOk: true,
+    );
+    if (url.isNotEmpty) {
+      upstream = candidate;
+      break;
+    }
   }
-  await _runGit(<String>['fetch', upstream, 'main'], processRunner);
+  final String baseBranch = Platform.environment['TARGET_BRANCH'] ?? 'oh-3.47.7-dev';
+  await _runGit(<String>['fetch', upstream, baseBranch], processRunner);
   var result = '';
   try {
     // This is the preferred command to use, but developer checkouts often do

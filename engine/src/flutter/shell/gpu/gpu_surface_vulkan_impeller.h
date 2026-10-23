@@ -9,6 +9,7 @@
 #include "flutter/flow/surface.h"
 #include "flutter/fml/macros.h"
 #include "flutter/fml/memory/weak_ptr.h"
+#include "flutter/impeller/base/flags.h"
 #include "flutter/impeller/display_list/aiks_context.h"
 #include "flutter/impeller/renderer/context.h"
 #include "flutter/shell/gpu/gpu_surface_vulkan_delegate.h"
@@ -24,7 +25,8 @@ FML_TEST_CLASS(GPUSurfaceVulkanImpeller,
 class GPUSurfaceVulkanImpeller final : public Surface {
  public:
   explicit GPUSurfaceVulkanImpeller(GPUSurfaceVulkanDelegate* delegate,
-                                    std::shared_ptr<impeller::Context> context);
+                                    std::shared_ptr<impeller::Context> context,
+                                    impeller::Flags flags = impeller::Flags{});
 
   // |Surface|
   ~GPUSurfaceVulkanImpeller() override;
@@ -32,17 +34,31 @@ class GPUSurfaceVulkanImpeller final : public Surface {
   // |Surface|
   bool IsValid() override;
 
+  void SetOhosDelegate(GPUSurfaceVulkanDelegate* ohos_delegate) {
+    this->ohos_delegate_ = ohos_delegate;
+  };
+
  private:
   FML_FRIEND_TEST(testing::GPUSurfaceVulkanImpeller,
                   RecreatesTransientsWhenFrameSizeChanges);
 
   GPUSurfaceVulkanDelegate* delegate_;
+  GPUSurfaceVulkanDelegate* ohos_delegate_;
   std::shared_ptr<impeller::Context> impeller_context_;
   std::shared_ptr<impeller::AiksContext> aiks_context_;
   std::shared_ptr<impeller::SwapchainTransientsVK> transients_;
   /// The size of the textures in [transients_]
   impeller::ISize transients_size_ = {};
   bool is_valid_ = false;
+
+#ifdef __OHOS__
+  bool disable_partial_repaint_ = false;
+#else
+  bool disable_partial_repaint_ = true;
+#endif
+  // Accumulated damage for each framebuffer; Key is address of underlying
+  // MTLTexture for each drawable
+  std::map<int, DlIRect> damage_;
 
   // |Surface|
   std::unique_ptr<SurfaceFrame> AcquireFrame(const DlISize& size) override;
@@ -61,6 +77,9 @@ class GPUSurfaceVulkanImpeller final : public Surface {
 
   // |Surface|
   std::shared_ptr<impeller::AiksContext> GetAiksContext() const override;
+
+  // |Surface|
+  Surface::SurfaceDamageData GetSurfaceDamageData() const override;
 
   FML_DISALLOW_COPY_AND_ASSIGN(GPUSurfaceVulkanImpeller);
 };

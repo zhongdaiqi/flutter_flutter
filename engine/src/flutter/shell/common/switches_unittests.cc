@@ -163,6 +163,40 @@ TEST(SwitchesTest, RequireMergedPlatformUIThread) {
 }
 #endif  // !OS_FUCHSIA
 
+TEST(SwitchesTest, EnableOhosHybridComposition) {
+  {
+    // default: HCPP is opt-in, off unless explicitly requested.
+    fml::CommandLine command_line =
+        fml::CommandLineFromInitializerList({"command"});
+    Settings settings = SettingsFromCommandLine(command_line);
+    EXPECT_EQ(settings.enable_ohos_hybrid_composition, false);
+  }
+  {
+    // enable via the Settings-backed switch.
+    fml::CommandLine command_line = fml::CommandLineFromInitializerList(
+        {"command", "--enable-ohos-hybrid-composition"});
+    EXPECT_TRUE(command_line.HasOption("enable-ohos-hybrid-composition"));
+    Settings settings = SettingsFromCommandLine(command_line);
+    EXPECT_EQ(settings.enable_ohos_hybrid_composition, true);
+  }
+}
+
+TEST(SwitchesTest, EnableGlyphRasterParallelization) {
+  {
+    fml::CommandLine command_line = fml::CommandLineFromInitializerList(
+        {"command", "--enable-glyph-raster-parallelization"});
+    EXPECT_TRUE(command_line.HasOption("enable-glyph-raster-parallelization"));
+    Settings settings = SettingsFromCommandLine(command_line);
+    EXPECT_EQ(settings.enable_glyph_raster_parallelization, true);
+  }
+  {
+    fml::CommandLine command_line =
+        fml::CommandLineFromInitializerList({"command"});
+    Settings settings = SettingsFromCommandLine(command_line);
+    EXPECT_EQ(settings.enable_glyph_raster_parallelization, false);
+  }
+}
+
 }  // namespace testing
 }  // namespace flutter
 

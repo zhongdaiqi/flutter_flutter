@@ -49,6 +49,8 @@ constexpr PixelFormat FromMTLPixelFormat(MTLPixelFormat format) {
       return PixelFormat::kB10G10R10XR;
     case MTLPixelFormatBGRA10_XR:
       return PixelFormat::kB10G10R10A10XR;
+    case MTLPixelFormatBGR10A2Unorm:
+      return PixelFormat::kB10G10R10A2UNorm;
     default:
       return PixelFormat::kUnknown;
   }
@@ -130,6 +132,8 @@ constexpr MTLPixelFormat ToMTLPixelFormat(PixelFormat format) {
       return SafeMTLPixelFormatBGRA10_XR();
     case PixelFormat::kR32Float:
       return MTLPixelFormatR32Float;
+    case PixelFormat::kB10G10R10A2UNorm:
+      return MTLPixelFormatBGR10A2Unorm;
     case PixelFormat::kBC1RGBAUNormInt:
       return SafeMTLPixelFormatBC1_RGBA();
     case PixelFormat::kBC1RGBAUNormIntSRGB:

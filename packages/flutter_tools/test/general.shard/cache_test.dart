@@ -890,7 +890,8 @@ void main() {
       );
       final cache = FakeSecondaryCache()
         ..artifactDirectory = artifactDir
-        ..downloadDir = downloadDir;
+        ..downloadDir = downloadDir
+        ..version = 'abc123';
       artifactDir.childDirectory('bin_dir').createSync();
       artifactDir.childFile('unused_url_path').createSync();
 
@@ -926,7 +927,8 @@ void main() {
     );
     final cache = FakeSecondaryCache()
       ..artifactDirectory = artifactDir
-      ..downloadDir = downloadDir;
+      ..downloadDir = downloadDir
+      ..version = 'abc123';
     artifactDir.childDirectory('pkg').createSync();
 
     final artifact = FakeCachedArtifact(
@@ -1370,6 +1372,7 @@ void main() {
       final File canvasKitVersionFile = internalDir.childFile('canvaskit.version');
       canvasKitVersionFile.createSync(recursive: true);
       canvasKitVersionFile.writeAsStringSync('abcdefg');
+      internalDir.childFile('engine.ohos.version').writeAsStringSync('ohos_engine');
 
       final Directory cacheDir = fileSystem.currentDirectory
           .childDirectory('bin')
@@ -1400,7 +1403,7 @@ void main() {
       expect(messages, <String>['Web SDK']);
 
       expect(downloads, <String>[
-        'https://storage.googleapis.com/flutter_infra_release/flutter/hijklmnop/flutter-web-sdk.zip',
+        'https://flutter-ohos.obs.cn-south-1.myhuaweicloud.com/flutter_infra_release/flutter/ohos_engine/flutter-web-sdk.zip',
       ]);
 
       expect(locations, <String>['/bin/cache/flutter_web_sdk']);
@@ -1420,6 +1423,7 @@ void main() {
       final File canvasKitVersionFile = internalDir.childFile('canvaskit.version');
       canvasKitVersionFile.createSync(recursive: true);
       canvasKitVersionFile.writeAsStringSync('abcdefg');
+      internalDir.childFile('engine.ohos.version').writeAsStringSync('ohos_engine');
 
       final Directory cacheDir = fileSystem.currentDirectory
           .childDirectory('bin')
@@ -1433,7 +1437,7 @@ void main() {
         fileSystem: fileSystem,
         platform: FakePlatform(
           environment: <String, String>{
-            'FLUTTER_STORAGE_BASE_URL': 'https://flutter.storage.com/override',
+            'FLUTTER_OHOS_STORAGE_BASE_URL': 'https://flutter.storage.com/override',
           },
         ),
       );
@@ -1454,7 +1458,7 @@ void main() {
       await webSdk.updateInner(artifactUpdater, fileSystem, FakeOperatingSystemUtils());
 
       expect(downloads, <String>[
-        'https://flutter.storage.com/override/flutter_infra_release/flutter/hijklmnop/flutter-web-sdk.zip',
+        'https://flutter.storage.com/override/flutter_infra_release/flutter/ohos_engine/flutter-web-sdk.zip',
       ]);
     },
   );
@@ -1927,6 +1931,9 @@ class FakeSecondaryCache extends Fake implements Cache {
 
   @override
   String get storageBaseUrl => 'https://storage.googleapis.com';
+
+  @override
+  String get ohosStorageBaseUrl => 'https://flutter-ohos.obs.cn-south-1.myhuaweicloud.com';
 
   @override
   String get engineRevision => version ?? 'abc123';

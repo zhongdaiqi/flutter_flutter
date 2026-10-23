@@ -284,6 +284,336 @@ class RenderAndroidView extends PlatformViewRenderBox {
   }
 }
 
+/// Renders an embedded OHOS platform view.
+class RenderOhosView extends PlatformViewRenderBox {
+  /// Creates a render object for an Ohos view.
+  RenderOhosView({
+    required OhosViewController viewController,
+    required PlatformViewHitTestBehavior hitTestBehavior,
+    required Set<Factory<OneSequenceGestureRecognizer>> gestureRecognizers,
+    Clip clipBehavior = Clip.hardEdge,
+  }) : _viewController = viewController,
+       _clipBehavior = clipBehavior,
+       super(
+         controller: viewController,
+         hitTestBehavior: hitTestBehavior,
+         gestureRecognizers: gestureRecognizers,
+       ) {
+    _viewController.pointTransformer = (Offset offset) => globalToLocal(offset);
+    updateGestureRecognizers(gestureRecognizers);
+    _viewController.addOnPlatformViewCreatedListener(_onPlatformViewCreated);
+    this.hitTestBehavior = hitTestBehavior;
+    _setOffset();
+  }
+
+  _PlatformViewState _state = _PlatformViewState.uninitialized;
+
+  Size? _currentTextureSize;
+
+  bool _isDisposed = false;
+
+  /// The last local→global affine sent to the engine via the 'transform'
+  /// platform message, used to de-dupe sends.
+  List<double>? _lastPlatformViewTransform;
+
+  /// The offset last passed to [OhosViewController.setOffset], used to
+  /// restore plain offset positioning when a transform is cleared.
+  Offset? _lastPlatformViewOffset;
+
+  /// The Ohos view controller for the Ohos view associated with this render object.
+  @override
+  OhosViewController get controller => _viewController;
+
+  OhosViewController _viewController;
+
+  /// Sets a new Ohos view controller.
+  @override
+  set controller(OhosViewController controller) {
+    assert(!_isDisposed);
+    if (_viewController == controller) {
+      return;
+    }
+    _viewController.removeOnPlatformViewCreatedListener(_onPlatformViewCreated);
+    super.controller = controller;
+    _viewController = controller;
+    // The transform de-dupe state belongs to the previous viewId: a fresh
+    // view starts with nothing sent, even if its first affine is identical
+    // (e.g. identity), otherwise the de-dupe would swallow the message.
+    _lastPlatformViewTransform = null;
+    _viewController.pointTransformer = (Offset offset) => globalToLocal(offset);
+    _sizePlatformView();
+    if (_viewController.isCreated) {
+      markNeedsSemanticsUpdate();
+    }
+    _viewController.addOnPlatformViewCreatedListener(_onPlatformViewCreated);
+  }
+
+  /// {@macro flutter.material.Material.clipBehavior}
+  ///
+  /// Defaults to [Clip.hardEdge], and must not be null.
+  Clip get clipBehavior => _clipBehavior;
+  Clip _clipBehavior = Clip.hardEdge;
+  set clipBehavior(Clip value) {
+    if (value != _clipBehavior) {
+      _clipBehavior = value;
+      markNeedsPaint();
+      markNeedsSemanticsUpdate();
+    }
+  }
+
+  void _onPlatformViewCreated(int id) {
+    assert(!_isDisposed);
+    markNeedsSemanticsUpdate();
+  }
+
+  @override
+  bool get sizedByParent => true;
+
+  @override
+  bool get alwaysNeedsCompositing => true;
+
+  @override
+  bool get isRepaintBoundary => true;
+
+  @override
+  Size computeDryLayout(BoxConstraints constraints) {
+    return constraints.biggest;
+  }
+
+  @override
+  void performResize() {
+    super.performResize();
+    _sizePlatformView();
+  }
+
+  Future<void> _sizePlatformView() async {
+    // Ohos virtual displays cannot have a zero size.
+    // Trying to size it to 0 crashes the app, which was happening when starting the app
+    // with a locked screen (see: https://github.com/flutter/flutter/issues/20456).
+    if (_state == _PlatformViewState.resizing || size.isEmpty) {
+      return;
+    }
+
+    _state = _PlatformViewState.resizing;
+    markNeedsPaint();
+
+    Size targetSize;
+    do {
+      targetSize = size;
+      _currentTextureSize = await _viewController.setSize(targetSize);
+      if (_isDisposed) {
+        return;
+      }
+      // We've resized the platform view to targetSize, but it is possible that
+      // while we were resizing the render object's size was changed again.
+      // In that case we will resize the platform view again.
+    } while (size != targetSize);
+
+    _state = _PlatformViewState.ready;
+    markNeedsPaint();
+  }
+
+  // Sets the offset of the underlying platform view on the platform side.
+  //
+  // This allows the Ohos native view to draw the a11y highlights in the same
+  // location on the screen as the platform view widget in the Flutter framework.
+  //
+  // It also allows platform code to obtain the correct position of the Ohos
+  // native view on the screen.
+  void _setOffset() {
+    SchedulerBinding.instance.addPostFrameCallback((_) async {
+      if (!_isDisposed) {
+        if (attached) {
+          // Extract the local→global affine transform and send it to the
+          // engine as a separate 'transform' platform message right after
+          // the offset (see _updatePlatformViewTransform). This is the same
+          // matrix that globalToLocal/localToGlobal use (getTransformTo), so
+          // it is correct by construction for any rotation/scale/translation.
+          //
+          // The engine uses it to:
+          //   1. detect the rotation robustly (the 2x2 part encodes it,
+          //      independent of the view's on-screen position or size),
+          //   2. position the native node at the rotated bounding box's visual
+          //      top-left via a 4-corner min, and
+          //   3. correct touch coordinates for non-axis-aligned transforms.
+          //
+          // Only send the affine when the matrix is actually affine (no
+          // perspective).  If perspective components matrixStorage[3],
+          // matrixStorage[7], or matrixStorage[11] are non-zero, the 2D affine
+          // approximation is invalid — the true mapping requires homogeneous
+          // division — so send null instead (the engine will skip touch
+          // correction, matching the old pre-transform behaviour).
+          final Float64List matrixStorage = getTransformTo(null).storage;
+          final bool isAffine =
+              matrixStorage[3] == 0.0 &&
+              matrixStorage[7] == 0.0 &&
+              matrixStorage[11] == 0.0 &&
+              matrixStorage[15] == 1.0;
+          final Offset offset = localToGlobal(Offset.zero);
+          _lastPlatformViewOffset = offset;
+          await _viewController.setOffset(offset);
+          if (!_isDisposed) {
+            _updatePlatformViewTransform(
+              isAffine
+                  ? <double>[
+                      matrixStorage[0],
+                      matrixStorage[4],
+                      matrixStorage[1],
+                      matrixStorage[5],
+                      matrixStorage[12],
+                      matrixStorage[13],
+                    ]
+                  : null,
+            );
+          }
+        }
+        // Re-check after the await: the RenderObject may have been disposed
+        // or detached while we were asynchronously waiting for setOffset.
+        if (!_isDisposed) {
+          _setOffset();
+        }
+      }
+    });
+  }
+
+  // Sends the local→global affine to the engine as its own 'transform'
+  // platform message, right after the 'offset' message that
+  // [OhosViewController.setOffset] sends.  The engine uses it to detect
+  // rotation, position the native node at the rotated bounding box's visual
+  // top-left, and correct touch coordinates.
+  //
+  // This deliberately does not go through the controller interface (there is
+  // no OhosViewController.setTransform): implementations and generated mocks
+  // of that interface exist in downstream packages, and adding a member would
+  // break them at compile time (override signature mismatch) or run time
+  // (noSuchMethod returning null, which fails the implicit Future<void>
+  // cast).  The channel message and its engine-side handler are private to
+  // the framework/engine pair.
+  void _updatePlatformViewTransform(List<double>? transform) {
+    // Mirror the viewState guard in the controller's setOffset path: while the
+    // platform view is not created yet the engine drops the message silently,
+    // but the de-dupe cache below would still record it as sent — the freshly
+    // created view would then never receive its transform (the de-dupe
+    // swallows every re-send until the matrix actually changes).  Returning
+    // early keeps the cache untouched so the next frame retries.
+    if (!_viewController.isCreated) {
+      return;
+    }
+    // De-dupe by the last affine sent.  listEquals treats two nulls as equal,
+    // so a stable matrix (including staying null) is sent at most once.
+    if (listEquals<double>(transform, _lastPlatformViewTransform)) {
+      return;
+    }
+    // Clearing a previously sent affine must also restore the plain offset
+    // positioning: the engine's left/top may still hold the rotated bounding
+    // box corner computed from the last affine, and the next 'offset' message
+    // can be de-duped away when localToGlobal(Offset.zero) is unchanged (e.g.
+    // an ancestor gains perspective that does not move the origin projection).
+    final bool clearing = transform == null && _lastPlatformViewTransform != null;
+    _lastPlatformViewTransform = transform;
+    if (clearing) {
+      final Offset? offset = _lastPlatformViewOffset;
+      if (offset != null) {
+        _sendPlatformViewMessage('offset', <String, dynamic>{
+          'id': _viewController.viewId,
+          'top': offset.dy,
+          'left': offset.dx,
+        });
+      }
+    }
+    _sendPlatformViewMessage('transform', <String, dynamic>{
+      'id': _viewController.viewId,
+      'transform': transform,
+    });
+  }
+
+  // Sends a platform-view geometry message ('offset'/'transform') without
+  // awaiting the reply.  See _updatePlatformViewTransform for why the
+  // transform travels as its own message.
+  void _sendPlatformViewMessage(String method, Map<String, dynamic> arguments) {
+    SystemChannels.platform_views.invokeMethod<void>(method, arguments).catchError((Object e) {
+      // The engine and the framework ship as separate artifacts; when this
+      // runs against an engine build without the 'transform' handler, the
+      // reply is notImplemented, which surfaces as a MissingPluginException.
+      // That mismatch is expected and silently degrades rotation/touch
+      // correction.  Anything else is a real error; report it instead of
+      // crashing the per-frame loop or hiding it entirely.
+      if (e is! MissingPluginException) {
+        FlutterError.reportError(
+          FlutterErrorDetails(
+            exception: e,
+            library: 'rendering',
+            context: ErrorDescription('while sending the $method platform view message'),
+          ),
+        );
+      }
+    });
+  }
+
+  @override
+  void paint(PaintingContext context, Offset offset) {
+    if (_viewController.textureId == null || _currentTextureSize == null) {
+      return;
+    }
+
+    // As resizing the Ohos view happens asynchronously we don't know exactly when is a
+    // texture frame with the new size is ready for consumption.
+    // TextureLayer is unaware of the texture frame's size and always maps it to the
+    // specified rect. If the rect we provide has a different size from the current texture frame's
+    // size the texture frame will be scaled.
+    // To prevent unwanted scaling artifacts while resizing, clip the texture.
+    // This guarantees that the size of the texture frame we're painting is always
+    // _currentOhosTextureSize.
+    final bool isTextureLargerThanWidget =
+        _currentTextureSize!.width > size.width || _currentTextureSize!.height > size.height;
+    if (isTextureLargerThanWidget && clipBehavior != Clip.none) {
+      _clipRectLayer.layer = context.pushClipRect(
+        true,
+        offset,
+        offset & size,
+        _paintTexture,
+        clipBehavior: clipBehavior,
+        oldLayer: _clipRectLayer.layer,
+      );
+      return;
+    }
+    _clipRectLayer.layer = null;
+    _paintTexture(context, offset);
+  }
+
+  final LayerHandle<ClipRectLayer> _clipRectLayer = LayerHandle<ClipRectLayer>();
+
+  @override
+  void dispose() {
+    _isDisposed = true;
+    _clipRectLayer.layer = null;
+    _viewController.removeOnPlatformViewCreatedListener(_onPlatformViewCreated);
+    super.dispose();
+  }
+
+  void _paintTexture(PaintingContext context, Offset offset) {
+    if (_currentTextureSize == null) {
+      return;
+    }
+
+    context.addLayer(
+      TextureLayer(rect: offset & _currentTextureSize!, textureId: _viewController.textureId!),
+    );
+  }
+
+  @override
+  void describeSemanticsConfiguration(SemanticsConfiguration config) {
+    // Don't call the super implementation since `platformViewId` should
+    // be set only when the platform view is created, but the concept of
+    // a "created" platform view belongs to this subclass.
+    config.isSemanticBoundary = true;
+
+    if (_viewController.isCreated) {
+      config.platformViewId = _viewController.viewId;
+    }
+  }
+}
+
 /// Common render-layer functionality for iOS and macOS platform views.
 ///
 /// Provides the basic rendering logic for iOS and macOS platformviews.

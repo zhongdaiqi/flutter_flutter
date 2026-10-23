@@ -1,0 +1,156 @@
+/*
+ * Copyright (c) 2023 Hunan OpenValley Digital Industry Development Co., Ltd.
+ * All rights reserved. Use of this source code is governed by a BSD-style
+ * license that can be found in the LICENSE_KHZG file.
+ */
+
+#ifndef FLUTTER_SHELL_PLATFORM_OHOS_OHOS_TOUCH_PROCESSOR_H_
+#define FLUTTER_SHELL_PLATFORM_OHOS_OHOS_TOUCH_PROCESSOR_H_
+#include <ace/xcomponent/native_interface_xcomponent.h>
+#include <arkui/ui_input_event.h>
+#include <set>
+#include <string>
+#include <vector>
+#include "flutter/fml/platform/ohos/dynamic_library_loader.h"
+#include "flutter/lib/ui/window/pointer_data.h"
+#include "napi_common.h"
+
+namespace flutter {
+
+class OhosTouchProcessor {
+ public:
+  typedef struct {
+    OH_NativeXComponent_TouchEvent* touchEventInput;
+    OH_NativeXComponent_TouchPointToolType toolTypeInput;
+    float tiltX;
+    float tiltY;
+  } TouchPacket;
+
+ public:
+  void HandleTouchEvent(int64_t shell_holderID,
+                        OH_NativeXComponent* component,
+                        OH_NativeXComponent_TouchEvent* touchEvent);
+  void HandleAxisEvent(int64_t shell_holderID,
+                       OH_NativeXComponent* component,
+                       ArkUI_UIInputEvent* event);
+  void HandleScaleEvent(int64_t shell_holderID,
+                        OH_NativeXComponent* component,
+                        ArkUI_UIInputEvent* event);
+  void HandleScrollEvent(int64_t shell_holderID,
+                         OH_NativeXComponent* component,
+                         ArkUI_UIInputEvent* event);
+  void HandlePanZooomEvent(int64_t shell_holderID,
+                           OH_NativeXComponent* component,
+                           ArkUI_UIInputEvent* event);
+  void HandleMouseEvent(int64_t shell_holderID,
+                        OH_NativeXComponent* component,
+                        OH_NativeXComponent_MouseEvent mouseEvent,
+                        double offsetY,
+                        bool isLeave = false,
+                        double windowWidth = 0.0,
+                        double windowHeight = 0.0);
+  void HandleVirtualTouchEvent(int64_t shell_holderID,
+                               OH_NativeXComponent* component,
+                               OH_NativeXComponent_TouchEvent* touchEvent);
+  flutter::PointerData::Change getPointerChangeForAction(int maskedAction);
+  flutter::PointerData::DeviceKind getPointerDeviceTypeForToolType(
+      int toolType);
+  flutter::PointerData::Change getPointerChangeForMouseAction(
+      OH_NativeXComponent_MouseEventAction mouseAction);
+  PointerButtonMouse getPointerButtonFromMouse(
+      OH_NativeXComponent_MouseEventButton mouseButton);
+
+  // Multi-view pointer routing: tags every PointerData with the owning
+  // XComponent's view_id, refreshed at each dispatch.
+  void SetViewId(int64_t view_id) { view_id_ = view_id; }
+
+ public:
+  OH_NativeXComponent_TouchPointToolType touchType_;
+
+ public:
+  OhosTouchProcessor();
+  ~OhosTouchProcessor();
+
+ private:
+  float accumulatedPanX_ = 0.0;
+  float accumulatedPanY_ = 0.0;
+  float accumulatedScale_ = 1.0;
+
+  // Store the last mouse position for sending a final move event before leave
+  // event
+  double lastMouseX_ = -1.0;
+  double lastMouseY_ = -1.0;
+  int64_t lastMouseTimestamp_ = 0;
+  int64_t mouse_button_state_ = 0;
+  // View id of the owning XComponent (0 == kFlutterImplicitViewId).
+  int64_t view_id_ = 0;
+
+ private:
+  int apiVersion_;
+  std::unique_ptr<DynamicLibraryLoader> loader_;
+  // 共享库名称
+  static constexpr char UI_INPUT_EVENT_LIB_NAME[] = "libace_ndk.z.so";
+  // 动态加载的函数指针
+  int32_t (*dynamicGetDeviceId_)(ArkUI_UIInputEvent*);
+  int32_t (*dynamicGetAxisAction_)(ArkUI_UIInputEvent*);
+  int32_t (*dynamicGetModifierKeyStates_)(ArkUI_UIInputEvent*, uint64_t*);
+
+  // Returns a copy of |event| whose coordinate fields (x/y/screenX/screenY of
+  // the main event and of every touch point) are multiplied by |scale|, to
+  // map physical screen pixels onto the platform-view layout space used by
+  // the ArkTS embedding. Non-coordinate fields are preserved. Returns the
+  // event unchanged (aside from the copy) when |scale| == 1.0. Pure helper
+  // split out for unit testing; see PlatformViewOnTouchEvent for the full
+  // pipeline.
+  static OH_NativeXComponent_TouchEvent ScaleTouchEventCoordinates(
+      const OH_NativeXComponent_TouchEvent& event,
+      double scale);
+
+ private:
+  std::shared_ptr<std::string[]> packagePacketData(
+      std::unique_ptr<OhosTouchProcessor::TouchPacket> touchPacket);
+
+  /// Trigger the touch event callback on the ETS side.
+  void PlatformViewOnTouchEvent(int64_t shellHolderID,
+                                OH_NativeXComponent_TouchPointToolType toolType,
+                                OH_NativeXComponent* component,
+                                OH_NativeXComponent_TouchEvent* touchEvent);
+
+  /// Trigger the axis event callback on the ETS side.
+  void PlatformViewOnAxisEvent(int64_t shellHolderID,
+                               ArkUI_UIInputEvent* event,
+                               double result_scroll_delta_y);
+
+  // Builds the 8-field axis packet forwarded to the ArkTS embedding via
+  // OnAxisEvent: [0] action, [1] x, [2] y, [3] windowX, [4] windowY,
+  // [5] displayX, [6] displayY, [7] delta. The six coordinate fields are
+  // mapped from physical screen pixels onto the platform-view layout space
+  // by multiplying by |scale| (see GetScreenToLayoutScale in the .cpp). The
+  // delta is a scroll/zoom value, not a coordinate, and is passed through
+  // unscaled. Shared by HandleScaleEvent, HandlePanZooomEvent and
+  // PlatformViewOnAxisEvent so the packet layout and the coordinate scaling
+  // cannot drift apart between event types.
+  std::shared_ptr<std::string[]> BuildScaledAxisPacket(
+      ArkUI_UIInputEvent* event,
+      double scale,
+      double delta_value) const;
+
+  bool shouldDropTouchEvent(OH_NativeXComponent_TouchEvent* touchEvent);
+  std::set<int32_t> activeFingerIds_;
+  void VsyncVotingTouchValue(int64_t shellHolderID, int touchType);
+
+  void VsyncVotingTouchUp(int64_t shellHolderID);
+
+  void VsyncVotingTouchDown(int64_t shellHolderID);
+
+  void SendFinalMoveEventBeforeLeave(int64_t shell_holderID,
+                                     OH_NativeXComponent* component,
+                                     OH_NativeXComponent_MouseEvent mouseEvent,
+                                     double windowWidth,
+                                     double windowHeight);
+  bool HandleMouseButtonEvent(OH_NativeXComponent_MouseEvent mouseEvent,
+                              PointerData::Change& change,
+                              int64_t& buttons_to_send);
+};
+}  // namespace flutter
+#endif  // FLUTTER_SHELL_PLATFORM_OHOS_OHOS_TOUCH_PROCESSOR_H_

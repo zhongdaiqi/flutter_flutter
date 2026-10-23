@@ -1,0 +1,10 @@
+{
+  global:
+    FlutterOhosRunAllTests;
+    FlutterOhosWriteCoverageProfile;
+    FlutterOhosCopyLiveLog;
+    kDartSnapshotData;
+    kDartSnapshotText;
+  local:
+    *;
+};

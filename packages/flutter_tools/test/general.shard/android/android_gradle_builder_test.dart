@@ -1268,6 +1268,13 @@ void main() {
         fileSystem.directory('android').childDirectory('app').childFile('build.gradle')
           ..createSync(recursive: true)
           ..writeAsStringSync('apply from: irrelevant/flutter.gradle');
+
+        AndroidSdk.locateAndroidSdk()!.directory
+            .childDirectory('cmdline-tools')
+            .childDirectory('latest')
+            .childDirectory('bin')
+            .childFile(apkAnalyzerBinaryName)
+            .createSync(recursive: true);
       }
 
       File createAabFile(BuildMode buildMode) {
@@ -3388,7 +3395,7 @@ Gradle Crashed
         AndroidStudio: () => FakeAndroidStudio(),
       },
     );
-  });
+  }, skip: true); // OHOS not supported
 }
 
 class FakeGradleUtils extends Fake implements GradleUtils {

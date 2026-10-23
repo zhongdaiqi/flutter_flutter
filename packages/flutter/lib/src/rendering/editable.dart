@@ -747,6 +747,18 @@ class RenderEditable extends RenderBox
         extentOffset: math.min(nextSelection.extentOffset, textLength),
       );
     }
+    final TextEditingValue value = textSelectionDelegate.textEditingValue;
+    if (defaultTargetPlatform == TargetPlatform.ohos &&
+        cause == SelectionChangedCause.drag &&
+        value.composing.isValid &&
+        value.composing.isNormalized) {
+      final int start = value.composing.start;
+      final int end = value.composing.end;
+      nextSelection = nextSelection.copyWith(
+        baseOffset: nextSelection.baseOffset.clamp(start, end),
+        extentOffset: nextSelection.extentOffset.clamp(start, end),
+      );
+    }
     _setTextEditingValue(
       textSelectionDelegate.textEditingValue.copyWith(selection: nextSelection),
       cause,
@@ -1844,6 +1856,7 @@ class RenderEditable extends RenderBox
       case TargetPlatform.fuchsia:
       case TargetPlatform.linux:
       case TargetPlatform.windows:
+      case TargetPlatform.ohos:
         // Override the height to take the full height of the glyph at the TextPosition
         // when not on iOS. iOS has special handling that creates a taller caret.
         // TODO(garyq): see https://github.com/flutter/flutter/issues/120836.
@@ -2254,6 +2267,7 @@ class RenderEditable extends RenderBox
             }
             return TextSelection(baseOffset: previousWord.start, extentOffset: position.offset);
           }
+        case TargetPlatform.ohos:
         case TargetPlatform.fuchsia:
         case TargetPlatform.macOS:
         case TargetPlatform.linux:
@@ -2327,6 +2341,7 @@ class RenderEditable extends RenderBox
       case TargetPlatform.fuchsia:
       case TargetPlatform.linux:
       case TargetPlatform.windows:
+      case TargetPlatform.ohos:
         _caretPrototype = Rect.fromLTWH(
           0.0,
           _kCaretHeightOffset,

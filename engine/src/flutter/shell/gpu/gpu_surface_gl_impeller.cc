@@ -15,20 +15,24 @@ namespace flutter {
 GPUSurfaceGLImpeller::GPUSurfaceGLImpeller(
     GPUSurfaceGLDelegate* delegate,
     std::shared_ptr<impeller::Context> context,
-    bool render_to_surface)
+    bool render_to_surface,
+    impeller::Flags flags)
     : weak_factory_(this) {
   if (delegate == nullptr) {
+    FML_LOG(ERROR) << "GPUSurfaceGLImpeller delegate is null";
     return;
   }
 
   if (!context || !context->IsValid()) {
+    FML_LOG(ERROR) << "GPUSurfaceGLImpeller context invalid";
     return;
   }
 
   auto aiks_context = std::make_shared<impeller::AiksContext>(
-      context, impeller::TypographerContextSkia::Make());
+      context, impeller::TypographerContextSkia::Make(flags));
 
   if (!aiks_context->IsValid()) {
+    FML_LOG(ERROR) << "GPUSurfaceGLImpeller aiks_context invalid";
     return;
   }
 

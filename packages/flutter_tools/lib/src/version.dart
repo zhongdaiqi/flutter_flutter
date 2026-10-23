@@ -833,7 +833,18 @@ class VersionUpstreamValidator {
     'https://github.com/flutter/flutter.git',
     'git@github.com:flutter/flutter.git',
     'ssh://git@github.com/flutter/flutter.git',
+    'https://gitcode.com/CPF-Flutter/flutter_flutter.git',
+    'git@gitcode.com:CPF-Flutter/flutter_flutter.git',
+    'ssh://git@gitcode.com/CPF-Flutter/flutter_flutter.git',
+    'https://gitcode.com/openharmony-tpc/flutter_flutter.git',
+    'git@gitcode.com:openharmony-tpc/flutter_flutter.git',
+    'ssh://git@gitcode.com/openharmony-tpc/flutter_flutter.git',
   ];
+
+  /// Exposed for the OHOS upgrade command, which validates the 'origin'
+  /// remote directly (the tracked upstream is absent on a detached checkout,
+  /// for example a clone of a release tag).
+  static List<String> get standardRemotes => _standardRemotes;
 
   // Strips ".git" suffix from a given string, preferably an url.
   // For example, changes 'https://github.com/flutter/flutter.git' to 'https://github.com/flutter/flutter'.
@@ -1086,7 +1097,30 @@ class GitTagVersion {
       }
     }
 
-    // If we don't exist in a tag, use git to find the latest tag.
+    final ohosTagPattern = RegExp(
+      r'^\d+\.\d+\.\d+(?:-ohos|\+ohos)(-\d+\.\d+\.\d+)?(-[a-zA-Z0-9.]+)?$',
+    );
+    for (final tag in tags) {
+      if (ohosTagPattern.hasMatch(tag.trim())) {
+        return parse(tag);
+      }
+    }
+
+    final RunResult describeResult = git.runSync(<String>[
+      'describe',
+      '--match',
+      '*.*.*',
+      '--long',
+      '--tags',
+      gitRef,
+    ], workingDirectory: workingDirectory);
+    if (describeResult.exitCode == 0 && describeResult.stdout.trim().isNotEmpty) {
+      final GitTagVersion described = parse(describeResult.stdout.trim());
+      if (described != const GitTagVersion.unknown()) {
+        return described;
+      }
+    }
+
     return _useNewestTagAndCommitsPastFallback(
       git: git,
       workingDirectory: workingDirectory,
@@ -1170,6 +1204,41 @@ class GitTagVersion {
     );
   }
 
+  /// Parse a version string for ohos.
+  static GitTagVersion parseOhosVersion(String version) {
+    // Supports -ohos (pre-release) and +ohos (build metadata) tag formats.
+    // +ohos is preferred: semver treats it as equal precedence to the upstream
+    // stable version, so pub constraints like ">=3.35.7" are satisfied.
+    final versionPattern = RegExp(
+      r'^(\d+)\.(\d+)\.(\d+)((?:-ohos|\+ohos)(-\d+\.\d+\.\d+)?(-[a-zA-Z0-9.]+)?)?(?:-(\d+)-g([a-f0-9]+))?$',
+    );
+    final Match? match = versionPattern.firstMatch(version.trim());
+    if (match == null) {
+      return const GitTagVersion.unknown();
+    }
+
+    final List<String?> matchGroups = match.groups(<int>[1, 2, 3, 4, 5, 6, 7, 8]);
+    final int? x = matchGroups[0] == null ? null : int.tryParse(matchGroups[0]!);
+    final int? y = matchGroups[1] == null ? null : int.tryParse(matchGroups[1]!);
+    final int? z = matchGroups[2] == null ? null : int.tryParse(matchGroups[2]!);
+    final String? devString = matchGroups[3];
+
+    // count of commits past last tagged version
+    final int? commits = matchGroups[6] == null ? 0 : int.tryParse(matchGroups[6]!);
+    final String hash = matchGroups[7] ?? '';
+
+    return GitTagVersion(
+      x: x,
+      y: y,
+      z: z,
+      commits: commits,
+      hash: hash,
+      gitTag: '$x.$y.$z${devString ?? ''}', // e.g. 3.22.1-ohos-1.0.0
+      // e.g. 3.22.1-ohos-1.0.0-candidate.1
+      // e.g. 3.22.1-ohos-1.0.0-SP1
+    );
+  }
+
   @visibleForTesting
   static GitTagVersion parse(String version) {
     GitTagVersion gitTagVersion;
@@ -1178,6 +1247,12 @@ class GitTagVersion {
     if (gitTagVersion != const GitTagVersion.unknown()) {
       return gitTagVersion;
     }
+
+    gitTagVersion = parseOhosVersion(version);
+    if (gitTagVersion != const GitTagVersion.unknown()) {
+      return gitTagVersion;
+    }
+
     globals.printTrace('Could not interpret results of "git describe": $version');
     return const GitTagVersion.unknown();
   }
@@ -1187,6 +1262,9 @@ class GitTagVersion {
       return kUnknownFrameworkVersion;
     }
     if (commits == 0) {
+      return gitTag;
+    }
+    if (gitTag.contains('ohos')) {
       return gitTag;
     }
     if (hotfix != null) {

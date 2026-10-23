@@ -216,6 +216,7 @@ class ModalBarrier extends StatelessWidget {
       case TargetPlatform.android:
       case TargetPlatform.iOS:
       case TargetPlatform.macOS:
+      case TargetPlatform.ohos:
         platformSupportsDismissingBarrier = true;
     }
     final bool semanticsDismissible = dismissible && platformSupportsDismissingBarrier;

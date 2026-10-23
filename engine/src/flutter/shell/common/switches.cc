@@ -74,7 +74,7 @@ static const std::string kAllowedDartFlags[] = {
 // Define symbols for the ICU data that is linked into the Flutter library on
 // Android.  This is a workaround for crashes seen when doing dynamic lookups
 // of the engine's own symbols on some older versions of Android.
-#if FML_OS_ANDROID
+#if FML_OS_ANDROID || FML_OS_OHOS
 extern uint8_t _binary_icudtl_dat_start[];
 extern size_t _binary_icudtl_dat_size;
 
@@ -420,7 +420,7 @@ Settings SettingsFromCommandLine(const fml::CommandLine& command_line,
       command_line.GetOptionValue(FlagForSwitch(Switch::ICUNativeLibPath),
                                   &native_lib_path);
 
-#if FML_OS_ANDROID
+#if FML_OS_ANDROID || FML_OS_OHOS
       settings.icu_mapper = GetICUStaticMapping;
 #else
       settings.icu_mapper = [icu_symbol_prefix, native_lib_path] {
@@ -521,6 +521,9 @@ Settings SettingsFromCommandLine(const fml::CommandLine& command_line,
   settings.enable_surface_control = command_line.HasOption(
       FlagForSwitch(Switch::EnableAndroidHcppAndSurfaceControl));
 
+  settings.enable_ohos_hybrid_composition = command_line.HasOption(
+      FlagForSwitch(Switch::EnableOhosHybridComposition));
+
   constexpr std::string_view kMergedThreadEnabled = "enabled";
   constexpr std::string_view kMergedThreadDisabled = "disabled";
   constexpr std::string_view kMergedThreadMergeAfterLaunch = "mergeAfterLaunch";
@@ -562,6 +565,8 @@ Settings SettingsFromCommandLine(const fml::CommandLine& command_line,
       command_line.HasOption(FlagForSwitch(Switch::ImpellerAntialiasLines));
   settings.impeller_use_sdfs =
       command_line.HasOption(FlagForSwitch(Switch::ImpellerUseSDFs));
+  settings.enable_glyph_raster_parallelization = command_line.HasOption(
+      FlagForSwitch(Switch::EnableGlyphRasterParallelization));
 
   return settings;
 }
