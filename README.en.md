@@ -9,7 +9,7 @@ This repository is the **OpenHarmony** adaptation of the **[Flutter SDK](https:/
 
 ## Repository Structure
 
-Starting from Flutter version 3.44.9, the Engine source code has been merged into the `engine/` directory of this repository. There is no need to clone the Engine repository separately.
+In Flutter version 3.47.7, the Engine source code has been merged into the `engine/` directory of this repository. There is no need to clone the Engine repository separately.
 
 ```json
 flutter_flutter/                 # Root Directory
