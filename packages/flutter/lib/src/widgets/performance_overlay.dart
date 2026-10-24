@@ -1,4 +1,4 @@
-// Copyright 2015 The Chromium Authors. All rights reserved.
+// Copyright 2014 The Flutter Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -8,13 +8,14 @@ import 'framework.dart';
 
 /// Displays performance statistics.
 ///
-/// The overlay show two time series. The first shows how much time was required
-/// on this thread to produce each frame. The second shows how much time was
-/// required on the GPU thread to produce each frame. Ideally, both these values
-/// would be less than the total frame budget for the hardware on which the app
-/// is running. For example, if the hardware has a screen that updates at 60 Hz,
-/// each thread should ideally spend less than 16ms producing each frame. This
-/// ideal condition is indicated by a green vertical line for each thread.
+/// The overlay shows two time series. The first shows how much time was
+/// required on this thread to produce each frame. The second shows how much
+/// time was required on the raster thread (formerly known as the GPU thread)
+/// to produce each frame. Ideally, both these values would be less than
+/// the total frame budget for the hardware on which the app is running.
+/// For example, if the hardware has a screen that updates at 60 Hz, each
+/// thread should ideally spend less than 16ms producing each frame.
+/// This ideal condition is indicated by a green vertical line for each thread.
 /// Otherwise, the performance overlay shows a red vertical line.
 ///
 /// The simplest way to show the performance overlay is to set
@@ -26,25 +27,26 @@ class PerformanceOverlay extends LeafRenderObjectWidget {
 
   /// Create a performance overlay that only displays specific statistics. The
   /// mask is created by shifting 1 by the index of the specific
-  /// [StatisticOption] to enable.
-  PerformanceOverlay({
-    Key key,
-    this.optionsMask: 0,
-    this.rasterizerThreshold: 0,
-    this.checkerboardRasterCacheImages: false
-  }) : super(key: key);
+  /// [PerformanceOverlayOption] to enable.
+  const PerformanceOverlay({
+    super.key,
+    this.optionsMask = 0,
+    this.rasterizerThreshold = 0,
+    this.checkerboardRasterCacheImages = false,
+    this.checkerboardOffscreenLayers = false,
+  });
 
-  /// Create a performance overlay that displays all available statistics
-  PerformanceOverlay.allEnabled({ Key key,
-                                  this.rasterizerThreshold: 0,
-                                  this.checkerboardRasterCacheImages: false })
-    : optionsMask = (
+  /// Create a performance overlay that displays all available statistics.
+  PerformanceOverlay.allEnabled({
+    super.key,
+    this.rasterizerThreshold = 0,
+    this.checkerboardRasterCacheImages = false,
+    this.checkerboardOffscreenLayers = false,
+  }) : optionsMask =
         1 << PerformanceOverlayOption.displayRasterizerStatistics.index |
         1 << PerformanceOverlayOption.visualizeRasterizerStatistics.index |
         1 << PerformanceOverlayOption.displayEngineStatistics.index |
-        1 << PerformanceOverlayOption.visualizeEngineStatistics.index
-      ),
-      super(key: key);
+        1 << PerformanceOverlayOption.visualizeEngineStatistics.index;
 
   /// The mask is created by shifting 1 by the index of the specific
   /// [PerformanceOverlayOption] to enable.
@@ -55,9 +57,9 @@ class PerformanceOverlay extends LeafRenderObjectWidget {
   /// is suitable for capturing an SkPicture trace for further analysis.
   ///
   /// For example, if you want a trace of all pictures that could not be
-  /// renderered by the rasterizer within the frame boundary (and hence caused
+  /// rendered by the rasterizer within the frame boundary (and hence caused
   /// jank), specify 1. Specifying 2 will trace all pictures that took more
-  /// more than 2 frame intervals to render. Adjust this value to only capture
+  /// than 2 frame intervals to render. Adjust this value to only capture
   /// the particularly expensive pictures while skipping the others. Specifying
   /// 0 disables all capture.
   ///
@@ -91,17 +93,30 @@ class PerformanceOverlay extends LeafRenderObjectWidget {
   /// that aid it in making better decisions about caching.
   final bool checkerboardRasterCacheImages;
 
+  /// Whether the compositor should checkerboard layers that are rendered to offscreen
+  /// bitmaps. This can be useful for debugging rendering performance.
+  ///
+  /// Render target switches are caused by using opacity layers (via a [FadeTransition] or
+  /// [Opacity] widget), clips, shader mask layers, etc. Selecting a new render target
+  /// and merging it with the rest of the scene has a performance cost. This can sometimes
+  /// be avoided by using equivalent widgets that do not require these layers (for example,
+  /// replacing an [Opacity] widget with an [widgets.Image] using a [BlendMode]).
+  final bool checkerboardOffscreenLayers;
+
   @override
-  RenderPerformanceOverlay createRenderObject(BuildContext context) => new RenderPerformanceOverlay(
+  RenderPerformanceOverlay createRenderObject(BuildContext context) => RenderPerformanceOverlay(
     optionsMask: optionsMask,
     rasterizerThreshold: rasterizerThreshold,
-    checkerboardRasterCacheImages: checkerboardRasterCacheImages
+    checkerboardRasterCacheImages: checkerboardRasterCacheImages,
+    checkerboardOffscreenLayers: checkerboardOffscreenLayers,
   );
 
   @override
   void updateRenderObject(BuildContext context, RenderPerformanceOverlay renderObject) {
     renderObject
       ..optionsMask = optionsMask
-      ..rasterizerThreshold = rasterizerThreshold;
+      ..rasterizerThreshold = rasterizerThreshold
+      ..checkerboardRasterCacheImages = checkerboardRasterCacheImages
+      ..checkerboardOffscreenLayers = checkerboardOffscreenLayers;
   }
 }

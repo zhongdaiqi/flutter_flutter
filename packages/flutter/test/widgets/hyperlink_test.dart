@@ -1,68 +1,71 @@
-// Copyright 2015 The Chromium Authors. All rights reserved.
+// Copyright 2014 The Flutter Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/widgets.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   testWidgets('Can tap a hyperlink', (WidgetTester tester) async {
     bool didTapLeft = false;
-    TapGestureRecognizer tapLeft = new TapGestureRecognizer()
+    final TapGestureRecognizer tapLeft = TapGestureRecognizer()
       ..onTap = () {
         didTapLeft = true;
       };
+    addTearDown(tapLeft.dispose);
 
     bool didTapRight = false;
-    TapGestureRecognizer tapRight = new TapGestureRecognizer()
+    final TapGestureRecognizer tapRight = TapGestureRecognizer()
       ..onTap = () {
         didTapRight = true;
       };
+    addTearDown(tapRight.dispose);
 
-    Key textKey = const Key('text');
+    const Key textKey = Key('text');
 
     await tester.pumpWidget(
-      new Center(
-        child: new RichText(
+      Center(
+        child: RichText(
           key: textKey,
-          text: new TextSpan(
+          textDirection: TextDirection.ltr,
+          text: TextSpan(
             children: <TextSpan>[
-              new TextSpan(
+              TextSpan(
                 text: 'xxxxxxxx',
-                recognizer: tapLeft
+                recognizer: tapLeft,
               ),
               const TextSpan(text: 'yyyyyyyy'),
-              new TextSpan(
+              TextSpan(
                 text: 'zzzzzzzzz',
-                recognizer: tapRight
+                recognizer: tapRight,
               ),
-            ]
-          )
-        )
-      )
+            ],
+          ),
+        ),
+      ),
     );
 
-    RenderBox box = tester.renderObject(find.byKey(textKey));
+    final RenderBox box = tester.renderObject(find.byKey(textKey));
 
     expect(didTapLeft, isFalse);
     expect(didTapRight, isFalse);
 
-    await tester.tapAt(box.localToGlobal(Point.origin) + const Offset(2.0, 2.0));
+    await tester.tapAt(box.localToGlobal(Offset.zero) + const Offset(2.0, 2.0));
 
     expect(didTapLeft, isTrue);
     expect(didTapRight, isFalse);
 
     didTapLeft = false;
 
-    await tester.tapAt(box.localToGlobal(Point.origin) + const Offset(30.0, 2.0));
+    await tester.tapAt(box.localToGlobal(Offset.zero) + const Offset(30.0, 2.0));
 
     expect(didTapLeft, isTrue);
     expect(didTapRight, isFalse);
 
     didTapLeft = false;
 
-    await tester.tapAt(box.localToGlobal(new Point(box.size.width, 0.0)) + const Offset(-2.0, 2.0));
+    await tester.tapAt(box.localToGlobal(Offset(box.size.width, 0.0)) + const Offset(-2.0, 2.0));
 
     expect(didTapLeft, isFalse);
     expect(didTapRight, isTrue);
