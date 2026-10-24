@@ -1,4 +1,18 @@
 # Changelog
+<a id="version20261024"></a>
+## 3.27.4+ohos-1.1.1-beta - `2026-10-24`
+
+### Fixed
+
+- fix: decode negative BigInt in standard message codecs [!1550](https://gitcode.com/CPF-Flutter/flutter_engine/merge_requests/1550)
+- fix(PlatformView): handle affine transform as a standalone platform message [!1563](https://gitcode.com/CPF-Flutter/flutter_engine/merge_requests/1563)
+- fix cursor selection range issue [!1567](https://gitcode.com/CPF-Flutter/flutter_engine/merge_requests/1567)
+- fix: SystemMouseCursors on OHOS [!1568](https://gitcode.com/CPF-Flutter/flutter_engine/merge_requests/1568)
+- fix(FlutterView): use window effective density for viewport dpr updates [!1571](https://gitcode.com/CPF-Flutter/flutter_engine/merge_requests/1571)
+- Fix PlatformView touch/mouse/axis coordinate space errors and left-click offset on windowed HarmonyOS PC [!1574](https://gitcode.com/CPF-Flutter/flutter_engine/merge_requests/1574)
+- fix: honor embedded GIF loop count on OHOS [!1583](https://gitcode.com/CPF-Flutter/flutter_engine/merge_requests/1583)
+- fix(Embedding): apply system font weight scale on cold start [!1586](https://gitcode.com/CPF-Flutter/flutter_engine/merge_requests/1586)
+
 <a id="version20260808"></a>
 ## 3.27.4-ohos-1.0.8 - `2026-08-17`
 
