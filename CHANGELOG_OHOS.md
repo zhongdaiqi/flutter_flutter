@@ -1,5 +1,29 @@
 # Changelog
 
+<a id="version20261024"></a>
+
+## 3.35.7+ohos-1.0.7-beta - `2026-10-24`
+
+### Added
+
+- 【3.35】feat(Upgrade): support upgrading to the latest OHOS stable release tag [!2048](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/2048)
+
+### Fixed
+
+- 【3.35】fix(Embedding): apply system font weight scale on cold start [!2267](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/2267)
+- 【3.35】fix(Widgets): expose dismissible ModalBarrier semantics on OHOS [!2265](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/2265)
+- fix: honor embedded GIF loop count on OHOS [!2239](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/2239)
+- Fix PlatformView touch/mouse/axis coordinate space errors and left-click offset on windowed HarmonyOS PC [!2222](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/2222)
+- fix: Adapt the DevEco signature configuration to the new version [!2214](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/2214)
+- fix: add missing space after --unuse-bisheng and stop swallowing gn failures [!2211](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/2211)
+- fix(FlutterView): use window effective density for viewport dpr updates [!2195](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/2195)
+- fix(Upgrade): prefer the +ohos tag naming over the legacy -ohos one [!2189](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/2189)
+- fix: SystemMouseCursors on OHOS [!2174](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/2174)
+- fix cursor selection range issue [!2149](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/2149)
+- 【3.35】fix(PlatformView): move affine transform to a separate channel message [!2126](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/2126)
+- fix: decode negative BigInt in standard message codecs [!2084](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/2084)
+- fix(ohos): map custom hvigor build modes to standard flutter modes [!2004](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/2004)
+
 <a id="version20260808"></a>
 
 ## 3.35.7-ohos-1.0.4 - `2026-08-17`
@@ -156,5 +180,7 @@
 - 解决了在AndroidStudio 上某些断点无法断住的问题[c4ae8eff](https://gitcode.com/openharmony-tpc/flutter_flutter/commit/c4ae8eff5d0b41b9ccd6a81ccf026bd02c9c107d?ref=start_paused&prId=820)
 
 <!-- ===== 版本对比链接区 ===== -->
-[Unreleased]: https://gitcode.com/CPF-Flutter/flutter_flutter/compare/3.35.8-ohos-1.0.4...HEAD
+[Unreleased]: https://gitcode.com/CPF-Flutter/flutter_flutter/compare/3.35.7+ohos-1.0.7-beta...HEAD
+[3.35.7+ohos-1.0.7-beta]: https://gitcode.com/CPF-Flutter/flutter_flutter/compare/3.35.7+ohos-1.0.5...3.35.7+ohos-1.0.7-beta
+[3.35.7+ohos-1.0.5]: https://gitcode.com/CPF-Flutter/flutter_flutter/compare/3.35.8-ohos-1.0.4...3.35.7+ohos-1.0.5
 [3.35.7-ohos-1.0.4]: https://gitcode.com/CPF-Flutter/flutter_flutter/compare/3.35.8-ohos-1.0.3...3.35.8-ohos-1.0.4
