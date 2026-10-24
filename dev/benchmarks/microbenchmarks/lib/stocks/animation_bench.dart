@@ -1,19 +1,15 @@
-// Copyright 2016 The Chromium Authors. All rights reserved.
+// Copyright 2014 The Flutter Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import 'dart:async';
-
-import 'package:flutter_test/flutter_test.dart';
-import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
 import 'package:flutter/scheduler.dart';
+import 'package:flutter_test/flutter_test.dart';
 import 'package:stocks/main.dart' as stocks;
 import 'package:stocks/stock_data.dart' as stock_data;
 
 import '../common.dart';
 
-const Duration kBenchmarkTime = const Duration(seconds: 15);
+const Duration kBenchmarkTime = Duration(seconds: 15);
 
 class BenchmarkingBinding extends LiveTestWidgetsFlutterBinding {
   BenchmarkingBinding(this.stopwatch);
@@ -21,20 +17,25 @@ class BenchmarkingBinding extends LiveTestWidgetsFlutterBinding {
   final Stopwatch stopwatch;
 
   @override
-  void handleBeginFrame(Duration rawTimeStamp) {
+  void handleBeginFrame(Duration? rawTimeStamp) {
     stopwatch.start();
     super.handleBeginFrame(rawTimeStamp);
+  }
+
+  @override
+  void handleDrawFrame() {
+    super.handleDrawFrame();
     stopwatch.stop();
   }
 }
 
-Future<Null> main() async {
-  assert(false); // don't run this in checked mode! Use --release.
-  stock_data.StockDataFetcher.actuallyFetchData = false;
+Future<void> main() async {
+  assert(false, "Don't run benchmarks in debug mode! Use 'flutter run --release'.");
+  stock_data.StockData.actuallyFetchData = false;
 
-  final Stopwatch wallClockWatch = new Stopwatch();
-  final Stopwatch cpuWatch = new Stopwatch();
-  new BenchmarkingBinding(cpuWatch);
+  final Stopwatch wallClockWatch = Stopwatch();
+  final Stopwatch cpuWatch = Stopwatch();
+  BenchmarkingBinding(cpuWatch);
 
   int totalOpenFrameElapsedMicroseconds = 0;
   int totalOpenIterationCount = 0;
@@ -53,12 +54,12 @@ Future<Null> main() async {
     while (wallClockWatch.elapsed < kBenchmarkTime) {
       cpuWatch.reset();
       if (drawerIsOpen) {
-        await tester.tapAt(const Point(780.0, 250.0)); // Close drawer
+        await tester.tapAt(const Offset(780.0, 250.0)); // Close drawer
         await tester.pump();
         totalCloseIterationCount += 1;
         totalCloseFrameElapsedMicroseconds += cpuWatch.elapsedMicroseconds;
       } else {
-        await tester.tapAt(const Point(20.0, 50.0)); // Open drawer
+        await tester.tapAt(const Offset(20.0, 50.0)); // Open drawer
         await tester.pump();
         totalOpenIterationCount += 1;
         totalOpenFrameElapsedMicroseconds += cpuWatch.elapsedMicroseconds;
@@ -75,30 +76,36 @@ Future<Null> main() async {
     }
   });
 
-  BenchmarkResultPrinter printer = new BenchmarkResultPrinter();
+  final BenchmarkResultPrinter printer = BenchmarkResultPrinter();
   printer.addResult(
     description: 'Stock animation',
     value: wallClockWatch.elapsedMicroseconds / (1000 * 1000),
     unit: 's',
     name: 'stock_animation_total_run_time',
   );
-  printer.addResult(
-    description: '  Opening first frame average time',
-    value: totalOpenFrameElapsedMicroseconds / totalOpenIterationCount,
-    unit: 'µs per frame ($totalOpenIterationCount frames)',
-    name: 'stock_animation_open_first_frame_average',
-  );
-  printer.addResult(
-    description: '  Closing first frame average time',
-    value: totalCloseFrameElapsedMicroseconds / totalCloseIterationCount,
-    unit: 'µs per frame ($totalCloseIterationCount frames)',
-    name: 'stock_animation_close_first_frame_average',
-  );
-  printer.addResult(
-    description: '  Subsequent frames average time',
-    value: totalSubsequentFramesElapsedMicroseconds / totalSubsequentFramesIterationCount,
-    unit: 'µs per frame ($totalSubsequentFramesIterationCount frames)',
-    name: 'stock_animation_subsequent_frame_average',
-  );
+  if (totalOpenIterationCount > 0) {
+    printer.addResult(
+      description: '  Opening first frame average time',
+      value: totalOpenFrameElapsedMicroseconds / totalOpenIterationCount,
+      unit: 'µs per frame ($totalOpenIterationCount frames)',
+      name: 'stock_animation_open_first_frame_average',
+    );
+  }
+  if (totalCloseIterationCount > 0) {
+    printer.addResult(
+      description: '  Closing first frame average time',
+      value: totalCloseFrameElapsedMicroseconds / totalCloseIterationCount,
+      unit: 'µs per frame ($totalCloseIterationCount frames)',
+      name: 'stock_animation_close_first_frame_average',
+    );
+  }
+  if (totalSubsequentFramesIterationCount > 0) {
+    printer.addResult(
+      description: '  Subsequent frames average time',
+      value: totalSubsequentFramesElapsedMicroseconds / totalSubsequentFramesIterationCount,
+      unit: 'µs per frame ($totalSubsequentFramesIterationCount frames)',
+      name: 'stock_animation_subsequent_frame_average',
+    );
+  }
   printer.printToStdout();
 }

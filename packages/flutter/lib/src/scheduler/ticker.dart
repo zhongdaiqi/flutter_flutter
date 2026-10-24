@@ -1,4 +1,4 @@
-// Copyright 2015 The Chromium Authors. All rights reserved.
+// Copyright 2014 The Flutter Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -8,11 +8,15 @@ import 'package:flutter/foundation.dart';
 
 import 'binding.dart';
 
-/// Signature for the [onTick] constructor argument of the [Ticker] class.
+export 'dart:ui' show VoidCallback;
+
+export 'package:flutter/foundation.dart' show DiagnosticsNode;
+
+/// Signature for the callback passed to the [Ticker] class's constructor.
 ///
 /// The argument is the time that the object had spent enabled so far
 /// at the time of the callback being called.
-typedef void TickerCallback(Duration elapsed);
+typedef TickerCallback = void Function(Duration elapsed);
 
 /// An interface implemented by classes that can vend [Ticker] objects.
 ///
@@ -35,9 +39,12 @@ abstract class TickerProvider {
   /// Creates a ticker with the given callback.
   ///
   /// The kind of ticker provided depends on the kind of ticker provider.
+  @factory
   Ticker createTicker(TickerCallback onTick);
 }
 
+// TODO(jacobr): make Ticker use Diagnosticable to simplify reporting errors
+// related to a ticker.
 /// Calls its callback once per animation frame.
 ///
 /// When created, a ticker is initially disabled. Call [start] to
@@ -54,7 +61,8 @@ abstract class TickerProvider {
 /// Tickers are driven by the [SchedulerBinding]. See
 /// [SchedulerBinding.scheduleFrameCallback].
 class Ticker {
-  /// Creates a ticker that will call [onTick] once per frame while running.
+  /// Creates a ticker that will call the provided callback once per frame while
+  /// running.
   ///
   /// An optional label can be provided for debugging purposes. That label
   /// will appear in the [toString] output in debug builds.
@@ -62,10 +70,19 @@ class Ticker {
     assert(() {
       _debugCreationStack = StackTrace.current;
       return true;
-    });
+    }());
+    // TODO(polina-c): stop duplicating code across disposables
+    // https://github.com/flutter/flutter/issues/137435
+    if (kFlutterMemoryAllocationsEnabled) {
+      FlutterMemoryAllocations.instance.dispatchObjectCreated(
+        library: 'package:flutter/scheduler.dart',
+        className: '$Ticker',
+        object: this,
+      );
+    }
   }
 
-  Completer<Null> _completer;
+  TickerFuture? _future;
 
   /// Whether this ticker has been silenced.
   ///
@@ -84,8 +101,9 @@ class Ticker {
   /// created the [Ticker] (typically a [TickerProvider]), not the object that
   /// listens to the ticker's ticks.
   set muted(bool value) {
-    if (value == muted)
+    if (value == muted) {
       return;
+    }
     _muted = value;
     if (value) {
       unscheduleTick();
@@ -100,9 +118,25 @@ class Ticker {
   /// A ticker that is [muted] can be active (see [isActive]) yet not be
   /// ticking. In that case, the ticker will not call its callback, and
   /// [isTicking] will be false, but time will still be progressing.
-  // TODO(ianh): we should teach the scheduler binding about the lifecycle events
-  // and then this could return an accurate view of the actual scheduler.
-  bool get isTicking => _completer != null && !muted;
+  ///
+  /// This will return false if the [SchedulerBinding.lifecycleState] is one
+  /// that indicates the application is not currently visible (e.g. if the
+  /// device's screen is turned off).
+  bool get isTicking {
+    if (_future == null) {
+      return false;
+    }
+    if (muted) {
+      return false;
+    }
+    if (SchedulerBinding.instance.framesEnabled) {
+      return true;
+    }
+    if (SchedulerBinding.instance.schedulerPhase != SchedulerPhase.idle) {
+      return true;
+    } // for example, we might be in a warm-up frame or forced frame
+    return false;
+  }
 
   /// Whether time is elapsing for this [Ticker]. Becomes true when [start] is
   /// called and false when [stop] is called.
@@ -110,14 +144,17 @@ class Ticker {
   /// A ticker can be active yet not be actually ticking (i.e. not be calling
   /// the callback). To determine if a ticker is actually ticking, use
   /// [isTicking].
-  bool get isActive => _completer != null;
+  bool get isActive => _future != null;
 
-  Duration _startTime;
+  Duration? _startTime;
 
   /// Starts the clock for this [Ticker]. If the ticker is not [muted], then this
   /// also starts calling the ticker's callback once per animation frame.
   ///
-  /// The returned future resolves once the ticker [stop]s ticking.
+  /// The returned future resolves once the ticker [stop]s ticking. If the
+  /// ticker is disposed, the future does not resolve. A derivative future is
+  /// available from the returned [TickerFuture] object that resolves with an
+  /// error in that case, via [TickerFuture.orCancel].
   ///
   /// Calling this sets [isActive] to true.
   ///
@@ -126,30 +163,43 @@ class Ticker {
   ///
   /// By convention, this method is used by the object that receives the ticks
   /// (as opposed to the [TickerProvider] which created the ticker).
-  Future<Null> start() {
+  TickerFuture start() {
     assert(() {
       if (isActive) {
-        throw new FlutterError(
-          'A ticker was started twice.\n'
-          'A ticker that is already active cannot be started again without first stopping it.\n'
-          'The affected ticker was: ${ this.toString(debugIncludeStack: true) }'
-        );
+        throw FlutterError.fromParts(<DiagnosticsNode>[
+          ErrorSummary('A ticker was started twice.'),
+          ErrorDescription('A ticker that is already active cannot be started again without first stopping it.'),
+          describeForError('The affected ticker was'),
+        ]);
       }
       return true;
-    });
+    }());
     assert(_startTime == null);
-    _completer = new Completer<Null>();
-    if (shouldScheduleTick)
+    _future = TickerFuture._();
+    if (shouldScheduleTick) {
       scheduleTick();
+    }
     if (SchedulerBinding.instance.schedulerPhase.index > SchedulerPhase.idle.index &&
-        SchedulerBinding.instance.schedulerPhase.index < SchedulerPhase.postFrameCallbacks.index)
+        SchedulerBinding.instance.schedulerPhase.index < SchedulerPhase.postFrameCallbacks.index) {
       _startTime = SchedulerBinding.instance.currentFrameTimeStamp;
-    return _completer.future;
+    }
+    return _future!;
+  }
+
+  /// Adds a debug representation of a [Ticker] optimized for including in error
+  /// messages.
+  DiagnosticsNode describeForError(String name) {
+    // TODO(jacobr): make this more structured.
+    return DiagnosticsProperty<Ticker>(name, this, description: toString(debugIncludeStack: true));
   }
 
   /// Stops calling this [Ticker]'s callback.
   ///
-  /// Causes the future returned by [start] to resolve.
+  /// If called with the `canceled` argument set to false (the default), causes
+  /// the future returned by [start] to resolve. If called with the `canceled`
+  /// argument set to true, the future does not resolve, and the future obtained
+  /// from [TickerFuture.orCancel], if any, resolves with a [TickerCanceled]
+  /// error.
   ///
   /// Calling this sets [isActive] to false.
   ///
@@ -157,26 +207,31 @@ class Ticker {
   ///
   /// By convention, this method is used by the object that receives the ticks
   /// (as opposed to the [TickerProvider] which created the ticker).
-  void stop() {
-    if (!isActive)
+  void stop({ bool canceled = false }) {
+    if (!isActive) {
       return;
+    }
 
-    // We take the _completer into a local variable so that isTicking is false
-    // when we actually complete the future (isTicking uses _completer to
+    // We take the _future into a local variable so that isTicking is false
+    // when we actually complete the future (isTicking uses _future to
     // determine its state).
-    Completer<Null> localCompleter = _completer;
-    _completer = null;
+    final TickerFuture localFuture = _future!;
+    _future = null;
     _startTime = null;
     assert(!isActive);
 
     unscheduleTick();
-    localCompleter.complete();
+    if (canceled) {
+      localFuture._cancel(this);
+    } else {
+      localFuture._complete();
+    }
   }
 
 
   final TickerCallback _onTick;
 
-  int _animationId;
+  int? _animationId;
 
   /// Whether this [Ticker] has already scheduled a frame callback.
   @protected
@@ -192,30 +247,28 @@ class Ticker {
   /// * The ticker is not active ([start] has not been called).
   /// * The ticker is not ticking, e.g. because it is [muted] (see [isTicking]).
   @protected
-  bool get shouldScheduleTick => isTicking && !scheduled;
+  bool get shouldScheduleTick => !muted && isActive && !scheduled;
 
   void _tick(Duration timeStamp) {
     assert(isTicking);
     assert(scheduled);
     _animationId = null;
 
-    if (_startTime == null)
-      _startTime = timeStamp;
-
-    _onTick(timeStamp - _startTime);
+    _startTime ??= timeStamp;
+    _onTick(timeStamp - _startTime!);
 
     // The onTick callback may have scheduled another tick already, for
     // example by calling stop then start again.
-    if (shouldScheduleTick)
+    if (shouldScheduleTick) {
       scheduleTick(rescheduling: true);
+    }
   }
 
   /// Schedules a tick for the next frame.
   ///
   /// This should only be called if [shouldScheduleTick] is true.
   @protected
-  void scheduleTick({ bool rescheduling: false }) {
-    assert(isTicking);
+  void scheduleTick({ bool rescheduling = false }) {
     assert(!scheduled);
     assert(shouldScheduleTick);
     _animationId = SchedulerBinding.instance.scheduleFrameCallback(_tick, rescheduling: rescheduling);
@@ -230,7 +283,7 @@ class Ticker {
   @protected
   void unscheduleTick() {
     if (scheduled) {
-      SchedulerBinding.instance.cancelFrameCallbackWithId(_animationId);
+      SchedulerBinding.instance.cancelFrameCallbackWithId(_animationId!);
       _animationId = null;
     }
     assert(!shouldScheduleTick);
@@ -241,44 +294,76 @@ class Ticker {
   ///
   /// This is useful if an object with a [Ticker] is given a new
   /// [TickerProvider] but needs to maintain continuity. In particular, this
-  /// maintains the identity of the [Future] returned by the [start] function of
-  /// the original [Ticker] if the original ticker is active.
+  /// maintains the identity of the [TickerFuture] returned by the [start]
+  /// function of the original [Ticker] if the original ticker is active.
   ///
   /// This ticker must not be active when this method is called.
   void absorbTicker(Ticker originalTicker) {
     assert(!isActive);
-    assert(_completer == null);
+    assert(_future == null);
     assert(_startTime == null);
     assert(_animationId == null);
-    _completer = originalTicker._completer;
-    _startTime = originalTicker._startTime;
-    if (shouldScheduleTick)
-      scheduleTick();
+    assert((originalTicker._future == null) == (originalTicker._startTime == null), 'Cannot absorb Ticker after it has been disposed.');
+    if (originalTicker._future != null) {
+      _future = originalTicker._future;
+      _startTime = originalTicker._startTime;
+      if (shouldScheduleTick) {
+        scheduleTick();
+      }
+      originalTicker._future = null; // so that it doesn't get disposed when we dispose of originalTicker
+      originalTicker.unscheduleTick();
+    }
     originalTicker.dispose();
   }
 
   /// Release the resources used by this object. The object is no longer usable
   /// after this method is called.
+  ///
+  /// It is legal to call this method while [isActive] is true, in which case:
+  ///
+  ///  * The frame callback that was requested by [scheduleTick], if any, is
+  ///    canceled.
+  ///  * The future that was returned by [start] does not resolve.
+  ///  * The future obtained from [TickerFuture.orCancel], if any, resolves
+  ///    with a [TickerCanceled] error.
   @mustCallSuper
   void dispose() {
-    _completer = null;
-    // We intentionally don't null out _startTime. This means that if start()
-    // was ever called, the object is now in a bogus state. This weakly helps
-    // catch cases of use-after-dispose.
-    unscheduleTick();
+    // TODO(polina-c): stop duplicating code across disposables
+    // https://github.com/flutter/flutter/issues/137435
+    if (kFlutterMemoryAllocationsEnabled) {
+      FlutterMemoryAllocations.instance.dispatchObjectDisposed(object: this);
+    }
+
+    if (_future != null) {
+      final TickerFuture localFuture = _future!;
+      _future = null;
+      assert(!isActive);
+      unscheduleTick();
+      localFuture._cancel(this);
+    }
+    assert(() {
+      // We intentionally don't null out _startTime. This means that if start()
+      // was ever called, the object is now in a bogus state. This weakly helps
+      // catch cases of use-after-dispose.
+      _startTime = Duration.zero;
+      return true;
+    }());
   }
 
-  final String debugLabel;
-  StackTrace _debugCreationStack;
+  /// An optional label can be provided for debugging purposes.
+  ///
+  /// This label will appear in the [toString] output in debug builds.
+  final String? debugLabel;
+  late StackTrace _debugCreationStack;
 
   @override
-  String toString({ bool debugIncludeStack: false }) {
-    final StringBuffer buffer = new StringBuffer();
-    buffer.write('$runtimeType(');
+  String toString({ bool debugIncludeStack = false }) {
+    final StringBuffer buffer = StringBuffer();
+    buffer.write('${objectRuntimeType(this, 'Ticker')}(');
     assert(() {
       buffer.write(debugLabel ?? '');
       return true;
-    });
+    }());
     buffer.write(')');
     assert(() {
       if (debugIncludeStack) {
@@ -287,7 +372,139 @@ class Ticker {
         FlutterError.defaultStackFilter(_debugCreationStack.toString().trimRight().split('\n')).forEach(buffer.writeln);
       }
       return true;
-    });
+    }());
     return buffer.toString();
+  }
+}
+
+/// An object representing an ongoing [Ticker] sequence.
+///
+/// The [Ticker.start] method returns a [TickerFuture]. The [TickerFuture] will
+/// complete successfully if the [Ticker] is stopped using [Ticker.stop] with
+/// the `canceled` argument set to false (the default).
+///
+/// If the [Ticker] is disposed without being stopped, or if it is stopped with
+/// `canceled` set to true, then this Future will never complete.
+///
+/// This class works like a normal [Future], but has an additional property,
+/// [orCancel], which returns a derivative [Future] that completes with an error
+/// if the [Ticker] that returned the [TickerFuture] was stopped with `canceled`
+/// set to true, or if it was disposed without being stopped.
+///
+/// To run a callback when either this future resolves or when the ticker is
+/// canceled, use [whenCompleteOrCancel].
+class TickerFuture implements Future<void> {
+  TickerFuture._();
+
+  /// Creates a [TickerFuture] instance that represents an already-complete
+  /// [Ticker] sequence.
+  ///
+  /// This is useful for implementing objects that normally defer to a [Ticker]
+  /// but sometimes can skip the ticker because the animation is of zero
+  /// duration, but which still need to represent the completed animation in the
+  /// form of a [TickerFuture].
+  TickerFuture.complete() {
+    _complete();
+  }
+
+  final Completer<void> _primaryCompleter = Completer<void>();
+  Completer<void>? _secondaryCompleter;
+  bool? _completed; // null means unresolved, true means complete, false means canceled
+
+  void _complete() {
+    assert(_completed == null);
+    _completed = true;
+    _primaryCompleter.complete();
+    _secondaryCompleter?.complete();
+  }
+
+  void _cancel(Ticker ticker) {
+    assert(_completed == null);
+    _completed = false;
+    _secondaryCompleter?.completeError(TickerCanceled(ticker));
+  }
+
+  /// Calls `callback` either when this future resolves or when the ticker is
+  /// canceled.
+  ///
+  /// Calling this method registers an exception handler for the [orCancel]
+  /// future, so even if the [orCancel] property is accessed, canceling the
+  /// ticker will not cause an uncaught exception in the current zone.
+  void whenCompleteOrCancel(VoidCallback callback) {
+    void thunk(dynamic value) {
+      callback();
+    }
+    orCancel.then<void>(thunk, onError: thunk);
+  }
+
+  /// A future that resolves when this future resolves or throws when the ticker
+  /// is canceled.
+  ///
+  /// If this property is never accessed, then canceling the ticker does not
+  /// throw any exceptions. Once this property is accessed, though, if the
+  /// corresponding ticker is canceled, then the [Future] returned by this
+  /// getter will complete with an error, and if that error is not caught, there
+  /// will be an uncaught exception in the current zone.
+  Future<void> get orCancel {
+    if (_secondaryCompleter == null) {
+      _secondaryCompleter = Completer<void>();
+      if (_completed != null) {
+        if (_completed!) {
+          _secondaryCompleter!.complete();
+        } else {
+          _secondaryCompleter!.completeError(const TickerCanceled());
+        }
+      }
+    }
+    return _secondaryCompleter!.future;
+  }
+
+  @override
+  Stream<void> asStream() {
+    return _primaryCompleter.future.asStream();
+  }
+
+  @override
+  Future<void> catchError(Function onError, { bool Function(Object)? test }) {
+    return _primaryCompleter.future.catchError(onError, test: test);
+  }
+
+  @override
+  Future<R> then<R>(FutureOr<R> Function(void value) onValue, { Function? onError }) {
+    return _primaryCompleter.future.then<R>(onValue, onError: onError);
+  }
+
+  @override
+  Future<void> timeout(Duration timeLimit, { FutureOr<void> Function()? onTimeout }) {
+    return _primaryCompleter.future.timeout(timeLimit, onTimeout: onTimeout);
+  }
+
+  @override
+  Future<void> whenComplete(dynamic Function() action) {
+    return _primaryCompleter.future.whenComplete(action);
+  }
+
+  @override
+  String toString() => '${describeIdentity(this)}(${ _completed == null ? "active" : _completed! ? "complete" : "canceled" })';
+}
+
+/// Exception thrown by [Ticker] objects on the [TickerFuture.orCancel] future
+/// when the ticker is canceled.
+class TickerCanceled implements Exception {
+  /// Creates a canceled-ticker exception.
+  const TickerCanceled([this.ticker]);
+
+  /// Reference to the [Ticker] object that was canceled.
+  ///
+  /// This may be null in the case that the [Future] created for
+  /// [TickerFuture.orCancel] was created after the ticker was canceled.
+  final Ticker? ticker;
+
+  @override
+  String toString() {
+    if (ticker != null) {
+      return 'This ticker was canceled: $ticker';
+    }
+    return 'The ticker was canceled before the "orCancel" property was first used.';
   }
 }

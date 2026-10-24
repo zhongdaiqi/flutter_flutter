@@ -1,20 +1,47 @@
-// Copyright 2016 The Chromium Authors. All rights reserved.
+// Copyright 2014 The Flutter Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 import 'package:flutter/services.dart';
-import 'package:test/test.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('Haptic feedback control test', () async {
-    List<String> log = <String>[];
+  TestWidgetsFlutterBinding.ensureInitialized();
 
-    PlatformMessages.setMockStringMessageHandler('flutter/platform', (String message) async {
-      log.add(message);
+  test('Haptic feedback control test', () async {
+    final List<MethodCall> log = <MethodCall>[];
+
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, (MethodCall methodCall) async {
+      log.add(methodCall);
+      return null;
     });
 
     await HapticFeedback.vibrate();
 
-    expect(log, equals(<String>['{"method":"HapticFeedback.vibrate","args":[]}']));
+    expect(log, hasLength(1));
+    expect(log.single, isMethodCall('HapticFeedback.vibrate', arguments: null));
+  });
+
+  test('Haptic feedback variation tests', () async {
+    Future<void> callAndVerifyHapticFunction(Future<void> Function() hapticFunction, String platformMethodArgument) async {
+      final List<MethodCall> log = <MethodCall>[];
+
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, (MethodCall methodCall) async {
+        log.add(methodCall);
+        return null;
+      });
+
+      await hapticFunction();
+      expect(log, hasLength(1));
+      expect(
+        log.last,
+        isMethodCall('HapticFeedback.vibrate', arguments: platformMethodArgument),
+      );
+    }
+
+    await callAndVerifyHapticFunction(HapticFeedback.lightImpact, 'HapticFeedbackType.lightImpact');
+    await callAndVerifyHapticFunction(HapticFeedback.mediumImpact, 'HapticFeedbackType.mediumImpact');
+    await callAndVerifyHapticFunction(HapticFeedback.heavyImpact, 'HapticFeedbackType.heavyImpact');
+    await callAndVerifyHapticFunction(HapticFeedback.selectionClick, 'HapticFeedbackType.selectionClick');
   });
 }
