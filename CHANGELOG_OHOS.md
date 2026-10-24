@@ -1,5 +1,30 @@
 # Changelog
 
+<a id="version20261024"></a>
+
+## 3.41.9+ohos-1.0.4-beta - `2026-10-24`
+
+### Added
+
+- feat: add --use-ccache option to ohos.py to enable ccache engine builds [!2228](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/2228)
+- feat(Upgrade): support upgrading to the latest OHOS stable release tag [!2049](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/2049)
+
+### Fixed
+
+- fix(Embedding): apply system font weight scale on cold start [!2264](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/2264)
+- fix: honor embedded GIF loop count on OHOS [!2246](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/2246)
+- fix: Adapt the DevEco signature configuration to the new version [!2213](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/2213)
+- fix(Widgets): expose dismissible ModalBarrier semantics on OHOS [!2230](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/2230)
+- Fix PlatformView touch/mouse/axis coordinate space errors and left-click offset on windowed HarmonyOS PC [!2179](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/2179)
+- fix: SystemMouseCursors on OHOS [!2081](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/2081)
+- fix: add missing space after --unuse-bisheng and stop swallowing gn failures [!2210](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/2210)
+- fix(FlutterView): use window effective density for viewport dpr updates [!2194](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/2194)
+- fix(Upgrade): prefer the +ohos tag naming over the legacy -ohos one [!2188](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/2188)
+- fix cursor selection range issue [!2150](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/2150)
+- fix(PlatformView): move affine transform to a separate channel message [!2125](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/2125)
+- fix(ohos): map custom hvigor build modes to standard flutter modes [!2005](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/2005)
+- fix: decode negative BigInt in standard message codecs [!2083](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/2083)
+
 <a id="version20260808"></a>
 
 ## 3.41.9-ohos-1.0.1 - `2026-08-17`
