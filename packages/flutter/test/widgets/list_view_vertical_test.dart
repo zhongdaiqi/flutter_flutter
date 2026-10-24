@@ -1,21 +1,21 @@
-// Copyright 2015 The Chromium Authors. All rights reserved.
+// Copyright 2014 The Flutter Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/widgets.dart';
+import 'package:flutter_test/flutter_test.dart';
 
-const List<int> items = const <int>[0, 1, 2, 3, 4, 5];
+const List<int> items = <int>[0, 1, 2, 3, 4, 5];
 
 Widget buildFrame() {
-  return new ListView(
-    itemExtent: 290.0,
-    scrollDirection: Axis.vertical,
-    children: items.map((int item) {
-      return new Container(
-        child: new Text('$item')
-      );
-    }).toList(),
+  return Directionality(
+    textDirection: TextDirection.ltr,
+    child: ListView(
+      itemExtent: 290.0,
+      children: items.map<Widget>((int item) {
+        return Text('$item');
+      }).toList(),
+    ),
   );
 }
 
@@ -24,7 +24,7 @@ void main() {
     await tester.pumpWidget(buildFrame());
 
     await tester.pump();
-    await tester.scroll(find.text('1'), const Offset(0.0, -300.0));
+    await tester.drag(find.text('1'), const Offset(0.0, -300.0));
     await tester.pump();
     // screen is 600px high, and has the following items:
     //   -10..280 = 1
@@ -38,7 +38,7 @@ void main() {
     expect(find.text('5'), findsNothing);
 
     await tester.pump();
-    await tester.scroll(find.text('2'), const Offset(0.0, -290.0));
+    await tester.drag(find.text('2'), const Offset(0.0, -290.0));
     await tester.pump();
     // screen is 600px high, and has the following items:
     //   -10..280 = 2
@@ -52,7 +52,7 @@ void main() {
     expect(find.text('5'), findsNothing);
 
     await tester.pump();
-    await tester.scroll(find.text('3'), const Offset(-300.0, 0.0));
+    await tester.drag(find.text('3'), const Offset(-300.0, 0.0));
     await tester.pump();
     // nothing should have changed
     expect(find.text('0'), findsNothing);
@@ -65,15 +65,15 @@ void main() {
 
   testWidgets('Drag vertically', (WidgetTester tester) async {
     await tester.pumpWidget(
-      new ListView(
-        itemExtent: 290.0,
-        padding: const EdgeInsets.only(top: 250.0),
-        scrollDirection: Axis.vertical,
-        children: items.map((int item) {
-          return new Container(
-            child: new Text('$item')
-          );
-        }).toList(),
+      Directionality(
+        textDirection: TextDirection.ltr,
+        child: ListView(
+          itemExtent: 290.0,
+          padding: const EdgeInsets.only(top: 250.0),
+          children: items.map<Widget>((int item) {
+            return Text('$item');
+          }).toList(),
+        ),
       ),
     );
 
@@ -88,7 +88,7 @@ void main() {
     expect(find.text('4'), findsNothing);
     expect(find.text('5'), findsNothing);
 
-    await tester.scroll(find.text('0'), const Offset(0.0, -300.0));
+    await tester.drag(find.text('0'), const Offset(0.0, -300.0));
     await tester.pump();
     // screen is 600px high, and has the following items:
     //   -50..240 = 0

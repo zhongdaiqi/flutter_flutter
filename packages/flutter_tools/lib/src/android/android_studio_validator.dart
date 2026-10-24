@@ -1,133 +1,141 @@
-// Copyright 2017 The Chromium Authors. All rights reserved.
+// Copyright 2014 The Flutter Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import 'dart:async';
-
+import '../base/config.dart';
 import '../base/file_system.dart';
-import '../base/io.dart';
-import '../doctor.dart';
-import '../globals.dart';
 import '../base/platform.dart';
-import '../base/process_manager.dart';
-import '../base/version.dart';
+import '../base/user_messages.dart';
+import '../doctor_validator.dart';
+import '../intellij/intellij.dart';
 import 'android_studio.dart';
 
+const String _androidStudioTitle = 'Android Studio';
+const String _androidStudioId = 'AndroidStudio';
+const String _androidStudioPreviewTitle = 'Android Studio Preview';
+const String _androidStudioPreviewId = 'AndroidStudioPreview';
+
 class AndroidStudioValidator extends DoctorValidator {
+  AndroidStudioValidator(this._studio, {
+    required FileSystem fileSystem,
+    required UserMessages userMessages,
+  })
+    : _userMessages = userMessages,
+      _fileSystem = fileSystem,
+      super('Android Studio');
+
   final AndroidStudio _studio;
+  final FileSystem _fileSystem;
+  final UserMessages _userMessages;
 
-  AndroidStudioValidator(this._studio) : super('Android Studio');
+  static const Map<String, String> idToTitle = <String, String>{
+    _androidStudioId: _androidStudioTitle,
+    _androidStudioPreviewId: _androidStudioPreviewTitle,
+  };
 
-  static List<DoctorValidator> get allValidators {
-    List<DoctorValidator> validators = <DoctorValidator>[];
-    List<AndroidStudio> studios = AndroidStudio.allInstalled();
-    if (studios.isEmpty) {
-      validators.add(new NoAndroidStudioValidator());
-    } else {
-      validators.addAll(studios
-          .map((AndroidStudio studio) => new AndroidStudioValidator(studio)));
-    }
-    String cfgGradleDir = config.getValue('gradle-dir');
-    if (cfgGradleDir != null) {
-      validators.add(new ConfiguredGradleValidator(cfgGradleDir));
-    }
-    return validators;
+  static List<DoctorValidator> allValidators(Config config, Platform platform, FileSystem fileSystem, UserMessages userMessages) {
+    final List<AndroidStudio> studios = AndroidStudio.allInstalled();
+    return <DoctorValidator>[
+      if (studios.isEmpty)
+        NoAndroidStudioValidator(config: config, platform: platform, userMessages: userMessages)
+      else
+        ...studios.map<DoctorValidator>(
+          (AndroidStudio studio) => AndroidStudioValidator(studio, fileSystem: fileSystem, userMessages: userMessages)
+        ),
+    ];
   }
 
   @override
   Future<ValidationResult> validate() async {
-    List<ValidationMessage> messages = <ValidationMessage>[];
+    final List<ValidationMessage> messages = <ValidationMessage>[];
     ValidationType type = ValidationType.missing;
-    String studioVersionText = 'version ${_studio.version}';
-    messages
-        .add(new ValidationMessage('Android Studio at ${_studio.directory}'));
+
+    final String studioVersionText = _studio.version == null
+      ? _userMessages.androidStudioVersion('unknown')
+      : _userMessages.androidStudioVersion(_studio.version.toString());
+    messages.add(ValidationMessage(
+      _userMessages.androidStudioLocation(_studio.directory),
+    ));
+
+    if (_studio.pluginsPath != null) {
+      final IntelliJPlugins plugins = IntelliJPlugins(_studio.pluginsPath!, fileSystem: _fileSystem);
+      plugins.validatePackage(
+        messages,
+        <String>['flutter-intellij', 'flutter-intellij.jar'],
+        'Flutter',
+        IntelliJPlugins.kIntellijFlutterPluginUrl,
+        minVersion: IntelliJPlugins.kMinFlutterPluginVersion,
+      );
+      plugins.validatePackage(
+        messages,
+        <String>['Dart'],
+        'Dart',
+        IntelliJPlugins.kIntellijDartPluginUrl,
+      );
+    }
+
+    if (_studio.version == null) {
+      messages.add(const ValidationMessage.error('Unable to determine Android Studio version.'));
+    }
+
     if (_studio.isValid) {
-      type = ValidationType.installed;
-      messages.addAll(_studio.validationMessages
-          .map((String m) => new ValidationMessage(m)));
+      type = _hasIssues(messages)
+        ? ValidationType.partial
+        : ValidationType.success;
+      messages.addAll(_studio.validationMessages.map<ValidationMessage>(
+        (String m) => ValidationMessage(m),
+      ));
     } else {
       type = ValidationType.partial;
-      messages.addAll(_studio.validationMessages
-          .map((String m) => new ValidationMessage.error(m)));
-      messages.add(new ValidationMessage(
-          'Try updating or re-installing Android Studio.'));
-      if (_studio.configured != null) {
-        messages.add(new ValidationMessage(
-            'Consider removing the android-studio-dir setting.'));
+      messages.addAll(_studio.validationMessages.map<ValidationMessage>(
+        (String m) => ValidationMessage.error(m),
+      ));
+      messages.add(ValidationMessage(_userMessages.androidStudioNeedsUpdate));
+      if (_studio.configuredPath != null) {
+        messages.add(ValidationMessage(_userMessages.androidStudioResetDir));
       }
     }
 
-    return new ValidationResult(type, messages, statusInfo: studioVersionText);
+    return ValidationResult(type, messages, statusInfo: studioVersionText);
+  }
+
+  bool _hasIssues(List<ValidationMessage> messages) {
+    return messages.any((ValidationMessage message) => message.isError);
   }
 }
 
 class NoAndroidStudioValidator extends DoctorValidator {
-  NoAndroidStudioValidator() : super('Android Studio');
+  NoAndroidStudioValidator({
+    required Config config,
+    required Platform platform,
+    required UserMessages userMessages,
+  }) : _config = config,
+       _platform = platform,
+       _userMessages = userMessages,
+       super('Android Studio');
+
+  final Config _config;
+  final Platform _platform;
+  final UserMessages _userMessages;
 
   @override
   Future<ValidationResult> validate() async {
-    List<ValidationMessage> messages = <ValidationMessage>[];
+    final List<ValidationMessage> messages = <ValidationMessage>[];
 
-    String cfgAndroidStudio = config.getValue('android-studio-dir');
+    final String? cfgAndroidStudio = _config.getValue(
+      'android-studio-dir',
+    ) as String?;
     if (cfgAndroidStudio != null) {
-      messages.add(
-          new ValidationMessage.error('android-studio-dir = $cfgAndroidStudio\n'
-              'but Android Studio not found at this location.'));
+      messages.add(ValidationMessage.error(
+        _userMessages.androidStudioMissing(cfgAndroidStudio),
+      ));
     }
-    messages.add(new ValidationMessage(
-        'Android Studio not found. Download from https://developer.android.com/studio/index.html\n'
-        '(or visit https://flutter.io/setup/#android-setup for detailed instructions).'));
+    messages.add(ValidationMessage(_userMessages.androidStudioInstallation(_platform)));
 
-    return new ValidationResult(ValidationType.missing, messages,
-        statusInfo: 'not installed');
-  }
-}
-
-class ConfiguredGradleValidator extends DoctorValidator {
-  final String cfgGradleDir;
-
-  ConfiguredGradleValidator(this.cfgGradleDir) : super('Gradle');
-
-  @override
-  Future<ValidationResult> validate() async {
-    ValidationType type = ValidationType.missing;
-    List<ValidationMessage> messages = <ValidationMessage>[];
-
-    messages.add(new ValidationMessage('gradle-dir = $cfgGradleDir'));
-
-    String gradleExecutable = cfgGradleDir;
-    if (!fs.isFileSync(cfgGradleDir)) {
-      gradleExecutable = fs.path.join(
-          cfgGradleDir, 'bin', platform.isWindows ? 'gradle.bat' : 'gradle');
-    }
-    String version;
-    if (processManager.canRun(gradleExecutable)) {
-      type = ValidationType.partial;
-      ProcessResult result =
-          processManager.runSync(<String>[gradleExecutable, '--version']);
-      if (result.exitCode == 0) {
-        version = result.stdout
-            .toString()
-            .split('\n')
-            .firstWhere((String s) => s.startsWith('Gradle '))
-            .substring('Gradle '.length);
-        if (new Version.parse(version) >= minGradleVersion) {
-          type = ValidationType.installed;
-        } else {
-          messages.add(new ValidationMessage.error(
-              'Gradle version $minGradleVersion required. Found version $version.'));
-        }
-      } else {
-        messages
-            .add(new ValidationMessage('Unable to determine Gradle version.'));
-      }
-    } else {
-      messages
-          .add(new ValidationMessage('Gradle not found at $gradleExecutable'));
-    }
-
-    messages.add(new ValidationMessage(
-        'Consider removing the gradle-dir setting to use Gradle from Android Studio.'));
-    return new ValidationResult(type, messages, statusInfo: version);
+    return ValidationResult(
+      ValidationType.notAvailable,
+      messages,
+      statusInfo: 'not installed',
+    );
   }
 }
