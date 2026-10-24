@@ -1,250 +1,320 @@
-// Copyright 2015 The Chromium Authors. All rights reserved.
+// Copyright 2014 The Flutter Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import 'dart:async';
-
-import 'package:args/command_runner.dart';
-import 'package:process/process.dart';
-import 'package:stack_trace/stack_trace.dart';
-import 'package:intl/intl_standalone.dart' as intl;
-
-import 'src/base/common.dart';
-import 'src/base/config.dart';
+import 'runner.dart' as runner;
 import 'src/base/context.dart';
-import 'src/base/file_system.dart';
 import 'src/base/io.dart';
 import 'src/base/logger.dart';
-import 'src/base/os.dart';
 import 'src/base/platform.dart';
-import 'src/base/process.dart';
-import 'src/base/utils.dart';
+import 'src/base/template.dart';
+import 'src/base/terminal.dart';
+import 'src/base/user_messages.dart';
+import 'src/build_system/build_targets.dart';
 import 'src/cache.dart';
 import 'src/commands/analyze.dart';
+import 'src/commands/assemble.dart';
+import 'src/commands/attach.dart';
 import 'src/commands/build.dart';
 import 'src/commands/channel.dart';
+import 'src/commands/clean.dart';
 import 'src/commands/config.dart';
 import 'src/commands/create.dart';
+import 'src/commands/custom_devices.dart';
 import 'src/commands/daemon.dart';
+import 'src/commands/debug_adapter.dart';
 import 'src/commands/devices.dart';
 import 'src/commands/doctor.dart';
+import 'src/commands/downgrade.dart';
 import 'src/commands/drive.dart';
-import 'src/commands/format.dart';
+import 'src/commands/emulators.dart';
+import 'src/commands/generate.dart';
+import 'src/commands/generate_localizations.dart';
+import 'src/commands/ide_config.dart';
 import 'src/commands/install.dart';
 import 'src/commands/logs.dart';
+import 'src/commands/make_host_app_editable.dart';
 import 'src/commands/packages.dart';
 import 'src/commands/precache.dart';
 import 'src/commands/run.dart';
 import 'src/commands/screenshot.dart';
-import 'src/commands/stop.dart';
+import 'src/commands/shell_completion.dart';
+import 'src/commands/symbolize.dart';
 import 'src/commands/test.dart';
-import 'src/commands/trace.dart';
 import 'src/commands/update_packages.dart';
 import 'src/commands/upgrade.dart';
-import 'src/artifacts.dart';
-import 'src/devfs.dart';
-import 'src/device.dart';
-import 'src/doctor.dart';
-import 'src/globals.dart';
-import 'src/ios/mac.dart';
-import 'src/ios/simulators.dart';
-import 'src/run_hot.dart';
-import 'src/runner/flutter_command_runner.dart';
-import 'src/usage.dart';
-
+import 'src/devtools_launcher.dart';
+import 'src/features.dart';
+import 'src/globals.dart' as globals;
+// Files in `isolated` are intentionally excluded from google3 tooling.
+import 'src/isolated/build_targets.dart';
+import 'src/isolated/mustache_template.dart';
+import 'src/isolated/native_assets/native_assets.dart';
+import 'src/isolated/native_assets/test/native_assets.dart';
+import 'src/isolated/resident_web_runner.dart';
+import 'src/pre_run_validator.dart';
+import 'src/project_validator.dart';
+import 'src/resident_runner.dart';
+import 'src/runner/flutter_command.dart';
+import 'src/web/web_runner.dart';
 
 /// Main entry point for commands.
 ///
 /// This function is intended to be used from the `flutter` command line tool.
-Future<Null> main(List<String> args) async {
-  bool verbose = args.contains('-v') || args.contains('--verbose');
-  bool help = args.contains('-h') || args.contains('--help') ||
+Future<void> main(List<String> args) async {
+  final bool veryVerbose = args.contains('-vv');
+  final bool verbose = args.contains('-v') || args.contains('--verbose') || veryVerbose;
+  final bool prefixedErrors = args.contains('--prefixed-errors');
+  // Support the -? Powershell help idiom.
+  final int powershellHelpIndex = args.indexOf('-?');
+  if (powershellHelpIndex != -1) {
+    args[powershellHelpIndex] = '-h';
+  }
+
+  final bool doctor = (args.isNotEmpty && args.first == 'doctor') ||
+      (args.length == 2 && verbose && args.last == 'doctor');
+  final bool help = args.contains('-h') || args.contains('--help') ||
       (args.isNotEmpty && args.first == 'help') || (args.length == 1 && verbose);
-  bool verboseHelp = help && verbose;
+  final bool muteCommandLogging = (help || doctor) && !veryVerbose;
+  final bool verboseHelp = help && verbose;
+  final bool daemon = args.contains('daemon');
+  final bool runMachine = (args.contains('--machine') && args.contains('run')) ||
+                          (args.contains('--machine') && args.contains('attach'));
 
-  if (verboseHelp) {
-    // Remove the verbose option; for help, users don't need to see verbose logs.
-    args = new List<String>.from(args);
-    args.removeWhere((String option) => option == '-v' || option == '--verbose');
-  }
+  // Cache.flutterRoot must be set early because other features use it (e.g.
+  // enginePath's initializer uses it). This can only work with the real
+  // instances of the platform or filesystem, so just use those.
+  Cache.flutterRoot = Cache.defaultFlutterRoot(
+    platform: const LocalPlatform(),
+    fileSystem: globals.localFileSystem,
+    userMessages: UserMessages(),
+  );
 
-  FlutterCommandRunner runner = new FlutterCommandRunner(verboseHelp: verboseHelp)
-    ..addCommand(new AnalyzeCommand(verboseHelp: verboseHelp))
-    ..addCommand(new BuildCommand(verboseHelp: verboseHelp))
-    ..addCommand(new ChannelCommand())
-    ..addCommand(new ConfigCommand())
-    ..addCommand(new CreateCommand())
-    ..addCommand(new DaemonCommand(hidden: !verboseHelp))
-    ..addCommand(new DevicesCommand())
-    ..addCommand(new DoctorCommand())
-    ..addCommand(new DriveCommand())
-    ..addCommand(new FormatCommand())
-    ..addCommand(new InstallCommand())
-    ..addCommand(new LogsCommand())
-    ..addCommand(new PackagesCommand())
-    ..addCommand(new PrecacheCommand())
-    ..addCommand(new RunCommand(verboseHelp: verboseHelp))
-    ..addCommand(new ScreenshotCommand())
-    ..addCommand(new StopCommand())
-    ..addCommand(new TestCommand())
-    ..addCommand(new TraceCommand())
-    ..addCommand(new UpdatePackagesCommand(hidden: !verboseHelp))
-    ..addCommand(new UpgradeCommand());
-
-  // Construct a context.
-  AppContext _executableContext = new AppContext();
-
-  // Make the context current.
-  await _executableContext.runInZone(() async {
-    // Initialize the context with some defaults.
-    // NOTE: Similar lists also exist in `bin/fuchsia_builder.dart` and
-    // `test/src/context.dart`. If you update this list of defaults, look
-    // in those locations as well to see if you need a similar update there.
-
-    // Seed these context entries first since others depend on them
-    context.putIfAbsent(Platform, () => const LocalPlatform());
-    context.putIfAbsent(FileSystem, () => const LocalFileSystem());
-    context.putIfAbsent(ProcessManager, () => const LocalProcessManager());
-    context.putIfAbsent(Logger, () => platform.isWindows ? new WindowsStdoutLogger() : new StdoutLogger());
-    context.putIfAbsent(Config, () => new Config());
-
-    // Order-independent context entries
-    context.putIfAbsent(DeviceManager, () => new DeviceManager());
-    context.putIfAbsent(DevFSConfig, () => new DevFSConfig());
-    context.putIfAbsent(Doctor, () => new Doctor());
-    context.putIfAbsent(HotRunnerConfig, () => new HotRunnerConfig());
-    context.putIfAbsent(Cache, () => new Cache());
-    context.putIfAbsent(Artifacts, () => new CachedArtifacts());
-    context.putIfAbsent(OperatingSystemUtils, () => new OperatingSystemUtils());
-    context.putIfAbsent(Xcode, () => new Xcode());
-    context.putIfAbsent(IOSSimulatorUtils, () => new IOSSimulatorUtils());
-    context.putIfAbsent(SimControl, () => new SimControl());
-    context.putIfAbsent(Usage, () => new Usage());
-
-    // Initialize the system locale.
-    await intl.findSystemLocale();
-
-    return Chain.capture<Future<Null>>(() async {
-      await runner.run(args);
-      _exit(0);
-    }, onError: (dynamic error, Chain chain) {
-      if (error is UsageException) {
-        stderr.writeln(error.message);
-        stderr.writeln();
-        stderr.writeln(
-            "Run 'flutter -h' (or 'flutter <command> -h') for available "
-                "flutter commands and options."
+  await runner.run(
+    args,
+    () => generateCommands(
+      verboseHelp: verboseHelp,
+      verbose: verbose,
+    ),
+    verbose: verbose,
+    muteCommandLogging: muteCommandLogging,
+    verboseHelp: verboseHelp,
+    overrides: <Type, Generator>{
+      // The web runner is not supported in google3 because it depends
+      // on dwds.
+      WebRunnerFactory: () => DwdsWebRunnerFactory(),
+      // The mustache dependency is different in google3
+      TemplateRenderer: () => const MustacheTemplateRenderer(),
+      // The devtools launcher is not supported in google3 because it depends on
+      // devtools source code.
+      DevtoolsLauncher: () => DevtoolsServerLauncher(
+        processManager: globals.processManager,
+        artifacts: globals.artifacts!,
+        logger: globals.logger,
+        botDetector: globals.botDetector,
+      ),
+      BuildTargets: () => const BuildTargetsImpl(),
+      Logger: () {
+        final LoggerFactory loggerFactory = LoggerFactory(
+          outputPreferences: globals.outputPreferences,
+          terminal: globals.terminal,
+          stdio: globals.stdio,
         );
-        // Argument error exit code.
-        _exit(64);
-      } else if (error is ToolExit) {
-        if (error.message != null)
-          stderr.writeln(error.message);
-        if (verbose) {
-          stderr.writeln();
-          stderr.writeln(chain.terse.toString());
-          stderr.writeln();
-        }
-        _exit(error.exitCode ?? 1);
-      } else if (error is ProcessExit) {
-        // We've caught an exit code.
-        _exit(error.exitCode);
-      } else {
-        // We've crashed; emit a log report.
-        stderr.writeln();
-
-        flutterUsage.sendException(error, chain);
-
-        if (isRunningOnBot) {
-          // Print the stack trace on the bots - don't write a crash report.
-          stderr.writeln('$error');
-          stderr.writeln(chain.terse.toString());
-          _exit(1);
-        } else {
-          if (error is String)
-            stderr.writeln('Oops; flutter has exited unexpectedly: "$error".');
-          else
-            stderr.writeln('Oops; flutter has exited unexpectedly.');
-
-          _createCrashReport(args, error, chain).then<Null>((File file) {
-            stderr.writeln(
-                'Crash report written to ${file.path};\n'
-                    'please let us know at https://github.com/flutter/flutter/issues.'
-            );
-            _exit(1);
-          });
-        }
-      }
-    });
-  });
+        return loggerFactory.createLogger(
+          daemon: daemon,
+          machine: runMachine,
+          verbose: verbose && !muteCommandLogging,
+          prefixedErrors: prefixedErrors,
+          windows: globals.platform.isWindows,
+        );
+      },
+      AnsiTerminal: () {
+        return AnsiTerminal(
+          stdio: globals.stdio,
+          platform: globals.platform,
+          now: DateTime.now(),
+          // So that we don't animate anything before calling applyFeatureFlags, default
+          // the animations to disabled in real apps.
+          defaultCliAnimationEnabled: false,
+        );
+        // runner.run calls "terminal.applyFeatureFlags()"
+      },
+      PreRunValidator: () => PreRunValidator(fileSystem: globals.fs),
+    },
+    shutdownHooks: globals.shutdownHooks,
+  );
 }
 
-Future<File> _createCrashReport(List<String> args, dynamic error, Chain chain) async {
-  File crashFile = getUniqueFile(fs.currentDirectory, 'flutter', 'log');
+List<FlutterCommand> generateCommands({
+  required bool verboseHelp,
+  required bool verbose,
+}) => <FlutterCommand>[
+  AnalyzeCommand(
+    verboseHelp: verboseHelp,
+    fileSystem: globals.fs,
+    platform: globals.platform,
+    processManager: globals.processManager,
+    logger: globals.logger,
+    terminal: globals.terminal,
+    artifacts: globals.artifacts!,
+    // new ProjectValidators should be added here for the --suggestions to run
+    allProjectValidators: <ProjectValidator>[
+      GeneralInfoProjectValidator(),
+      VariableDumpMachineProjectValidator(
+        logger: globals.logger,
+        fileSystem: globals.fs,
+        platform: globals.platform,
+      ),
+    ],
+    suppressAnalytics: globals.flutterUsage.suppressAnalytics,
+  ),
+  AssembleCommand(verboseHelp: verboseHelp, buildSystem: globals.buildSystem),
+  AttachCommand(
+    verboseHelp: verboseHelp,
+    stdio: globals.stdio,
+    logger: globals.logger,
+    terminal: globals.terminal,
+    signals: globals.signals,
+    platform: globals.platform,
+    processInfo: globals.processInfo,
+    fileSystem: globals.fs,
+    nativeAssetsBuilder: const HotRunnerNativeAssetsBuilderImpl(),
+  ),
+  BuildCommand(
+    artifacts: globals.artifacts!,
+    fileSystem: globals.fs,
+    buildSystem: globals.buildSystem,
+    osUtils: globals.os,
+    processUtils: globals.processUtils,
+    verboseHelp: verboseHelp,
+    androidSdk: globals.androidSdk,
+    logger: globals.logger,
+  ),
+  ChannelCommand(verboseHelp: verboseHelp),
+  CleanCommand(verbose: verbose),
+  ConfigCommand(verboseHelp: verboseHelp),
+  CustomDevicesCommand(
+    customDevicesConfig: globals.customDevicesConfig,
+    operatingSystemUtils: globals.os,
+    terminal: globals.terminal,
+    platform: globals.platform,
+    featureFlags: featureFlags,
+    processManager: globals.processManager,
+    fileSystem: globals.fs,
+    logger: globals.logger
+  ),
+  CreateCommand(verboseHelp: verboseHelp),
+  DaemonCommand(hidden: !verboseHelp),
+  DebugAdapterCommand(verboseHelp: verboseHelp),
+  DevicesCommand(verboseHelp: verboseHelp),
+  DoctorCommand(verbose: verbose),
+  DowngradeCommand(verboseHelp: verboseHelp, logger: globals.logger),
+  DriveCommand(verboseHelp: verboseHelp,
+    fileSystem: globals.fs,
+    logger: globals.logger,
+    platform: globals.platform,
+    signals: globals.signals,
+  ),
+  EmulatorsCommand(),
+  GenerateCommand(),
+  GenerateLocalizationsCommand(
+    fileSystem: globals.fs,
+    logger: globals.logger,
+    artifacts: globals.artifacts!,
+    processManager: globals.processManager,
+  ),
+  InstallCommand(
+    verboseHelp: verboseHelp,
+  ),
+  LogsCommand(
+    sigint: ProcessSignal.sigint,
+    sigterm: ProcessSignal.sigterm,
+  ),
+  MakeHostAppEditableCommand(),
+  PackagesCommand(),
+    PrecacheCommand(
+    verboseHelp: verboseHelp,
+    cache: globals.cache,
+    logger: globals.logger,
+    platform: globals.platform,
+    featureFlags: featureFlags,
+  ),
+  RunCommand(
+    verboseHelp: verboseHelp,
+    nativeAssetsBuilder: const HotRunnerNativeAssetsBuilderImpl(),
+  ),
+  ScreenshotCommand(fs: globals.fs),
+  ShellCompletionCommand(),
+  TestCommand(
+    verboseHelp: verboseHelp,
+    verbose: verbose,
+    nativeAssetsBuilder: const TestCompilerNativeAssetsBuilderImpl(),
+  ),
+  UpgradeCommand(verboseHelp: verboseHelp),
+  SymbolizeCommand(
+    stdio: globals.stdio,
+    fileSystem: globals.fs,
+  ),
+  // Development-only commands. These are always hidden,
+  IdeConfigCommand(),
+  UpdatePackagesCommand(),
+];
 
-  StringBuffer buffer = new StringBuffer();
+/// An abstraction for instantiation of the correct logger type.
+///
+/// Our logger class hierarchy and runtime requirements are overly complicated.
+class LoggerFactory {
+  LoggerFactory({
+    required Terminal terminal,
+    required Stdio stdio,
+    required OutputPreferences outputPreferences,
+    StopwatchFactory stopwatchFactory = const StopwatchFactory(),
+  }) : _terminal = terminal,
+       _stdio = stdio,
+       _stopwatchFactory = stopwatchFactory,
+       _outputPreferences = outputPreferences;
 
-  buffer.writeln('Flutter crash report; please file at https://github.com/flutter/flutter/issues.\n');
+  final Terminal _terminal;
+  final Stdio _stdio;
+  final StopwatchFactory _stopwatchFactory;
+  final OutputPreferences _outputPreferences;
 
-  buffer.writeln('## command\n');
-  buffer.writeln('flutter ${args.join(' ')}\n');
-
-  buffer.writeln('## exception\n');
-  buffer.writeln('$error\n');
-  buffer.writeln('```\n${chain.terse}```\n');
-
-  buffer.writeln('## flutter doctor\n');
-  buffer.writeln('```\n${await _doctorText()}```');
-
-  try {
-    crashFile.writeAsStringSync(buffer.toString());
-  } on FileSystemException catch (_) {
-    // Fallback to the system temporary directory.
-    crashFile = getUniqueFile(fs.systemTempDirectory, 'flutter', 'log');
-    try {
-      crashFile.writeAsStringSync(buffer.toString());
-    } on FileSystemException catch (e) {
-      printError('Could not write crash report to disk: $e');
-      printError(buffer.toString());
+  /// Create the appropriate logger for the current platform and configuration.
+  Logger createLogger({
+    required bool verbose,
+    required bool prefixedErrors,
+    required bool machine,
+    required bool daemon,
+    required bool windows,
+  }) {
+    Logger logger;
+    if (windows) {
+      logger = WindowsStdoutLogger(
+        terminal: _terminal,
+        stdio: _stdio,
+        outputPreferences: _outputPreferences,
+        stopwatchFactory: _stopwatchFactory,
+      );
+    } else {
+      logger = StdoutLogger(
+        terminal: _terminal,
+        stdio: _stdio,
+        outputPreferences: _outputPreferences,
+        stopwatchFactory: _stopwatchFactory
+      );
     }
+    if (verbose) {
+      logger = VerboseLogger(logger, stopwatchFactory: _stopwatchFactory);
+    }
+    if (prefixedErrors) {
+      logger = PrefixedErrorLogger(logger);
+    }
+    if (daemon) {
+      return NotifyingLogger(verbose: verbose, parent: logger);
+    }
+    if (machine) {
+      return AppRunLogger(parent: logger);
+    }
+    return logger;
   }
-
-  return crashFile;
-}
-
-Future<String> _doctorText() async {
-  try {
-    BufferLogger logger = new BufferLogger();
-    AppContext appContext = new AppContext();
-
-    appContext.setVariable(Logger, logger);
-
-    await appContext.runInZone(() => doctor.diagnose());
-
-    return logger.statusText;
-  } catch (error, trace) {
-    return 'encountered exception: $error\n\n${trace.toString().trim()}\n';
-  }
-}
-
-Future<Null> _exit(int code) async {
-  if (flutterUsage.isFirstRun)
-    flutterUsage.printUsage();
-
-  // Send any last analytics calls that are in progress without overly delaying
-  // the tool's exit (we wait a maximum of 250ms).
-  if (flutterUsage.enabled) {
-    Stopwatch stopwatch = new Stopwatch()..start();
-    await flutterUsage.ensureAnalyticsSent();
-    printTrace('ensureAnalyticsSent: ${stopwatch.elapsedMilliseconds}ms');
-  }
-
-  // Run shutdown hooks before flushing logs
-  await runShutdownHooks();
-
-  // Give the task / timer queue one cycle through before we hard exit.
-  Timer.run(() {
-    printTrace('exiting with code $code');
-    exit(code);
-  });
 }

@@ -1,4 +1,1 @@
-.packages
-.pub/
-pubspec.lock
-packages
+checkouts/

@@ -1,101 +1,152 @@
-// Copyright 2016 The Chromium Authors. All rights reserved.
+// Copyright 2014 The Flutter Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import 'dart:async';
-
 import 'package:meta/meta.dart';
 
-import '../base/common.dart';
+import '../android/android_sdk.dart';
+import '../artifacts.dart';
 import '../base/file_system.dart';
-import '../base/utils.dart';
+import '../base/logger.dart';
+import '../base/os.dart';
+import '../base/process.dart';
 import '../build_info.dart';
-import '../globals.dart';
+import '../build_system/build_system.dart';
+import '../cache.dart';
+import '../commands/build_linux.dart';
+import '../commands/build_macos.dart';
+import '../commands/build_windows.dart';
 import '../runner/flutter_command.dart';
+import 'build_aar.dart';
 import 'build_apk.dart';
-import 'build_aot.dart';
-import 'build_flx.dart';
+import 'build_app.dart';
+import 'build_appbundle.dart';
+import 'build_bundle.dart';
+import 'build_hap.dart';
+import 'build_har.dart';
+import 'build_hsp.dart';
 import 'build_ios.dart';
+import 'build_ios_framework.dart';
+import 'build_macos_framework.dart';
+import 'build_preview.dart';
+import 'build_web.dart';
 
 class BuildCommand extends FlutterCommand {
-  BuildCommand({bool verboseHelp: false}) {
-    addSubcommand(new BuildApkCommand());
-    addSubcommand(new BuildAotCommand());
-    addSubcommand(new BuildCleanCommand());
-    addSubcommand(new BuildIOSCommand());
-    addSubcommand(new BuildFlxCommand(verboseHelp: verboseHelp));
+  BuildCommand({
+    required Artifacts artifacts,
+    required FileSystem fileSystem,
+    required BuildSystem buildSystem,
+    required OperatingSystemUtils osUtils,
+    required Logger logger,
+    required AndroidSdk? androidSdk,
+    required ProcessUtils processUtils,
+    bool verboseHelp = false,
+  }){
+    _addSubcommand(
+        BuildAarCommand(
+          fileSystem: fileSystem,
+          androidSdk: androidSdk,
+          logger: logger,
+          verboseHelp: verboseHelp,
+        )
+    );
+    _addSubcommand(BuildApkCommand(logger: logger, verboseHelp: verboseHelp));
+    _addSubcommand(BuildAppBundleCommand(logger: logger, verboseHelp: verboseHelp));
+    _addSubcommand(BuildIOSCommand(logger: logger, verboseHelp: verboseHelp));
+    _addSubcommand(BuildIOSFrameworkCommand(
+      logger: logger,
+      buildSystem: buildSystem,
+      verboseHelp: verboseHelp,
+    ));
+    _addSubcommand(BuildMacOSFrameworkCommand(
+      logger: logger,
+      buildSystem: buildSystem,
+      verboseHelp: verboseHelp,
+    ));
+    _addSubcommand(BuildIOSArchiveCommand(logger: logger, verboseHelp: verboseHelp));
+    _addSubcommand(BuildBundleCommand(logger: logger, verboseHelp: verboseHelp));
+    _addSubcommand(BuildWebCommand(
+      fileSystem: fileSystem,
+      logger: logger,
+      verboseHelp: verboseHelp,
+    ));
+    _addSubcommand(BuildMacosCommand(logger: logger, verboseHelp: verboseHelp));
+    _addSubcommand(BuildLinuxCommand(
+      logger: logger,
+      operatingSystemUtils: osUtils,
+      verboseHelp: verboseHelp
+    ));
+    _addSubcommand(BuildWindowsCommand(
+      logger: logger,
+      operatingSystemUtils: osUtils,
+      verboseHelp: verboseHelp,
+    ));
+    _addSubcommand(BuildPreviewCommand(
+      artifacts: artifacts,
+      flutterRoot: Cache.flutterRoot!,
+      fs: fileSystem,
+      logger: logger,
+      processUtils: processUtils,
+      verboseHelp: verboseHelp,
+    ));
+    _addSubcommand(BuildHapCommand(logger: logger, verboseHelp: verboseHelp));
+    _addSubcommand(BuildHarCommand(logger: logger, verboseHelp: verboseHelp));
+    _addSubcommand(BuildHspCommand(logger: logger, verboseHelp: verboseHelp));
+    _addSubcommand(BuildAppCommand(logger: logger, verboseHelp: verboseHelp));
+  }
+
+  void _addSubcommand(BuildSubCommand command) {
+    if (command.supported) {
+      addSubcommand(command);
+    }
   }
 
   @override
   final String name = 'build';
 
   @override
-  final String description = 'Flutter build commands.';
+  final String description = 'Build an executable app or install bundle.';
 
   @override
-  Future<Null> verifyThenRunCommand() async {
-    commandValidator();
-    return super.verifyThenRunCommand();
-  }
+  String get category => FlutterCommandCategory.project;
 
   @override
-  Future<Null> runCommand() async { }
+  Future<FlutterCommandResult> runCommand() async => FlutterCommandResult.fail();
 }
 
 abstract class BuildSubCommand extends FlutterCommand {
-  @override
-  @mustCallSuper
-  Future<Null> verifyThenRunCommand() async {
-    commandValidator();
-    return super.verifyThenRunCommand();
+  BuildSubCommand({
+    required this.logger,
+    required bool verboseHelp
+  }) {
+    requiresPubspecYaml();
+    usesFatalWarningsOption(verboseHelp: verboseHelp);
   }
 
-  @override
-  @mustCallSuper
-  Future<Null> runCommand() async {
-    if (isRunningOnBot) {
-      File dotPackages = fs.file('.packages');
-      printStatus('Contents of .packages:');
-      if (dotPackages.existsSync())
-        printStatus(dotPackages.readAsStringSync());
-      else
-        printError('File not found: ${dotPackages.absolute.path}');
+  @protected
+  final Logger logger;
 
-      File pubspecLock = fs.file('pubspec.lock');
-      printStatus('Contents of pubspec.lock:');
-      if (pubspecLock.existsSync())
-        printStatus(pubspecLock.readAsStringSync());
-      else
-        printError('File not found: ${pubspecLock.absolute.path}');
+  @override
+  bool get reportNullSafety => true;
+
+  bool get supported => true;
+
+  /// Display a message describing the current null safety runtime mode
+  /// that was selected.
+  ///
+  /// This is similar to the run message in run_hot.dart
+  @protected
+  void displayNullSafetyMode(BuildInfo buildInfo) {
+    if (buildInfo.nullSafetyMode != NullSafetyMode.sound) {
+      logger.printStatus('');
+      logger.printStatus(
+        'Building without sound null safety ⚠️',
+        emphasis: true,
+      );
+      logger.printStatus(
+        'Dart 3 will only support sound null safety, see https://dart.dev/null-safety',
+      );
     }
-  }
-}
-
-class BuildCleanCommand extends FlutterCommand {
-  @override
-  final String name = 'clean';
-
-  @override
-  final String description = 'Delete the build/ directory.';
-
-  @override
-  Future<Null> verifyThenRunCommand() async {
-    commandValidator();
-    return super.verifyThenRunCommand();
-  }
-
-  @override
-  Future<Null> runCommand() async {
-    Directory buildDir = fs.directory(getBuildDirectory());
-    printStatus("Deleting '${buildDir.path}${fs.path.separator}'.");
-
-    if (!buildDir.existsSync())
-      return;
-
-    try {
-      buildDir.deleteSync(recursive: true);
-    } catch (error) {
-      throwToolExit(error.toString());
-    }
+    logger.printStatus('');
   }
 }
