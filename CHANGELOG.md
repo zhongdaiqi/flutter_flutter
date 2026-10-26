@@ -1,5 +1,29 @@
 # Changelog
 
+<a id="version20261024"></a>
+## 3.22.3+ohos-1.1.8-beta - `2026-10-24`
+
+### Added
+
+- 【3.22】feat(Upgrade): support upgrading to the latest OHOS stable release tag [!2046](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/2046)
+- feat: add --use-ccache option to ohos.py to enable ccache engine builds [!1584](https://gitcode.com/CPF-Flutter/flutter_engine/merge_requests/1584)
+
+### Fixed
+
+- 【3.22】fix(PlatformView): handle affine transform as a standalone platform message [!1564](https://gitcode.com/CPF-Flutter/flutter_engine/merge_requests/1564) [!2122](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/2122)
+- Fix PlatformView touch/mouse/axis coordinate space errors and left-click offset on windowed HarmonyOS PC [!1575](https://gitcode.com/CPF-Flutter/flutter_engine/merge_requests/1575)
+- fix cursor selection range issue [!1566](https://gitcode.com/CPF-Flutter/flutter_engine/merge_requests/1566)
+- fix(FlutterView): use window effective density for viewport dpr updates [!1570](https://gitcode.com/CPF-Flutter/flutter_engine/merge_requests/1570)
+- fix: SystemMouseCursors on OHOS [!1569](https://gitcode.com/CPF-Flutter/flutter_engine/merge_requests/1569)
+- fix: add missing space after --unuse-bisheng and stop swallowing gn failures [!1572](https://gitcode.com/CPF-Flutter/flutter_engine/merge_requests/1572)
+- fix: decode negative BigInt in standard message codecs [!1551](https://gitcode.com/CPF-Flutter/flutter_engine/merge_requests/1551)
+- fix: honor embedded GIF loop count on OHOS [!1578](https://gitcode.com/CPF-Flutter/flutter_engine/merge_requests/1578)
+- fix(Embedding): apply system font weight scale on cold start [!1585](https://gitcode.com/CPF-Flutter/flutter_engine/merge_requests/1585)
+- fix(ohos): map custom hvigor build modes to standard flutter modes [!2002](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/2002)
+- fix(Upgrade): prefer the +ohos tag naming over the legacy -ohos one [!2182](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/2182)
+- fix: Adapt the DevEco signature configuration to the new version [!2285](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/2285)
+- 【3.22】fix(Widgets): expose dismissible ModalBarrier semantics on OHOS [!2261](https://gitcode.com/CPF-Flutter/flutter_flutter/merge_requests/2261)
+
 <a id="version20260807"></a>
 ## 3.22.3-ohos-1.1.5 - `2026-08-17`
 
