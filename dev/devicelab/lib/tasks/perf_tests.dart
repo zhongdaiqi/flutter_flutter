@@ -2398,9 +2398,18 @@ class MemoryTest {
     assert(_startMemoryUsage != null);
     print('snapshotting memory usage...');
     final Map<String, dynamic> endMemoryUsage = await device!.getMemoryStats(package);
-    _startMemory.add(_startMemoryUsage!['total_kb'] as int);
-    _endMemory.add(endMemoryUsage['total_kb'] as int);
-    _diffMemory.add((endMemoryUsage['total_kb'] as int) - (_startMemoryUsage!['total_kb'] as int));
+    final int? startKb = _startMemoryUsage!['total_kb'] as int?;
+    final int? endKb = endMemoryUsage['total_kb'] as int?;
+    if (startKb == null || endKb == null) {
+      // A missing snapshot means the device-side memory query failed; report
+      // it here instead of crashing with a null type cast.
+      throw Exception(
+        'Memory snapshot incomplete: start total_kb=$startKb, end total_kb=$endKb '
+        '(device memory stats unavailable for "$package")');
+    }
+    _startMemory.add(startKb);
+    _endMemory.add(endKb);
+    _diffMemory.add(endKb - startKb);
   }
 }
 
@@ -2441,10 +2450,13 @@ class DevToolsMemoryTest {
           maxRss = math.max(maxRss, sample['rss'] as int);
         }
         if (sample['adb_memoryInfo'] != null) {
-          maxAdbTotal = math.max(
-            maxAdbTotal,
-            (sample['adb_memoryInfo'] as Map<String, dynamic>)['Total'] as int,
-          );
+          // On OHOS the memoryInfo map may lack 'Total'; skip such samples
+          // instead of crashing on a null type cast.
+          final int? adbTotal =
+              (sample['adb_memoryInfo'] as Map<String, dynamic>)['Total'] as int?;
+          if (adbTotal != null) {
+            maxAdbTotal = math.max(maxAdbTotal, adbTotal);
+          }
         }
       }
 
