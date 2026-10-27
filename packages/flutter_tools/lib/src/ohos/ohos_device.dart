@@ -325,6 +325,13 @@ class OhosDevice extends Device {
     if (route != null) {
       cmd.addAll(<String>['--ps', 'route', route]);
     }
+    // Forward --trace-systrace to the ability as a Want parameter so
+    // `flutter run --trace-systrace` enables the systrace timeline on
+    // OHOS. The embedding (FlutterShellArgs.fromWant) turns the
+    // "trace-systrace" key into the engine's --trace-systrace switch.
+    if (debuggingOptions.traceSystrace) {
+      cmd.addAll(<String>['--pb', 'trace-systrace', 'true']);
+    }
     final String result = (await runHdcCheckedAsync(cmd)).stdout;
     // This invocation returns 0 even when it fails.
     if (result.toLowerCase().contains('error')) {
