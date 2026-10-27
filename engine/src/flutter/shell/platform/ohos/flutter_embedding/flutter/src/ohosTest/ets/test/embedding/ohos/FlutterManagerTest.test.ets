@@ -19,7 +19,7 @@ import { Context } from '@kit.AbilityKit';
 import Any from '../../../../../main/ets/plugin/common/Any';
 import FlutterManager, { FullScreenListener, DragDropCallback } from '../../../../../main/ets/embedding/ohos/FlutterManager';
 
-function sleep(time: number) {
+function sleep(time: number): Promise<void> {
   return new Promise<void>((resolve: Function) => setTimeout(resolve, time));
 }
 

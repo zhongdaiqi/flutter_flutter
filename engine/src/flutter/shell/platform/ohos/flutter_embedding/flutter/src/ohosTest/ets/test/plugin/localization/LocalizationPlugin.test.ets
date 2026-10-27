@@ -46,10 +46,13 @@ export default function LocalizationPluginTest() {
     })
     it('testSendLocaleToFlutter', 0, () => {
       let mockSystemLocale = 'zh-Hans-CN';
+      let called = false;
       (localizationChannel as Any).sendLocales = (locales:Any) => {
+        called = true;
         expect(locales).assertContain(mockSystemLocale);
       };
       localizationPlugin.sendLocaleToFlutter();
+      expect(called).assertEqual(true);
     })
 
     it('localeFromString script input resolves to the system default locale', 0, () => {

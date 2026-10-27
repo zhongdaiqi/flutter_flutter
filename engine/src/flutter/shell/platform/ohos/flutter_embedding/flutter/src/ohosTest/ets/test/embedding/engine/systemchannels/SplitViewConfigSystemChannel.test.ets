@@ -40,63 +40,56 @@ export default function splitViewConfigSystemChannelTest() {
   });
 
   describe('SplitViewConfigSystemChannel.branches', () => {
-    const stubChannelSink = (ch: SplitViewConfigSystemChannel) => {
+    const stubChannelSink = (ch: SplitViewConfigSystemChannel, sent: string[]): void => {
       (ch as Any).channel = {
         resizeChannelBuffer: (n: number) => {},
-        send: (msg: string) => {}
+        send: (msg: string) => { sent.push(msg); }
       };
     };
 
     it('sendConfigToFlutter returns early when context is null', Level.LEVEL1, () => {
       const ch = createChannel();
+      const sent: string[] = [];
+      stubChannelSink(ch, sent);
       (ch as Any).context = null;
-      let threw = false;
-      try {
-        ch.sendConfigToFlutter();
-      } catch (e) {
-        threw = true;
-      }
-      expect(threw).assertEqual(false);
+      ch.sendConfigToFlutter();
+      expect(sent.length).assertEqual(0);
     });
 
     it('sendConfigToFlutter injects icon into cached valid json and sends', Level.LEVEL1, () => {
       const ch = createChannel();
+      const sent: string[] = [];
+      stubChannelSink(ch, sent);
       (ch as Any).cachedConfigStr = '{"mode":"split"}';
-      stubChannelSink(ch);
-      let threw = false;
-      try {
-        ch.sendConfigToFlutter();
-      } catch (e) {
-        threw = true;
-      }
-      expect(threw).assertEqual(false);
+      (ch as Any).getAppIconBase64 = (): string => 'aWNvbg==';
+      ch.sendConfigToFlutter();
+      expect(sent.length).assertEqual(1);
+      const sentConfig = JSON.parse(sent[0]) as Record<string, Object>;
+      expect(sentConfig['mode']).assertEqual('split');
+      expect(sentConfig['placeholderIconData']).assertEqual('aWNvbg==');
     });
 
     it('sendConfigToFlutter survives cached invalid json', Level.LEVEL1, () => {
       const ch = createChannel();
+      const sent: string[] = [];
+      stubChannelSink(ch, sent);
       (ch as Any).cachedConfigStr = '{not-json';
-      stubChannelSink(ch);
-      let threw = false;
-      try {
-        ch.sendConfigToFlutter();
-      } catch (e) {
-        threw = true;
-      }
-      expect(threw).assertEqual(false);
+      (ch as Any).getAppIconBase64 = (): string => 'aWNvbg==';
+      ch.sendConfigToFlutter();
+      expect(sent.length).assertEqual(1);
+      expect(sent[0]).assertEqual('{not-json');
     });
 
     it('sendConfigToFlutter skips icon injection when icon is empty', Level.LEVEL1, () => {
       const ch = createChannel();
+      const sent: string[] = [];
+      stubChannelSink(ch, sent);
       (ch as Any).cachedConfigStr = '{"mode":"split"}';
       (ch as Any).getAppIconBase64 = (): string => '';
-      stubChannelSink(ch);
-      let threw = false;
-      try {
-        ch.sendConfigToFlutter();
-      } catch (e) {
-        threw = true;
-      }
-      expect(threw).assertEqual(false);
+      ch.sendConfigToFlutter();
+      expect(sent.length).assertEqual(1);
+      const sentConfig = JSON.parse(sent[0]) as Record<string, Object>;
+      expect(sentConfig['placeholderIconData']).assertUndefined();
     });
 
     it('getAppIconBase64 returns empty string when context is null', Level.LEVEL1, () => {

@@ -32,16 +32,14 @@ export default function FlutterEngineCacheTest() {
     it('contains', 0, async (done: Function) => {
       console.info("uitest: contains begin");
       const contains: boolean = flutterEngineCache.contains('test');
-      expect(contains).not().assertNull();
+      expect(contains).assertEqual(false);
       done();
     })
 
     it('get', 0, async (done: Function) => {
-      console.info("uitest: contains begin");
+      console.info("uitest: get begin");
       const get: FlutterEngine | null = flutterEngineCache.get('test');
-      if(get) {
-        expect(get).not().assertNull();
-      }
+      expect(get).assertNull();
       done();
     })
 

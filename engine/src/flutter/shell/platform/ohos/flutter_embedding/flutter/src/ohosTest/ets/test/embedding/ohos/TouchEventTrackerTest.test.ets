@@ -18,6 +18,7 @@ import { TouchEvent } from '@ohos.multimodalInput.touchEvent';
 import Any from '../../../../../main/ets/plugin/common/Any';
 
 export default function TouchEventTrackerTest() {
+  const mkEvent = (marker: string): TouchEvent => ({ marker: marker } as Any as TouchEvent);
   const touchEventTracker: TouchEventTracker = new TouchEventTracker();
 
   describe('TouchEventTrackerTest', () => {
@@ -30,28 +31,24 @@ export default function TouchEventTrackerTest() {
     })
 
     it('track', 0, async (done: Function) => {
-      console.info("uitest: decodeTouchPacket begin");
-      const event: TouchEvent | null = null;
-      if(event) {
-        const decodeTouchPacket: TouchEventId = touchEventTracker.track(event);
-        expect(decodeTouchPacket).not().assertNull();
-      }
+      console.info("uitest: track begin");
+      const id1: TouchEventId = touchEventTracker.track(mkEvent('a'));
+      const id2: TouchEventId = touchEventTracker.track(mkEvent('b'));
+      expect(id1).not().assertNull();
+      expect(id2.getId()).assertLarger(id1.getId());
       done();
     })
 
     it('pop', 0, async (done: Function) => {
       console.info("uitest: pop begin");
-      const eventId: TouchEventId | null = null;
-      if(eventId) {
-        const tuchEvent: TouchEvent = touchEventTracker.pop(eventId);
-        expect(tuchEvent).not().assertNull();
-      }
+      const id: TouchEventId = touchEventTracker.track(mkEvent('p'));
+      const popped: TouchEvent = touchEventTracker.pop(id);
+      expect((popped as Any).marker).assertEqual('p');
       done();
     })
   })
 
   describe('TouchEventTracker.pop.branches', () => {
-    const mkEvent = (marker: string): TouchEvent => ({ marker: marker } as Any as TouchEvent);
 
     it('pop discards older events and returns the tracked one', 0, () => {
       const tracker = new TouchEventTracker();
