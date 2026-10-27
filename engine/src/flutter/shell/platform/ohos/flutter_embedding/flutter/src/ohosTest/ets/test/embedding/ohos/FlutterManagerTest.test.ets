@@ -18,7 +18,7 @@ import common from '@ohos.app.ability.common';
 import { Context } from '@kit.AbilityKit';
 import FlutterManager, { FullScreenListener, DragDropCallback, DefaultFullScreenListener } from '../../../../../main/ets/embedding/ohos/FlutterManager';
 
-function sleep(time: number) {
+function sleep(time: number): Promise<void> {
   return new Promise<void>((resolve: Function) => setTimeout(resolve, time));
 }
 
