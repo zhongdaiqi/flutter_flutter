@@ -96,7 +96,7 @@ TaskFunction createRoutingTest() {
       });
       int result;
       result = await drive.exitCode;
-      await flutter('install', options: <String>['--uninstall-only']);
+      await flutter('install', options: <String>['--uninstall-only', '-d', device.deviceId]);
       if (result != 0) {
         throw 'Failed to drive test app (exit code $result).';
       }
