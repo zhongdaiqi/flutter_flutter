@@ -713,6 +713,16 @@ void cd(dynamic directory) {
 
 Directory get flutterDirectory => Directory.current.parent.parent;
 
+// Root for task workspaces that assemble OHOS haps. Such projects must stay on
+// the same filesystem as the flutter checkout because hvigor rejects
+// cross-filesystem source dependencies (e.g. %TEMP% on C: with the checkout on
+// D:). CI can point FLUTTER_DEVICELAB_TMP at a directory on the checkout's
+// drive; defaults to the system temp for behavior parity elsewhere.
+Directory get devicelabTempRoot {
+  final String? override = Platform.environment['FLUTTER_DEVICELAB_TMP'];
+  return override != null && override.isNotEmpty ? Directory(override) : Directory.systemTemp;
+}
+
 Directory get openpayDirectory => Directory(requireEnvVar('OPENPAY_CHECKOUT_PATH'));
 
 String requireEnvVar(String name) {

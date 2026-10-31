@@ -16,8 +16,12 @@ import '../framework/running_processes.dart';
 import '../framework/task_result.dart';
 import '../framework/utils.dart';
 
+// The workspace must live on the same filesystem as the flutter checkout:
+// hvigor rejects cross-filesystem source dependencies (Windows multi-drive
+// setups put %TEMP% on C: while the checkout is on D:), which used to break
+// this task with "Cross Driver Error" and a missing hot_benchmark.json.
 final Directory _editedFlutterGalleryWorkspaceDir = dir(
-  path.join(Directory.systemTemp.path, 'gallery_workspace'),
+  path.join(devicelabTempRoot.path, 'gallery_workspace'),
 );
 
 final Directory _editedFlutterGalleryDir = dir(
