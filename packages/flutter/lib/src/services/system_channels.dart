@@ -58,6 +58,27 @@ abstract final class SystemChannels {
       JSONMethodCodec(),
   );
 
+  /// A [MethodChannel] for handling predictive back gestures.
+  ///
+  /// Currently, this feature is only available on Android U and above.
+  ///
+  /// No outgoing methods are defined for this channel (invoked using
+  /// [OptionalMethodChannel.invokeMethod]).
+  ///
+  /// The following incoming methods are defined for this channel (registered
+  /// using [MethodChannel.setMethodCallHandler]):
+  ///
+  ///  * `startBackGesture`: The user has started a predictive back gesture.
+  ///  * `updateBackGestureProgress`: The user has continued dragging the
+  ///    predictive back gesture.
+  ///  * `commitBackGesture`: The user has finished a predictive back gesture,
+  ///    indicating that the current route should be popped.
+  ///  * `cancelBackGesture`: The user has canceled a predictive back gesture,
+  ///    indicating that no navigation should occur.
+  static const MethodChannel backGesture = OptionalMethodChannel(
+    'flutter/backgesture',
+  );
+
   /// A JSON [MethodChannel] for invoking miscellaneous platform methods.
   ///
   /// The following outgoing methods are defined for this channel (invoked using
@@ -366,6 +387,17 @@ abstract final class SystemChannels {
   ///    integer `device`, and string `kind`.
   static const MethodChannel mouseCursor = OptionalMethodChannel(
     'flutter/mousecursor',
+  );
+
+  /// A [MethodChannel] for handling flex overflow in the UI.
+  ///
+  /// The following outgoing methods are defined for this channel (invoked using
+  /// [OptionalMethodChannel.invokeMethod]):
+  ///
+  ///  * `updateDpiScale`: Request to update the DPI scale factor to handle flex
+  ///    overflow. The parameter is a double `dpiScale` representing the scale factor.
+  static const MethodChannel displayMetrics = OptionalMethodChannel(
+    'flutter/displaymetrics',
   );
 
   /// A [MethodChannel] for synchronizing restoration data with the engine.

@@ -142,6 +142,16 @@ class KeySet<T extends KeyboardKey> {
   }
 }
 
+/// Determines how the state of a lock key is used to accept a shortcut.
+enum LockState {
+  /// The lock key state is not used to determine [SingleActivator.accepts] result.
+  ignored,
+  /// The lock key must be locked to trigger the shortcut.
+  locked,
+  /// The lock key must be unlocked to trigger the shortcut.
+  unlocked,
+}
+
 /// An interface to define the keyboard key combination to trigger a shortcut.
 ///
 /// [ShortcutActivator]s are used by [Shortcuts] widgets, and are mapped to
@@ -430,6 +440,7 @@ class SingleActivator with Diagnosticable, MenuSerializableShortcut implements S
     this.shift = false,
     this.alt = false,
     this.meta = false,
+    this.numLock = LockState.ignored,
     this.includeRepeats = true,
   }) : // The enumerated check with `identical` is cumbersome but the only way
        // since const constructors can not call functions such as `==` or
@@ -505,12 +516,25 @@ class SingleActivator with Diagnosticable, MenuSerializableShortcut implements S
   ///  * [LogicalKeyboardKey.metaLeft], [LogicalKeyboardKey.metaRight].
   final bool meta;
 
+  /// Whether the NumLock key state should be checked for [trigger] to activate
+  /// the shortcut.
+  ///
+  /// It defaults to [LockState.ignored], meaning the NumLock state is ignored
+  /// when the event is received in order to activate the shortcut.
+  /// If it's [LockState.locked], then the NumLock key must be locked.
+  /// If it's [LockState.unlocked], then the NumLock key must be unlocked.
+  ///
+  /// See also:
+  ///
+  ///  * [LogicalKeyboardKey.numLock].
+  final LockState numLock;
+
   /// Whether this activator accepts repeat events of the [trigger] key.
   ///
   /// If [includeRepeats] is true, the activator is checked on all
-  /// [RawKeyDownEvent] events for the [trigger] key. If [includeRepeats] is
-  /// false, only [trigger] key events which are not [KeyRepeatEvent]s will be
-  /// considered.
+  /// [KeyDownEvent] or [KeyRepeatEvent]s for the [trigger] key. If
+  /// [includeRepeats] is false, only [trigger] key events which are
+  /// [KeyDownEvent]s will be considered.
   final bool includeRepeats;
 
   @override
@@ -525,11 +549,20 @@ class SingleActivator with Diagnosticable, MenuSerializableShortcut implements S
         && meta == pressed.intersection(_metaSynonyms).isNotEmpty;
   }
 
+  bool _shouldAcceptNumLock(HardwareKeyboard state) {
+    return switch (numLock) {
+      LockState.ignored => true,
+      LockState.locked => state.lockModesEnabled.contains(KeyboardLockMode.numLock),
+      LockState.unlocked => !state.lockModesEnabled.contains(KeyboardLockMode.numLock),
+    };
+  }
+
   @override
   bool accepts(KeyEvent event, HardwareKeyboard state) {
     return (event is KeyDownEvent || (includeRepeats && event is KeyRepeatEvent))
         && triggers.contains(event.logicalKey)
-        && _shouldAcceptModifiers(state.logicalKeysPressed);
+        && _shouldAcceptModifiers(state.logicalKeysPressed)
+        && _shouldAcceptNumLock(state);
   }
 
   @override
@@ -601,10 +634,10 @@ class SingleActivator with Diagnosticable, MenuSerializableShortcut implements S
 /// Shift keys are pressed or not, as long as the key event produces the
 /// correct character.
 ///
-/// By default, the activator is checked on all [RawKeyDownEvent] events for
-/// the [character] in combination with the requested modifier keys. If
-/// `includeRepeats` is false, only the [character] events with a false
-/// [RawKeyDownEvent.repeat] attribute will be considered.
+/// By default, the activator is checked on all [KeyDownEvent] or
+/// [KeyRepeatEvent]s for the [character] in combination with the requested
+/// modifier keys. If `includeRepeats` is false, only the [character] events
+/// with that are [KeyDownEvent]s will be considered.
 ///
 /// {@template flutter.widgets.shortcuts.CharacterActivator.alt}
 /// On macOS and iOS, the [alt] flag indicates that the Option key (⌥) is
@@ -679,9 +712,9 @@ class CharacterActivator with Diagnosticable, MenuSerializableShortcut implement
   /// Whether this activator accepts repeat events of the [character].
   ///
   /// If [includeRepeats] is true, the activator is checked on all
-  /// [RawKeyDownEvent] events for the [character]. If [includeRepeats] is
-  /// false, only the [character] events with a false [RawKeyDownEvent.repeat]
-  /// attribute will be considered.
+  /// [KeyDownEvent] and [KeyRepeatEvent]s for the [character]. If
+  /// [includeRepeats] is false, only the [character] events that are
+  /// [KeyDownEvent]s will be considered.
   final bool includeRepeats;
 
   /// The character which triggers the shortcut.
@@ -694,7 +727,7 @@ class CharacterActivator with Diagnosticable, MenuSerializableShortcut implement
   ///
   /// See also:
   ///
-  ///  * [RawKeyEvent.character], the character of a key event.
+  ///  * [KeyEvent.character], the character of a key event.
   final String character;
 
   @override

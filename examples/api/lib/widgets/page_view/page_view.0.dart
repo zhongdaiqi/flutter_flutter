@@ -114,6 +114,7 @@ class _PageViewExampleState extends State<PageViewExample> with TickerProviderSt
       case TargetPlatform.android:
       case TargetPlatform.iOS:
       case TargetPlatform.fuchsia:
+      case TargetPlatform.ohos:
         return false;
     }
   }
@@ -169,7 +170,7 @@ class PageIndicator extends StatelessWidget {
           ),
           TabPageSelector(
             controller: tabController,
-            color: colorScheme.background,
+            color: colorScheme.surface,
             selectedColor: colorScheme.primary,
           ),
           IconButton(

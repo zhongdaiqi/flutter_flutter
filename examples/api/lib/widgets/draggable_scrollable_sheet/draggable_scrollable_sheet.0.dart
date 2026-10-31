@@ -97,6 +97,7 @@ class _DraggableScrollableSheetExampleState extends State<DraggableScrollableShe
       case TargetPlatform.android:
       case TargetPlatform.iOS:
       case TargetPlatform.fuchsia:
+      case TargetPlatform.ohos:
         return false;
     }
   }
@@ -133,7 +134,7 @@ class Grabber extends StatelessWidget {
             width: 32.0,
             height: 4.0,
             decoration: BoxDecoration(
-              color: colorScheme.surfaceVariant,
+              color: colorScheme.surfaceContainerHighest,
               borderRadius: BorderRadius.circular(8.0),
             ),
           ),

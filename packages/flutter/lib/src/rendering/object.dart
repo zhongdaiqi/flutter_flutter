@@ -825,7 +825,7 @@ class _LocalSemanticsHandle implements SemanticsHandle {
     // TODO(polina-c): stop duplicating code across disposables
     // https://github.com/flutter/flutter/issues/137435
     if (kFlutterMemoryAllocationsEnabled) {
-      MemoryAllocations.instance.dispatchObjectCreated(
+      FlutterMemoryAllocations.instance.dispatchObjectCreated(
         library: 'package:flutter/rendering.dart',
         className: '$_LocalSemanticsHandle',
         object: this,
@@ -847,7 +847,7 @@ class _LocalSemanticsHandle implements SemanticsHandle {
     // TODO(polina-c): stop duplicating code across disposables
     // https://github.com/flutter/flutter/issues/137435
     if (kFlutterMemoryAllocationsEnabled) {
-      MemoryAllocations.instance.dispatchObjectDisposed(object: this);
+      FlutterMemoryAllocations.instance.dispatchObjectDisposed(object: this);
     }
 
     if (listener != null) {
@@ -915,7 +915,7 @@ class PipelineOwner with DiagnosticableTreeMixin {
     // TODO(polina-c): stop duplicating code across disposables
     // https://github.com/flutter/flutter/issues/137435
     if (kFlutterMemoryAllocationsEnabled) {
-      MemoryAllocations.instance.dispatchObjectCreated(
+      FlutterMemoryAllocations.instance.dispatchObjectCreated(
         library: 'package:flutter/rendering.dart',
         className: '$PipelineOwner',
         object: this,
@@ -1460,7 +1460,7 @@ class PipelineOwner with DiagnosticableTreeMixin {
     assert(_manifold == null);
     assert(_debugParent == null);
     if (kFlutterMemoryAllocationsEnabled) {
-      MemoryAllocations.instance.dispatchObjectDisposed(object: this);
+      FlutterMemoryAllocations.instance.dispatchObjectDisposed(object: this);
     }
     _semanticsOwner?.dispose();
     _semanticsOwner = null;
@@ -1656,7 +1656,7 @@ abstract class RenderObject with DiagnosticableTreeMixin implements HitTestTarge
   /// Initializes internal fields for subclasses.
   RenderObject() {
     if (kFlutterMemoryAllocationsEnabled) {
-      MemoryAllocations.instance.dispatchObjectCreated(
+      FlutterMemoryAllocations.instance.dispatchObjectCreated(
         library: _flutterRenderingLibrary,
         className: '$RenderObject',
         object: this,
@@ -1723,7 +1723,7 @@ abstract class RenderObject with DiagnosticableTreeMixin implements HitTestTarge
   void dispose() {
     assert(!_debugDisposed);
     if (kFlutterMemoryAllocationsEnabled) {
-      MemoryAllocations.instance.dispatchObjectDisposed(object: this);
+      FlutterMemoryAllocations.instance.dispatchObjectDisposed(object: this);
     }
     _layerHandle.layer = null;
     assert(() {
@@ -1925,7 +1925,9 @@ abstract class RenderObject with DiagnosticableTreeMixin implements HitTestTarge
   /// This is useful when you have to temporarily clear that variable to
   /// disable some false-positive checks, such as when computing toStringDeep
   /// or using custom trees.
+  @pragma('dart2js:tryInline')
   @pragma('vm:prefer-inline')
+  @pragma('wasm:prefer-inline')
   static T _withDebugActiveLayoutCleared<T>(T Function() inner) {
     RenderObject? debugPreviousActiveLayout;
     assert(() {
@@ -2211,16 +2213,16 @@ abstract class RenderObject with DiagnosticableTreeMixin implements HitTestTarge
   @protected
   void debugAssertDoesMeetConstraints();
 
-  /// When true, debugAssertDoesMeetConstraints() is currently
-  /// executing asserts for verifying the consistent behavior of
+  /// When true, a debug method ([debugAssertDoesMeetConstraints], for instance)
+  /// is currently executing asserts for verifying the consistent behavior of
   /// intrinsic dimensions methods.
   ///
-  /// This should only be set by debugAssertDoesMeetConstraints()
-  /// implementations. It is used by tests to selectively ignore
-  /// custom layout callbacks. It should not be set outside of
-  /// debugAssertDoesMeetConstraints(), and should not be checked in
-  /// release mode (where it will always be false).
+  /// This is typically set by framework debug methods. It is read by tests to
+  /// selectively ignore custom layout callbacks. It should not be set outside of
+  /// intrinsic-checking debug methods, and should not be checked in release mode
+  /// (where it will always be false).
   static bool debugCheckingIntrinsics = false;
+
   bool _debugSubtreeRelayoutRootAlreadyMarkedNeedsLayout() {
     if (_relayoutBoundary == null) {
       // We don't know where our relayout boundary is yet.

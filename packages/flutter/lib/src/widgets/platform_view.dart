@@ -19,6 +19,8 @@ import 'framework.dart';
 // PlatformViewController createFooWebView(PlatformViewCreationParams params) { return (null as dynamic) as PlatformViewController; }
 // Set<Factory<OneSequenceGestureRecognizer>> gestureRecognizers = <Factory<OneSequenceGestureRecognizer>>{};
 // late PlatformViewController _controller;
+// void myOnElementCreated(Object element) {}
+// void myOnPlatformViewCreated(int viewId) {}
 
 /// Embeds an Android view in the Widget hierarchy.
 ///
@@ -195,6 +197,143 @@ class AndroidView extends StatefulWidget {
   State<AndroidView> createState() => _AndroidViewState();
 }
 
+class OhosView extends StatefulWidget {
+  /// Creates a widget that embeds an Ohos view.
+  ///
+  /// {@template flutter.widgets.OhosView.constructorArgs}
+  /// The `viewType` and `hitTestBehavior` parameters must not be null.
+  /// If `creationParams` is not null then `creationParamsCodec` must not be null.
+  /// {@endtemplate}
+  const OhosView({
+    super.key,
+    required this.viewType,
+    this.onPlatformViewCreated,
+    this.hitTestBehavior = PlatformViewHitTestBehavior.opaque,
+    this.layoutDirection,
+    this.gestureRecognizers,
+    this.creationParams,
+    this.creationParamsCodec,
+    this.clipBehavior = Clip.hardEdge,
+  }) : assert(viewType != null),
+        assert(hitTestBehavior != null),
+        assert(creationParams == null || creationParamsCodec != null),
+        assert(clipBehavior != null);
+
+  /// The unique identifier for Ohos view type to be embedded by this widget.
+  ///
+  /// A [PlatformViewFactory](/javadoc/io/flutter/plugin/platform/PlatformViewFactory.html)
+  /// for this type must have been registered.
+  ///
+  /// See also:
+  ///
+  ///  * [OhosView] for an example of registering a platform view factory.
+  final String viewType;
+
+  /// {@template flutter.widgets.OhosView.onPlatformViewCreated}
+  /// Callback to invoke after the platform view has been created.
+  ///
+  /// May be null.
+  /// {@endtemplate}
+  final PlatformViewCreatedCallback? onPlatformViewCreated;
+
+  /// {@template flutter.widgets.OhosView.hitTestBehavior}
+  /// How this widget should behave during hit testing.
+  ///
+  /// This defaults to [PlatformViewHitTestBehavior.opaque].
+  /// {@endtemplate}
+  final PlatformViewHitTestBehavior hitTestBehavior;
+
+  /// {@template flutter.widgets.OhosView.layoutDirection}
+  /// The text direction to use for the embedded view.
+  ///
+  /// If this is null, the ambient [Directionality] is used instead.
+  /// {@endtemplate}
+  final TextDirection? layoutDirection;
+
+  /// Which gestures should be forwarded to the Ohos view.
+  ///
+  /// {@template flutter.widgets.OhosView.gestureRecognizers.descHead}
+  /// The gesture recognizers built by factories in this set participate in the gesture arena for
+  /// each pointer that was put down on the widget. If any of these recognizers win the
+  /// gesture arena, the entire pointer event sequence starting from the pointer down event
+  /// will be dispatched to the platform view.
+  ///
+  /// When null, an empty set of gesture recognizer factories is used, in which case a pointer event sequence
+  /// will only be dispatched to the platform view if no other member of the arena claimed it.
+  /// {@endtemplate}
+  ///
+  /// For example, with the following setup vertical drags will not be dispatched to the Ohos
+  /// view as the vertical drag gesture is claimed by the parent [GestureDetector].
+  ///
+  /// ```dart
+  /// GestureDetector(
+  ///   onVerticalDragStart: (DragStartDetails d) {},
+  ///   child: const OhosView(
+  ///     viewType: 'webview',
+  ///   ),
+  /// )
+  /// ```
+  ///
+  /// To get the [OhosView] to claim the vertical drag gestures we can pass a vertical drag
+  /// gesture recognizer factory in [gestureRecognizers] e.g:
+  ///
+  /// ```dart
+  /// GestureDetector(
+  ///   onVerticalDragStart: (DragStartDetails details) {},
+  ///   child: SizedBox(
+  ///     width: 200.0,
+  ///     height: 100.0,
+  ///     child: OhosView(
+  ///       viewType: 'webview',
+  ///       gestureRecognizers: <Factory<OneSequenceGestureRecognizer>>{
+  ///         Factory<OneSequenceGestureRecognizer>(
+  ///           () => EagerGestureRecognizer(),
+  ///         ),
+  ///       },
+  ///     ),
+  ///   ),
+  /// )
+  /// ```
+  ///
+  /// {@template flutter.widgets.OhosView.gestureRecognizers.descFoot}
+  /// A platform view can be configured to consume all pointers that were put
+  /// down in its bounds by passing a factory for an [EagerGestureRecognizer] in
+  /// [gestureRecognizers]. [EagerGestureRecognizer] is a special gesture
+  /// recognizer that immediately claims the gesture after a pointer down event.
+  ///
+  /// The [gestureRecognizers] property must not contain more than one factory
+  /// with the same [Factory.type].
+  ///
+  /// Changing [gestureRecognizers] results in rejection of any active gesture
+  /// arenas (if the platform view is actively participating in an arena).
+  /// {@endtemplate}
+  // We use OneSequenceGestureRecognizers as they support gesture arena teams.
+  // TODO(amirh): get a list of GestureRecognizers here.
+  // https://github.com/flutter/flutter/issues/20953
+  final Set<Factory<OneSequenceGestureRecognizer>>? gestureRecognizers;
+
+  /// Passed as the args argument of [PlatformViewFactory#create](/javadoc/io/flutter/plugin/platform/PlatformViewFactory.html#create-ohos.content.Context-int-java.lang.Object-)
+  ///
+  /// This can be used by plugins to pass constructor parameters to the embedded Ohos view.
+  final dynamic creationParams;
+
+  /// The codec used to encode `creationParams` before sending it to the
+  /// platform side. It should match the codec passed to the constructor of [PlatformViewFactory](/javadoc/io/flutter/plugin/platform/PlatformViewFactory.html#PlatformViewFactory-io.flutter.plugin.common.MessageCodec-).
+  ///
+  /// This is typically one of: [StandardMessageCodec], [JSONMessageCodec], [StringCodec], or [BinaryCodec].
+  ///
+  /// This must not be null if [creationParams] is not null.
+  final MessageCodec<dynamic>? creationParamsCodec;
+
+  /// {@macro flutter.material.Material.clipBehavior}
+  ///
+  /// Defaults to [Clip.hardEdge], and must not be null.
+  final Clip clipBehavior;
+
+  @override
+  State<OhosView> createState() => _OhosViewState();
+}
+
 /// Common superclass for iOS and macOS platform views.
 ///
 /// Platform views are used to embed native views in the widget hierarchy, with
@@ -358,49 +497,291 @@ class AppKitView extends _DarwinView {
   State<AppKitView> createState() => _AppKitViewState();
 }
 
-/// Callback signature for when the platform view's DOM element was created.
+/// The signature of the function that gets called when the [HtmlElementView]
+/// DOM element is created.
 ///
 /// [element] is the DOM element that was created.
 ///
-/// Also see [HtmlElementView.fromTagName] that uses this callback
-/// signature.
+/// This callback is called before [element] is attached to the DOM, so it can
+/// be modified as needed by the Flutter web application.
+///
+/// See [HtmlElementView.fromTagName] that receives a callback of this type.
+///
+/// {@template flutter.widgets.web.JSInterop.object}
+/// Flutter uses type `Object` so this API doesn't force any JS interop API
+/// implementation to Flutter users. This `element` can be cast to any compatible
+/// JS interop type as needed. For example: `JSAny` (from `dart:js_interop`),
+/// `HTMLElement` (from `package:web`) or any custom JS interop definition.
+/// See "Next-generation JS interop": https://dart.dev/interop/js-interop
+/// {@endtemplate}
 typedef ElementCreatedCallback = void Function(Object element);
 
-/// Embeds an HTML element in the Widget hierarchy in Flutter Web.
+/// Embeds an HTML element in the Widget hierarchy in Flutter web.
 ///
-/// *NOTE*: This only works in Flutter Web. To embed web content on other
-/// platforms, consider using the `flutter_webview` plugin.
-///
-/// Embedding HTML is an expensive operation and should be avoided when a
-/// Flutter equivalent is possible.
-///
-/// The embedded HTML is painted just like any other Flutter widget and
-/// transformations apply to it as well. This widget should only be used in
-/// Flutter Web.
+/// The embedded HTML is laid out like any other Flutter widget and
+/// transformations (like opacity, and clipping) apply to it as well.
 ///
 /// {@macro flutter.widgets.AndroidView.layout}
 ///
-/// Due to security restrictions with cross-origin `<iframe>` elements, Flutter
-/// cannot dispatch pointer events to an HTML view. If an `<iframe>` is the
-/// target of an event, the window containing the `<iframe>` is not notified
-/// of the event. In particular, this means that any pointer events which land
-/// on an `<iframe>` will not be seen by Flutter, and so the HTML view cannot
-/// participate in gesture detection with other widgets.
+/// Embedding HTML is a _potentially expensive_ operation and should be avoided
+/// when a Flutter equivalent is possible. (See **`isVisible` parameter** below.)
+/// This widget is useful to integrate native HTML elements to a Flutter web app,
+/// like a `<video>` tag, or a `<div>` where a [Google Map](https://pub.dev/packages/google_maps_flutter)
+/// can be rendered.
 ///
-/// The way we enable accessibility on Flutter for web is to have a full-page
-/// button which waits for a double tap. Placing this full-page button in front
-/// of the scene would cause platform views not to receive pointer events. The
-/// tradeoff is that by placing the scene in front of the semantics placeholder
-/// will cause platform views to block pointer events from reaching the
-/// placeholder. This means that in order to enable accessibility, you must
-/// double tap the app *outside of a platform view*. As a consequence, a
-/// full-screen platform view will make it impossible to enable accessibility.
-/// Make sure that your HTML views are sized no larger than necessary, or you
-/// may cause difficulty for users trying to enable accessibility.
+/// This widget **only works on Flutter web.** To embed web content on other
+/// platforms, consider using the [`webview_flutter` plugin](https://pub.dev/packages/webview_flutter).
 ///
-/// {@macro flutter.widgets.AndroidView.lifetime}
+/// ## Usage
+///
+/// There's two ways to use the `HtmlElementView` widget:
+///
+/// ### `HtmlElementView.fromTagName`
+///
+/// The [HtmlElementView.fromTagName] constructor creates the HTML element
+/// specified by `tagName`, and passes it to the `onElementCreated` callback
+/// where it can be customized:
+///
+/// ```dart
+/// // In a `build` method...
+/// HtmlElementView.fromTagName(
+///   tagName: 'div',
+///   onElementCreated: myOnElementCreated,
+/// );
+/// ```
+///
+/// The example creates a `<div>` element, then calls the `onElementCreated`
+/// callback with the created `<div>`, so it can be customized **before** it is
+/// attached to the DOM.
+///
+/// (See more details about `onElementCreated` in the **Lifecycle** section below.)
+///
+/// ### Using the `PlatformViewRegistry`
+///
+/// The primitives used to implement [HtmlElementView.fromTagName] are available
+/// for general use through `dart:ui_web`'s `platformViewRegistry`.
+///
+/// Creating an `HtmlElementView` through these primitives is a two step process:
+///
+/// #### 1. `registerViewFactory`
+///
+/// First, a `viewFactory` function needs to be registered for a given `viewType`.
+/// Flutter web will call this factory function to create the `element` that will
+/// be attached later:
+///
+/// ```dart
+/// import 'dart:ui_web' as ui_web;
+/// import 'package:web/web.dart' as web;
+///
+/// void registerRedDivFactory() {
+///   ui_web.platformViewRegistry.registerViewFactory(
+///     'my-view-type',
+///     (int viewId, {Object? params}) {
+///       // Create and return an HTML Element from here
+///       final web.HTMLDivElement myDiv = web.HTMLDivElement()
+///         ..id = 'some_id_$viewId'
+///         ..style.backgroundColor = 'red'
+///         ..style.width = '100%'
+///         ..style.height = '100%';
+///       return myDiv;
+///     },
+///   );
+/// }
+/// ```
+///
+/// `registerViewFactory` **must** be called outside of `build` methods, so the
+/// registered function is available when `build` happens.
+///
+/// See the different types of functions that can be used as `viewFactory`:
+///
+/// * [`typedef ui_web.PlatformViewFactory`](https://api.flutter.dev/flutter/dart-ui_web/PlatformViewFactory.html)
+/// * [`typedef ui_web.ParameterizedPlatformViewFactory`](https://api.flutter.dev/flutter/dart-ui_web/ParameterizedPlatformViewFactory.html)
+///
+/// #### 2. `HtmlElementView` widget
+///
+/// Once a factory is registered, an `HtmlElementView` widget of `viewType` can
+/// be added to the widget tree, like so:
+///
+/// ```dart
+/// // In a `build` method...
+/// const HtmlElementView(
+///   viewType: 'my-view-type',
+///   onPlatformViewCreated: myOnPlatformViewCreated,
+///   creationParams: <String, Object?>{
+///     'key': 'someValue',
+///   },
+/// );
+/// ```
+///
+/// [viewType] **must** match the value used to `registerViewFactory` before.
+///
+/// [creationParams] (optional) will be passed to your `viewFactory` function,
+/// if it accepts them.
+///
+/// [onPlatformViewCreated] will be called with the `viewId` of the platform
+/// view (`element`) created by the `viewFactory`, before it gets attached to
+/// the DOM.
+///
+/// The `viewId` can be used to retrieve the created `element` (The same one
+/// passed to `onElementCreated` in [HtmlElementView.fromTagName]) with the
+/// `ui_web.platformViewRegistry.`[`getViewById` method](https://api.flutter.dev/flutter/dart-ui_web/PlatformViewRegistry/getViewById.html).
+///
+/// (See more details about `onPlatformViewCreated` in the **Lifecycle** section
+/// below.)
+///
+/// ## Lifecycle
+///
+/// `HtmlElementView` widgets behave like any other Flutter stateless widget, but
+/// with an additional lifecycle method: `onPlatformViewCreated` / `onElementCreated`
+/// (depending on the constructor, see **Usage** above).
+///
+/// The difference between the two callbacks is the parameter they receive:
+///
+/// * `onPlatformViewCreated` will be called with the created `viewId` as a parameter,
+///   and needs `ui_web.platformViewRegistry.getViewById` to retrieve the created
+///   element (See [PlatformViewCreatedCallback]).
+/// * `onElementCreated` will be called with the created `element` directly,
+///   skipping its `viewId` (See [ElementCreatedCallback]).
+///
+/// Both callbacks are called **after** the HTML `element` has been created, but
+/// **before** it's attached to the DOM.
+///
+/// ### HTML Lifecycle
+///
+/// The Browser DOM APIs have additional HTML lifecycle callbacks for the root
+/// `element` of an `HtmlElementView`.
+///
+/// #### Element Attached To The DOM
+///
+/// It is common for JS code to locate the DOM elements they need with a
+/// selector, rather than accepting said DOM elements directly. In those cases,
+/// the `element` **must** be attached to the DOM for the selector to work.
+///
+/// The example below demonstrates **how to create an `onElementAttached` function**
+/// that gets called when the root `element` is attached to the DOM using a
+/// `ResizeObserver` through `package:web` from the `onElementCreated` lifecycle
+/// method:
+///
+/// ```dart
+/// import 'dart:js_interop';
+/// import 'package:web/web.dart' as web;
+///
+/// // Called after `element` is attached to the DOM.
+/// void onElementAttached(web.HTMLDivElement element) {
+///   final web.Element? located = web.document.querySelector('#someIdThatICanFindLater');
+///   assert(located == element, 'Wrong `element` located!');
+///   // Do things with `element` or `located`, or call your code now...
+///   element.style.backgroundColor = 'green';
+/// }
+///
+/// void onElementCreated(Object element) {
+///   element as web.HTMLDivElement;
+///   element.style.backgroundColor = 'red';
+///   element.id = 'someIdThatICanFindLater';
+///
+///   // Create the observer
+///   final web.ResizeObserver observer = web.ResizeObserver((
+///     JSArray<web.ResizeObserverEntry> entries,
+///     web.ResizeObserver observer,
+///   ) {
+///     if (element.isConnected) {
+///       // The observer is done, disconnect it.
+///       observer.disconnect();
+///       // Call our callback.
+///       onElementAttached(element);
+///     }
+///   }.toJS);
+///
+///   // Connect the observer.
+///   observer.observe(element);
+/// }
+/// ```
+///
+/// * Read more about [`ResizeObserver` in the MDN](https://developer.mozilla.org/en-US/docs/Web/API/Resize_Observer_API).
+///
+/// #### Other Observers
+///
+/// The example above uses a `ResizeObserver` because it can be applied directly
+/// to the `element` that is about to be attached. Another observer that could
+/// be used for this (with a little bit more code) would be a
+/// [`MutationObserver`](https://developer.mozilla.org/en-US/docs/Web/API/MutationObserver).
+///
+/// The `MutationObserver` requires the parent element in which the `HtmlElementView`
+/// is going to be inserted. A safe way to retrieve a parent element for the
+/// platform view is to retrieve the `hostElement` of the [FlutterView] where the
+/// `HtmlElementView` is being rendered.
+///
+/// The `hostElement` of the current [FlutterView] can be retrieved through:
+///
+/// ```dart
+/// import 'dart:js_interop';
+/// import 'dart:ui_web' as ui_web;
+/// import 'package:flutter/widgets.dart';
+///
+/// void useHostElement(BuildContext context) {
+///   final int flutterViewId = View.of(context).viewId;
+///   final JSAny? hostElement = ui_web.views.getHostElement(flutterViewId);
+///   // Use `package:web` with `hostElement`...
+/// }
+/// ```
+///
+/// **Important:** `FlutterView.viewId` and the `viewId` parameter passed to
+/// the `viewFactory` identify **different objects**:
+///
+/// * `flutterViewId` (from `View.of(context)`) represents the [FlutterView]
+///   where the web app is currently rendering.
+/// * `viewId` (passed to the `viewFactory` function) represents a unique ID
+///   for the `HtmlElementView` instance that is being attached to the app.
+///
+/// Read more about [FlutterView] on Flutter's API docs:
+///
+/// * [`View.of`](https://api.flutter.dev/flutter/widgets/View/of.html)
+/// * [`getHostElement`](https://main-api.flutter.dev/flutter/dart-ui_web/FlutterViewManagerProxy/getHostElement.html)
+///
+/// ## Pointer events
+///
+/// In order for the `HtmlElementView` contents to be interactive, they're allowed
+/// to handle `pointer-events`. This may result in Flutter missing some events
+/// because they've been handled by the `HtmlElementView`, and not seen by
+/// Flutter.
+///
+/// [`package:pointer_interceptor`](https://pub.dev/packages/pointer_interceptor)
+/// may help in some cases where Flutter content needs to be overlaid on top of
+/// an `HtmlElementView`. Alternatively, the `pointer-events: none` property can
+/// be set `onElementCreated`; but that will prevent **ALL** interactions with
+/// the underlying HTML content.
+///
+/// If the `HtmlElementView` is an `<iframe>` element, Flutter will not receive
+/// pointer events that land in the `<iframe>` (click/tap, drag, drop, etc.)
+/// In those cases, the `HtmlElementView` will seem like it's _swallowing_
+/// the events and not participating in Flutter's gesture detection.
+///
+/// ## `isVisible` parameter
+///
+/// Rendering custom HTML content (from `HtmlElementView`) in between `canvas`
+/// pixels means that the Flutter web engine needs to _split_ the canvas drawing
+/// into elements drawn _behind_ the HTML content, and those drawn _above_ it.
+///
+/// In the Flutter web engine, each of these _splits of the canvas to sandwich
+/// HTML content in between_ is referred to as an **overlay**.
+///
+/// Each _overlay_ present in a scene has implications both in memory and
+/// execution performance, and it is best to minimize their amount; browsers
+/// support a limited number of _overlays_ on a single scene at a given time.
+///
+/// `HtmlElementView` objects have an `isVisible` property that can be passed
+/// through `registerViewFactory`, or `fromTagName`. `isVisible` refers
+/// to whether the `HtmlElementView` will paint pixels on the screen or not.
+///
+/// Correctly defining this value helps the Flutter web rendering engine optimize
+/// the amount of _overlays_ it'll need to render a particular scene.
+///
+/// In general, `isVisible` should be left to its default value of `true`, but
+/// in some `HtmlElementView`s (like the `pointer_interceptor` or `Link` widget),
+/// it can be set to `false`, so the engine doesn't _waste_ an overlay to render
+/// Flutter content on top of views that don't paint any pixels.
 class HtmlElementView extends StatelessWidget {
-  /// Creates a platform view for Flutter Web.
+  /// Creates a platform view for Flutter web.
   ///
   /// `viewType` identifies the type of platform view to create.
   const HtmlElementView({
@@ -419,30 +800,7 @@ class HtmlElementView extends StatelessWidget {
   ///
   /// [onElementCreated] is called when the DOM element is created. It can be
   /// used by the app to customize the element by adding attributes and styles.
-  ///
-  /// ```dart
-  /// import 'package:flutter/widgets.dart';
-  /// import 'package:web/web.dart' as web;
-  ///
-  /// // ...
-  ///
-  /// class MyWidget extends StatelessWidget {
-  ///   const MyWidget({super.key});
-  ///
-  ///   @override
-  ///   Widget build(BuildContext context) {
-  ///     return HtmlElementView.fromTagName(
-  ///       tagName: 'div',
-  ///       onElementCreated: (Object element) {
-  ///         element as web.HTMLElement;
-  ///         element.style
-  ///             ..backgroundColor = 'blue'
-  ///             ..border = '1px solid red';
-  ///       },
-  ///     );
-  ///   }
-  /// }
-  /// ```
+  /// This method is called *before* the element is attached to the DOM.
   factory HtmlElementView.fromTagName({
     Key? key,
     required String tagName,
@@ -462,6 +820,8 @@ class HtmlElementView extends StatelessWidget {
   final String viewType;
 
   /// Callback to invoke after the platform view has been created.
+  ///
+  /// This method is called *before* the platform view is attached to the DOM.
   ///
   /// May be null.
   final PlatformViewCreatedCallback? onPlatformViewCreated;
@@ -594,6 +954,138 @@ class _AndroidViewState extends State<AndroidView> {
     ).catchError((dynamic e) {
       if (e is MissingPluginException) {
         // We land the framework part of Android platform views keyboard
+        // support before the engine part. There will be a commit range where
+        // setPlatformViewClient isn't implemented in the engine. When that
+        // happens we just swallow the error here. Once the engine part is
+        // rolled to the framework I'll remove this.
+        // TODO(amirh): remove this once the engine's clearFocus is rolled.
+        return;
+      }
+    });
+  }
+}
+
+class _OhosViewState extends State<OhosView> {
+  int? _id;
+  late OhosViewController _controller;
+  TextDirection? _layoutDirection;
+  bool _initialized = false;
+  FocusNode? _focusNode;
+
+  static final Set<Factory<OneSequenceGestureRecognizer>> _emptyRecognizersSet =
+  <Factory<OneSequenceGestureRecognizer>>{};
+
+  @override
+  Widget build(BuildContext context) {
+    return Focus(
+      focusNode: _focusNode,
+      onFocusChange: _onFocusChange,
+      child: _OhosPlatformView(
+        controller: _controller,
+        hitTestBehavior: widget.hitTestBehavior,
+        gestureRecognizers: widget.gestureRecognizers ?? _emptyRecognizersSet,
+        clipBehavior: widget.clipBehavior,
+      ),
+    );
+  }
+
+  void _initializeOnce() {
+    if (_initialized) {
+      return;
+    }
+    _initialized = true;
+    _createNewOhosView();
+    _focusNode = FocusNode(debugLabel: 'OhosView(id: $_id)');
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final TextDirection newLayoutDirection = _findLayoutDirection();
+    final bool didChangeLayoutDirection = _layoutDirection != newLayoutDirection;
+    _layoutDirection = newLayoutDirection;
+
+    _initializeOnce();
+    if (didChangeLayoutDirection) {
+      // The native view will update asynchronously, in the meantime we don't want
+      // to block the framework. (so this is intentionally not awaiting).
+      _controller.setLayoutDirection(_layoutDirection!);
+    }
+  }
+
+  @override
+  void didUpdateWidget(OhosView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    final TextDirection newLayoutDirection = _findLayoutDirection();
+    final bool didChangeLayoutDirection = _layoutDirection != newLayoutDirection;
+    _layoutDirection = newLayoutDirection;
+
+    if (widget.viewType != oldWidget.viewType) {
+      _controller.disposePostFrame();
+      _createNewOhosView();
+      return;
+    }
+
+    if (didChangeLayoutDirection) {
+      _controller.setLayoutDirection(_layoutDirection!);
+    }
+  }
+
+  TextDirection _findLayoutDirection() {
+    assert(widget.layoutDirection != null || debugCheckHasDirectionality(context));
+    return widget.layoutDirection ?? Directionality.of(context);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    _focusNode?.dispose();
+    _focusNode = null;
+    super.dispose();
+  }
+
+  void _createNewOhosView() {
+    _id = platformViewsRegistry.getNextPlatformViewId();
+    _controller = PlatformViewsService.initOhosView(
+      id: _id!,
+      viewType: widget.viewType,
+      layoutDirection: _layoutDirection!,
+      creationParams: widget.creationParams,
+      creationParamsCodec: widget.creationParamsCodec,
+      onFocus: () {
+        _focusNode!.requestFocus();
+      },
+    );
+    if (widget.onPlatformViewCreated != null) {
+      _controller.addOnPlatformViewCreatedListener(widget.onPlatformViewCreated!);
+    }
+  }
+
+  void _onFocusChange(bool isFocused) {
+    if (!_controller.isCreated) {
+      return;
+    }
+    if (!isFocused) {
+      _controller.clearFocus().catchError((dynamic e) {
+        if (e is MissingPluginException) {
+          // We land the framework part of Ohos platform views keyboard
+          // support before the engine part. There will be a commit range where
+          // clearFocus isn't implemented in the engine. When that happens we
+          // just swallow the error here. Once the engine part is rolled to the
+          // framework I'll remove this.
+          // TODO(amirh): remove this once the engine's clearFocus is rolled.
+          return;
+        }
+      });
+      return;
+    }
+    SystemChannels.textInput.invokeMethod<void>(
+      'TextInput.setPlatformViewClient',
+      <String, dynamic>{'platformViewId': _id},
+    ).catchError((dynamic e) {
+      if (e is MissingPluginException) {
+        // We land the framework part of Ohos platform views keyboard
         // support before the engine part. There will be a commit range where
         // setPlatformViewClient isn't implemented in the engine. When that
         // happens we just swallow the error here. Once the engine part is
@@ -796,6 +1288,40 @@ class _AndroidPlatformView extends LeafRenderObjectWidget {
 
   @override
   void updateRenderObject(BuildContext context, RenderAndroidView renderObject) {
+    renderObject.controller = controller;
+    renderObject.hitTestBehavior = hitTestBehavior;
+    renderObject.updateGestureRecognizers(gestureRecognizers);
+    renderObject.clipBehavior = clipBehavior;
+  }
+}
+
+class _OhosPlatformView extends LeafRenderObjectWidget {
+  const _OhosPlatformView({
+    required this.controller,
+    required this.hitTestBehavior,
+    required this.gestureRecognizers,
+    this.clipBehavior = Clip.hardEdge,
+  }) : assert(controller != null),
+        assert(hitTestBehavior != null),
+        assert(gestureRecognizers != null),
+        assert(clipBehavior != null);
+
+  final OhosViewController controller;
+  final PlatformViewHitTestBehavior hitTestBehavior;
+  final Set<Factory<OneSequenceGestureRecognizer>> gestureRecognizers;
+  final Clip clipBehavior;
+
+  @override
+  RenderObject createRenderObject(BuildContext context) =>
+      RenderOhosView(
+        viewController: controller,
+        hitTestBehavior: hitTestBehavior,
+        gestureRecognizers: gestureRecognizers,
+        clipBehavior: clipBehavior,
+      );
+
+  @override
+  void updateRenderObject(BuildContext context, RenderOhosView renderObject) {
     renderObject.controller = controller;
     renderObject.hitTestBehavior = hitTestBehavior;
     renderObject.updateGestureRecognizers(gestureRecognizers);
@@ -1198,6 +1724,36 @@ class AndroidViewSurface extends StatefulWidget {
   }
 }
 
+class OhosViewSurface extends StatefulWidget {
+  /// Construct an `OhosPlatformViewSurface`.
+  const OhosViewSurface({
+    super.key,
+    required this.controller,
+    required this.hitTestBehavior,
+    required this.gestureRecognizers,
+  }) : assert(controller != null),
+        assert(hitTestBehavior != null),
+        assert(gestureRecognizers != null);
+
+  /// The controller for the platform view integrated by this [OhosViewSurface].
+  ///
+  /// See [PlatformViewSurface.controller] for details.
+  final OhosViewController controller;
+
+  /// Which gestures should be forwarded to the PlatformView.
+  ///
+  /// See [PlatformViewSurface.gestureRecognizers] for details.
+  final Set<Factory<OneSequenceGestureRecognizer>> gestureRecognizers;
+
+  /// {@macro flutter.widgets.AndroidView.hitTestBehavior}
+  final PlatformViewHitTestBehavior hitTestBehavior;
+
+  @override
+  State<StatefulWidget> createState() {
+    return _OhosViewSurfaceState();
+  }
+}
+
 class _AndroidViewSurfaceState extends State<AndroidViewSurface> {
   @override
   void initState() {
@@ -1238,6 +1794,46 @@ class _AndroidViewSurfaceState extends State<AndroidViewSurface> {
   }
 }
 
+class _OhosViewSurfaceState extends State<OhosViewSurface> {
+  @override
+  void initState() {
+    super.initState();
+    if (!widget.controller.isCreated) {
+      // Schedule a rebuild once creation is complete and the final dislay
+      // type is known.
+      widget.controller.addOnPlatformViewCreatedListener(_onPlatformViewCreated);
+    }
+  }
+
+  @override
+  void dispose() {
+    widget.controller.removeOnPlatformViewCreatedListener(_onPlatformViewCreated);
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.controller.requiresViewComposition) {
+      return _PlatformLayerBasedOhosViewSurface(
+        controller: widget.controller,
+        hitTestBehavior: widget.hitTestBehavior,
+        gestureRecognizers: widget.gestureRecognizers,
+      );
+    } else {
+      return _TextureBasedOhosViewSurface(
+        controller: widget.controller,
+        hitTestBehavior: widget.hitTestBehavior,
+        gestureRecognizers: widget.gestureRecognizers,
+      );
+    }
+  }
+
+  void _onPlatformViewCreated(int _) {
+    // Trigger a re-build based on the current controller state.
+    setState(() {});
+  }
+}
+
 // Displays an Android platform view via GL texture.
 class _TextureBasedAndroidViewSurface extends PlatformViewSurface {
   const _TextureBasedAndroidViewSurface({
@@ -1262,6 +1858,31 @@ class _TextureBasedAndroidViewSurface extends PlatformViewSurface {
   }
 }
 
+class _TextureBasedOhosViewSurface extends PlatformViewSurface {
+  const _TextureBasedOhosViewSurface({
+    required OhosViewController super.controller,
+    required super.hitTestBehavior,
+    required super.gestureRecognizers,
+  }) : assert(controller != null),
+        assert(hitTestBehavior != null),
+        assert(gestureRecognizers != null);
+
+  @override
+  RenderObject createRenderObject(BuildContext context) {
+    final OhosViewController viewController = controller as OhosViewController;
+    // Use GL texture based composition.
+    // App should use GL texture unless they require to embed a SurfaceView.
+    final RenderOhosView renderBox = RenderOhosView(
+      viewController: viewController,
+      gestureRecognizers: gestureRecognizers,
+      hitTestBehavior: hitTestBehavior,
+    );
+    viewController.pointTransformer =
+        (Offset position) => renderBox.globalToLocal(position);
+    return renderBox;
+  }
+}
+
 class _PlatformLayerBasedAndroidViewSurface extends PlatformViewSurface {
   const _PlatformLayerBasedAndroidViewSurface({
     required AndroidViewController super.controller,
@@ -1272,6 +1893,26 @@ class _PlatformLayerBasedAndroidViewSurface extends PlatformViewSurface {
   @override
   RenderObject createRenderObject(BuildContext context) {
     final AndroidViewController viewController = controller as AndroidViewController;
+    final PlatformViewRenderBox renderBox =
+        super.createRenderObject(context) as PlatformViewRenderBox;
+    viewController.pointTransformer =
+        (Offset position) => renderBox.globalToLocal(position);
+    return renderBox;
+  }
+}
+
+class _PlatformLayerBasedOhosViewSurface extends PlatformViewSurface {
+  const _PlatformLayerBasedOhosViewSurface({
+    required OhosViewController super.controller,
+    required super.hitTestBehavior,
+    required super.gestureRecognizers,
+  }) : assert(controller != null),
+        assert(hitTestBehavior != null),
+        assert(gestureRecognizers != null);
+
+  @override
+  RenderObject createRenderObject(BuildContext context) {
+    final OhosViewController viewController = controller as OhosViewController;
     final PlatformViewRenderBox renderBox =
         super.createRenderObject(context) as PlatformViewRenderBox;
     viewController.pointTransformer =

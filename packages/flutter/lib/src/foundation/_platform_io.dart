@@ -4,11 +4,13 @@
 
 import 'dart:io';
 import 'assertions.dart';
+import 'constants.dart';
 import 'platform.dart' as platform;
 
 export 'platform.dart' show TargetPlatform;
 
 /// The dart:io implementation of [platform.defaultTargetPlatform].
+@pragma('vm:platform-const-if', !kDebugMode)
 platform.TargetPlatform get defaultTargetPlatform {
   platform.TargetPlatform? result;
   if (Platform.isAndroid) {
@@ -23,6 +25,8 @@ platform.TargetPlatform get defaultTargetPlatform {
     result = platform.TargetPlatform.macOS;
   } else if (Platform.isWindows) {
     result = platform.TargetPlatform.windows;
+  } else if (Platform.operatingSystem == 'ohos') {
+    result = platform.TargetPlatform.ohos;
   }
   assert(() {
     if (Platform.environment.containsKey('FLUTTER_TEST')) {
@@ -30,7 +34,7 @@ platform.TargetPlatform get defaultTargetPlatform {
     }
     return true;
   }());
-  if (platform.debugDefaultTargetPlatformOverride != null) {
+  if (kDebugMode && platform.debugDefaultTargetPlatformOverride != null) {
     result = platform.debugDefaultTargetPlatformOverride;
   }
   if (result == null) {

@@ -5,8 +5,6 @@
 import 'base/context.dart';
 
 /// The current [FeatureFlags] implementation.
-///
-/// If not injected, a default implementation is provided.
 FeatureFlags get featureFlags => context.get<FeatureFlags>()!;
 
 /// The interface used to determine if a particular [Feature] is enabled.
@@ -19,6 +17,9 @@ FeatureFlags get featureFlags => context.get<FeatureFlags>()!;
 abstract class FeatureFlags {
   /// const constructor so that subclasses can be const.
   const FeatureFlags();
+
+  /// Whether flutter desktop for ohos is enabled.
+  bool get isOhosEnabled => true;
 
   /// Whether flutter desktop for linux is enabled.
   bool get isLinuxEnabled => false;
@@ -44,9 +45,6 @@ abstract class FeatureFlags {
   /// Whether custom devices are enabled.
   bool get areCustomDevicesEnabled => false;
 
-  /// Whether WebAssembly compilation for Flutter Web is enabled.
-  bool get isFlutterWebWasmEnabled => false;
-
   /// Whether animations are used in the command line interface.
   bool get isCliAnimationEnabled => true;
 
@@ -64,6 +62,7 @@ abstract class FeatureFlags {
 
 /// All current Flutter feature flags.
 const List<Feature> allFeatures = <Feature>[
+  flutterOhosFeature,
   flutterWebFeature,
   flutterLinuxDesktopFeature,
   flutterMacOSDesktopFeature,
@@ -72,7 +71,6 @@ const List<Feature> allFeatures = <Feature>[
   flutterIOSFeature,
   flutterFuchsiaFeature,
   flutterCustomDevicesFeature,
-  flutterWebWasm,
   cliAnimation,
   nativeAssets,
   previewDevice,
@@ -109,6 +107,24 @@ const Feature flutterWindowsDesktopFeature = Feature.fullyEnabled(
   name: 'support for desktop on Windows',
   configSetting: 'enable-windows-desktop',
   environmentOverride: 'FLUTTER_WINDOWS',
+);
+
+/// The [Feature] for Ohos devices.
+const Feature flutterOhosFeature = Feature(
+  name: 'Flutter for Ohos',
+  configSetting: 'enable-ohos',
+  master: FeatureChannelSetting(
+    available: true,
+    enabledByDefault: true,
+  ),
+  beta: FeatureChannelSetting(
+    available: true,
+    enabledByDefault: true,
+  ),
+  stable: FeatureChannelSetting(
+    available: true,
+    enabledByDefault: true,
+  ),
 );
 
 /// The [Feature] for Android devices.
@@ -148,22 +164,14 @@ const Feature flutterCustomDevicesFeature = Feature(
   ),
 );
 
-/// Enabling WebAssembly compilation from `flutter build web`
-const Feature flutterWebWasm = Feature(
-  name: 'WebAssembly compilation from flutter build web',
-  environmentOverride: 'FLUTTER_WEB_WASM',
-  master: FeatureChannelSetting(
-    available: true,
-    enabledByDefault: true,
-  ),
-);
+const String kCliAnimationsFeatureName = 'cli-animations';
 
 /// The [Feature] for CLI animations.
 ///
 /// The TERM environment variable set to "dumb" turns this off.
 const Feature cliAnimation = Feature.fullyEnabled(
   name: 'animations in the command line interface',
-  configSetting: 'cli-animations',
+  configSetting: kCliAnimationsFeatureName,
 );
 
 /// Enable native assets compilation and bundling.
@@ -199,15 +207,14 @@ const Feature previewDevice = Feature(
 /// settings.
 class Feature {
   /// Creates a [Feature].
-  const Feature({
-    required this.name,
-    this.environmentOverride,
-    this.configSetting,
-    this.extraHelpText,
-    this.master = const FeatureChannelSetting(),
-    this.beta = const FeatureChannelSetting(),
-    this.stable = const FeatureChannelSetting()
-  });
+  const Feature(
+      {required this.name,
+      this.environmentOverride,
+      this.configSetting,
+      this.extraHelpText,
+      this.master = const FeatureChannelSetting(),
+      this.beta = const FeatureChannelSetting(),
+      this.stable = const FeatureChannelSetting()});
 
   /// Creates a [Feature] that is fully enabled across channels.
   const Feature.fullyEnabled(

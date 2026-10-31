@@ -36,6 +36,7 @@ import 'linux/linux_doctor.dart';
 import 'linux/linux_workflow.dart';
 import 'macos/macos_workflow.dart';
 import 'macos/xcode_validator.dart';
+import 'ohos/ohos_doctor.dart';
 import 'proxy_validator.dart';
 import 'reporting/reporting.dart';
 import 'tester/flutter_tester.dart';
@@ -119,7 +120,7 @@ class _DefaultDoctorValidatorsProvider implements DoctorValidatorsProvider {
       ...IntelliJValidator.installedValidators(
         fileSystem: globals.fs,
         platform: platform,
-        userMessages: userMessages,
+        userMessages: globals.userMessages,
         plistParser: globals.plistParser,
         processManager: globals.processManager,
         logger: _logger,
@@ -134,14 +135,16 @@ class _DefaultDoctorValidatorsProvider implements DoctorValidatorsProvider {
         flutterVersion: () => globals.flutterVersion.fetchTagsAndGetVersion(clock: globals.systemClock),
         devToolsVersion: () => globals.cache.devToolsVersion,
         processManager: globals.processManager,
-        userMessages: userMessages,
+        userMessages: globals.userMessages,
         artifacts: globals.artifacts!,
         flutterRoot: () => Cache.flutterRoot!,
         operatingSystemUtils: globals.os,
       ),
+      ohosValidator!,   //OhosValidator
       if (platform.isWindows)
         WindowsVersionValidator(
           operatingSystemUtils: globals.os,
+          processLister: ProcessLister(globals.processManager),
         ),
       if (androidWorkflow!.appliesToHostPlatform)
         GroupedValidator(<DoctorValidator>[androidValidator!, androidLicenseValidator!]),
@@ -149,7 +152,7 @@ class _DefaultDoctorValidatorsProvider implements DoctorValidatorsProvider {
         GroupedValidator(<DoctorValidator>[
           XcodeValidator(
             xcode: globals.xcode!,
-            userMessages: userMessages,
+            userMessages: globals.userMessages,
             iosSimulatorUtils: globals.iosSimulatorUtils!,
           ),
           globals.cocoapodsValidator!,
@@ -169,7 +172,7 @@ class _DefaultDoctorValidatorsProvider implements DoctorValidatorsProvider {
       if (linuxWorkflow.appliesToHostPlatform)
         LinuxDoctorValidator(
           processManager: globals.processManager,
-          userMessages: userMessages,
+          userMessages: globals.userMessages,
         ),
       if (windowsWorkflow!.appliesToHostPlatform)
         visualStudioValidator!,
@@ -427,7 +430,7 @@ class Doctor {
             final DoctorValidator subValidator = validator.subValidators[i];
 
             // Ensure that all of the subvalidators in the group have
-            // a corresponding subresult incase a validator crashed
+            // a corresponding subresult in case a validator crashed
             final ValidationResult subResult;
             try {
               subResult = validator.subResults[i];
@@ -452,7 +455,8 @@ class Doctor {
             doctorInvocationId: analyticsTimestamp,
           ));
         }
-        // TODO(eliasyishak): remove this after migrating from package:usage
+        // TODO(eliasyishak): remove this after migrating from package:usage,
+        //  https://github.com/flutter/flutter/issues/128251
         DoctorResultEvent(validator: validator, result: result).send();
       }
 

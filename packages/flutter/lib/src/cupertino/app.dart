@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+import 'package:flutter/gestures.dart';
 import 'package:flutter/widgets.dart';
 
 import 'button.dart';
@@ -468,6 +469,7 @@ class CupertinoScrollBehavior extends ScrollBehavior {
           controller: details.controller,
           child: child,
         );
+      case TargetPlatform.ohos:
       case TargetPlatform.android:
       case TargetPlatform.fuchsia:
       case TargetPlatform.iOS:
@@ -492,6 +494,9 @@ class CupertinoScrollBehavior extends ScrollBehavior {
     }
     return const BouncingScrollPhysics();
   }
+
+  @override
+  MultitouchDragStrategy getMultitouchDragStrategy(BuildContext context) => MultitouchDragStrategy.averageBoundaryPointers;
 }
 
 class _CupertinoAppState extends State<CupertinoApp> {
@@ -547,6 +552,7 @@ class _CupertinoAppState extends State<CupertinoApp> {
         routerDelegate: widget.routerDelegate,
         routerConfig: widget.routerConfig,
         backButtonDispatcher: widget.backButtonDispatcher,
+        onNavigationNotification: widget.onNavigationNotification,
         builder: widget.builder,
         title: widget.title,
         onGenerateTitle: widget.onGenerateTitle,

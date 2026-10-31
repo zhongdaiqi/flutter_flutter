@@ -2,8 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-
-
 import 'dart:async';
 
 import 'package:process/process.dart';
@@ -57,6 +55,12 @@ import 'macos/macos_workflow.dart';
 import 'macos/xcdevice.dart';
 import 'macos/xcode.dart';
 import 'mdns_discovery.dart';
+import 'ohos/hvigor.dart';
+import 'ohos/hvigor_utils.dart';
+import 'ohos/ohos_builder.dart';
+import 'ohos/ohos_doctor.dart';
+import 'ohos/ohos_sdk.dart';
+import 'ohos/ohos_workflow.dart';
 import 'persistent_tool_state.dart';
 import 'reporting/crash_reporting.dart';
 import 'reporting/first_run.dart';
@@ -84,6 +88,8 @@ Future<T> runInContext<T>(
     return runner();
   }
 
+  // TODO(ianh): We should split this into two, one for tests (which should be
+  // in test/), and one for production (which should be in executable.dart).
   return context.run<T>(
     name: 'global fallbacks',
     body: runnerWrapper,
@@ -94,6 +100,7 @@ Future<T> runInContext<T>(
         flutterVersion: globals.flutterVersion,
         environment: globals.platform.environment,
         clientIde: globals.platform.environment['FLUTTER_HOST'],
+        config: globals.config,
       ),
       AndroidBuilder: () => AndroidGradleBuilder(
         java: globals.java,
@@ -117,6 +124,18 @@ Future<T> runInContext<T>(
         stdio: globals.stdio,
       ),
       AndroidSdk: AndroidSdk.locateAndroidSdk,
+      OhosSdk: OhosSdk.localOhosSdk,
+      HmosSdk: HmosSdk.localHmosSdk,
+      HarmonySdk: HarmonySdk.locateHarmonySdk,
+      OhosBuilder:()=> OhosHvigorBuilder(
+        logger: globals.logger,
+        processManager: globals.processManager,
+        fileSystem: globals.fs,
+        artifacts: globals.artifacts!,
+        usage: globals.flutterUsage,
+        hvigorUtils: globals.hvigorUtils!,
+        platform: globals.platform,
+      ),
       AndroidStudio: AndroidStudio.latestValid,
       AndroidValidator: () => AndroidValidator(
         java: globals.java,
@@ -124,6 +143,17 @@ Future<T> runInContext<T>(
         logger: globals.logger,
         platform: globals.platform,
         userMessages: globals.userMessages,
+      ),
+      OhosValidator: () => OhosValidator(
+          ohosSdk: globals.harmonySdk,
+          fileSystem: globals.fs,
+          logger: globals.logger,
+          platform: globals.platform,
+          processManager: globals.processManager,
+          userMessages: globals.userMessages),
+      OhosWorkflow: () => OhosWorkflow(
+        ohosSdk: globals.harmonySdk,
+        featureFlags: featureFlags,
       ),
       AndroidWorkflow: () => AndroidWorkflow(
         androidSdk: globals.androidSdk,
@@ -135,6 +165,7 @@ Future<T> runInContext<T>(
         logger: globals.logger,
         fileSystem: globals.fs,
         androidSdk: globals.androidSdk,
+        ohosSdk: globals.harmonySdk,
       ),
       Artifacts: () => CachedArtifacts(
         fileSystem: globals.fs,
@@ -168,6 +199,7 @@ Future<T> runInContext<T>(
         platform: globals.platform,
         xcodeProjectInterpreter: globals.xcodeProjectInterpreter!,
         usage: globals.flutterUsage,
+        analytics: globals.analytics,
       ),
       CocoaPodsValidator: () => CocoaPodsValidator(
         globals.cocoaPods!,
@@ -195,12 +227,14 @@ Future<T> runInContext<T>(
         processManager: globals.processManager,
         platform: globals.platform,
         androidSdk: globals.androidSdk,
+        ohosSdk: globals.harmonySdk,
         iosSimulatorUtils: globals.iosSimulatorUtils!,
         featureFlags: featureFlags,
         fileSystem: globals.fs,
         iosWorkflow: globals.iosWorkflow!,
         artifacts: globals.artifacts!,
         flutterVersion: globals.flutterVersion,
+        ohosWorkflow: ohosWorkflow!,
         androidWorkflow: androidWorkflow!,
         fuchsiaWorkflow: fuchsiaWorkflow!,
         xcDevice: globals.xcdevice!,
@@ -216,7 +250,7 @@ Future<T> runInContext<T>(
       ),
       DevtoolsLauncher: () => DevtoolsServerLauncher(
         processManager: globals.processManager,
-        dartExecutable: globals.artifacts!.getArtifactPath(Artifact.engineDartBinary),
+        artifacts: globals.artifacts!,
         logger: globals.logger,
         botDetector: globals.botDetector,
       ),
@@ -256,6 +290,7 @@ Future<T> runInContext<T>(
         platform: globals.platform,
         cache: globals.cache,
       ),
+      HvigorUtils:() => HvigorUtils(),
       HotRunnerConfig: () => HotRunnerConfig(),
       IOSSimulatorUtils: () => IOSSimulatorUtils(
         logger: globals.logger,
@@ -276,7 +311,7 @@ Future<T> runInContext<T>(
         processManager: globals.processManager
       ),
       LocalEngineLocator: () => LocalEngineLocator(
-        userMessages: userMessages,
+        userMessages: globals.userMessages,
         logger: globals.logger,
         platform: globals.platform,
         fileSystem: globals.fs,
@@ -300,6 +335,7 @@ Future<T> runInContext<T>(
       MDnsVmServiceDiscovery: () => MDnsVmServiceDiscovery(
         logger: globals.logger,
         flutterUsage: globals.flutterUsage,
+        analytics: globals.analytics,
       ),
       OperatingSystemUtils: () => OperatingSystemUtils(
         fileSystem: globals.fs,
@@ -348,6 +384,7 @@ Future<T> runInContext<T>(
           platform: globals.platform,
           logger: globals.logger,
           processManager: globals.processManager,
+          osUtils: globals.os,
         )
       ),
       WebWorkflow: () => WebWorkflow(
@@ -382,6 +419,7 @@ Future<T> runInContext<T>(
           dyLdLibEntry: globals.cache.dyLdLibEntry,
         ),
         fileSystem: globals.fs,
+        analytics: globals.analytics,
       ),
       XcodeProjectInterpreter: () => XcodeProjectInterpreter(
         logger: globals.logger,

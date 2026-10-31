@@ -4,9 +4,12 @@
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/rendering.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter/widgets.dart';
 
+import 'button_style.dart';
 import 'color_scheme.dart';
+import 'colors.dart';
 import 'constants.dart';
 import 'debug.dart';
 import 'divider.dart';
@@ -153,10 +156,7 @@ class _RenderMenuItem extends RenderShiftedBox {
 
   @override
   Size computeDryLayout(BoxConstraints constraints) {
-    if (child == null) {
-      return Size.zero;
-    }
-    return child!.getDryLayout(constraints);
+    return child?.getDryLayout(constraints) ?? Size.zero;
   }
 
   @override
@@ -570,12 +570,14 @@ class _CheckedPopupMenuItemState<T> extends PopupMenuItemState<T, CheckedPopupMe
 class _PopupMenu<T> extends StatelessWidget {
   const _PopupMenu({
     super.key,
+    required this.itemKeys,
     required this.route,
     required this.semanticLabel,
     this.constraints,
     required this.clipBehavior,
   });
 
+  final List<GlobalKey> itemKeys;
   final _PopupMenuRoute<T> route;
   final String? semanticLabel;
   final BoxConstraints? constraints;
@@ -609,6 +611,7 @@ class _PopupMenu<T> extends StatelessWidget {
             route.itemSizes[i] = size;
           },
           child: FadeTransition(
+            key: itemKeys[i],
             opacity: opacity,
             child: item,
           ),
@@ -715,23 +718,12 @@ class _PopupMenuRouteLayout extends SingleChildLayoutDelegate {
 
   @override
   Offset getPositionForChild(Size size, Size childSize) {
+    final double y = position.top;
+
+    // Find the ideal horizontal position.
     // size: The size of the overlay.
     // childSize: The size of the menu, when fully open, as determined by
     // getConstraintsForChild.
-
-    final double buttonHeight = size.height - position.top - position.bottom;
-    // Find the ideal vertical position.
-    double y = position.top;
-    if (selectedItemIndex != null) {
-      double selectedItemOffset = _kMenuVerticalPadding;
-      for (int index = 0; index < selectedItemIndex!; index += 1) {
-        selectedItemOffset += itemSizes[index]!.height;
-      }
-      selectedItemOffset += itemSizes[selectedItemIndex!]!.height / 2;
-      y = y + buttonHeight / 2.0 - selectedItemOffset;
-    }
-
-    // Find the ideal horizontal position.
     double x;
     if (position.left > position.right) {
       // Menu button is closer to the right edge, so grow to the left, aligned to the right edge.
@@ -741,12 +733,10 @@ class _PopupMenuRouteLayout extends SingleChildLayoutDelegate {
       x = position.left;
     } else {
       // Menu button is equidistant from both edges, so grow in reading direction.
-      switch (textDirection) {
-        case TextDirection.rtl:
-          x = size.width - position.right - childSize.width;
-        case TextDirection.ltr:
-          x = position.left;
-      }
+      x = switch (textDirection) {
+        TextDirection.rtl => size.width - position.right - childSize.width,
+        TextDirection.ltr => position.left,
+      };
     }
     final Offset wantedPosition = Offset(x, y);
     final Offset originCenter = position.toRect(Offset.zero & size).center;
@@ -804,6 +794,7 @@ class _PopupMenuRoute<T> extends PopupRoute<T> {
   _PopupMenuRoute({
     required this.position,
     required this.items,
+    required this.itemKeys,
     this.initialValue,
     this.elevation,
     this.surfaceTintColor,
@@ -816,6 +807,7 @@ class _PopupMenuRoute<T> extends PopupRoute<T> {
     this.constraints,
     required this.clipBehavior,
     super.settings,
+    this.popUpAnimationStyle,
   }) : itemSizes = List<Size?>.filled(items.length, null),
        // Menus always cycle focus through their items irrespective of the
        // focus traversal edge behavior set in the Navigator.
@@ -823,6 +815,7 @@ class _PopupMenuRoute<T> extends PopupRoute<T> {
 
   final RelativeRect position;
   final List<PopupMenuEntry<T>> items;
+  final List<GlobalKey> itemKeys;
   final List<Size?> itemSizes;
   final T? initialValue;
   final double? elevation;
@@ -834,18 +827,30 @@ class _PopupMenuRoute<T> extends PopupRoute<T> {
   final CapturedThemes capturedThemes;
   final BoxConstraints? constraints;
   final Clip clipBehavior;
+  final AnimationStyle? popUpAnimationStyle;
 
   @override
   Animation<double> createAnimation() {
-    return CurvedAnimation(
-      parent: super.createAnimation(),
-      curve: Curves.linear,
-      reverseCurve: const Interval(0.0, _kMenuCloseIntervalEnd),
-    );
+    if (popUpAnimationStyle != AnimationStyle.noAnimation) {
+      return CurvedAnimation(
+        parent: super.createAnimation(),
+        curve: popUpAnimationStyle?.curve ?? Curves.linear,
+        reverseCurve: popUpAnimationStyle?.reverseCurve ?? const Interval(0.0, _kMenuCloseIntervalEnd),
+      );
+    }
+    return super.createAnimation();
+  }
+
+  void scrollTo(int selectedItemIndex) {
+    SchedulerBinding.instance.addPostFrameCallback((_) {
+      if (itemKeys[selectedItemIndex].currentContext != null) {
+        Scrollable.ensureVisible(itemKeys[selectedItemIndex].currentContext!);
+      }
+    });
   }
 
   @override
-  Duration get transitionDuration => _kMenuDuration;
+  Duration get transitionDuration => popUpAnimationStyle?.duration ?? _kMenuDuration;
 
   @override
   bool get barrierDismissible => true;
@@ -867,9 +872,13 @@ class _PopupMenuRoute<T> extends PopupRoute<T> {
         }
       }
     }
+    if (selectedItemIndex != null) {
+      scrollTo(selectedItemIndex);
+    }
 
     final Widget menu = _PopupMenu<T>(
       route: this,
+      itemKeys: itemKeys,
       semanticLabel: semanticLabel,
       constraints: constraints,
       clipBehavior: clipBehavior,
@@ -977,6 +986,7 @@ Future<T?> showMenu<T>({
   BoxConstraints? constraints,
   Clip clipBehavior = Clip.none,
   RouteSettings? routeSettings,
+  AnimationStyle? popUpAnimationStyle,
 }) {
   assert(items.isNotEmpty);
   assert(debugCheckHasMaterialLocalizations(context));
@@ -986,16 +996,19 @@ Future<T?> showMenu<T>({
     case TargetPlatform.macOS:
       break;
     case TargetPlatform.android:
+    case TargetPlatform.ohos:
     case TargetPlatform.fuchsia:
     case TargetPlatform.linux:
     case TargetPlatform.windows:
       semanticLabel ??= MaterialLocalizations.of(context).popupMenuLabel;
   }
 
+  final List<GlobalKey> menuItemKeys = List<GlobalKey>.generate(items.length, (int index) => GlobalKey());
   final NavigatorState navigator = Navigator.of(context, rootNavigator: useRootNavigator);
   return navigator.push(_PopupMenuRoute<T>(
     position: position,
     items: items,
+    itemKeys: menuItemKeys,
     initialValue: initialValue,
     elevation: elevation,
     shadowColor: shadowColor,
@@ -1008,6 +1021,7 @@ Future<T?> showMenu<T>({
     constraints: constraints,
     clipBehavior: clipBehavior,
     settings: routeSettings,
+    popUpAnimationStyle: popUpAnimationStyle,
   ));
 }
 
@@ -1040,7 +1054,7 @@ typedef PopupMenuItemBuilder<T> = List<PopupMenuEntry<T>> Function(BuildContext 
 /// If both are null, then a standard overflow icon is created (depending on the
 /// platform).
 ///
-/// /// ## Updating to [MenuAnchor]
+/// ## Updating to [MenuAnchor]
 ///
 /// There is a Material 3 component,
 /// [MenuAnchor] that is preferred for applications that are configured
@@ -1095,6 +1109,13 @@ typedef PopupMenuItemBuilder<T> = List<PopupMenuEntry<T>> Function(BuildContext 
 /// ** See code in examples/api/lib/material/popup_menu/popup_menu.1.dart **
 /// {@end-tool}
 ///
+/// {@tool dartpad}
+/// This sample showcases how to override the [PopupMenuButton] animation
+/// curves and duration using [AnimationStyle].
+///
+/// ** See code in examples/api/lib/material/popup_menu/popup_menu.2.dart **
+/// {@end-tool}
+///
 /// See also:
 ///
 ///  * [PopupMenuItem], a popup menu entry for a single value.
@@ -1129,6 +1150,9 @@ class PopupMenuButton<T> extends StatefulWidget {
     this.position,
     this.clipBehavior = Clip.none,
     this.useRootNavigator = false,
+    this.popUpAnimationStyle,
+    this.routeSettings,
+    this.style,
   }) : assert(
          !(child != null && icon != null),
          'You can only pass [child] or [icon], not both.',
@@ -1175,8 +1199,13 @@ class PopupMenuButton<T> extends StatefulWidget {
 
   /// The color used as an overlay on [color] to indicate elevation.
   ///
+  /// This is not recommended for use. [Material 3 spec](https://m3.material.io/styles/color/the-color-system/color-roles)
+  /// introduced a set of tone-based surfaces and surface containers in its [ColorScheme],
+  /// which provide more flexibility. The intention is to eventually remove surface tint color from
+  /// the framework.
+  ///
   /// If null, [PopupMenuThemeData.surfaceTintColor] is used. If that
-  /// is also null, the default value is [ColorScheme.surfaceTint].
+  /// is also null, the default value is [Colors.transparent].
   ///
   /// See [Material.surfaceTintColor] for more details on how this
   /// overlay is applied.
@@ -1232,7 +1261,8 @@ class PopupMenuButton<T> extends StatefulWidget {
   ///
   /// If this property is null, then [PopupMenuThemeData.color] is used.
   /// If [PopupMenuThemeData.color] is also null, then
-  /// Theme.of(context).cardColor is used.
+  /// [ThemeData.cardColor] is used in Material 2. In Material3, defaults to
+  /// [ColorScheme.surfaceContainer].
   final Color? color;
 
   /// If provided, this color is used for the button icon.
@@ -1299,6 +1329,38 @@ class PopupMenuButton<T> extends StatefulWidget {
   /// Defaults to false.
   final bool useRootNavigator;
 
+  /// Used to override the default animation curves and durations of the popup
+  /// menu's open and close transitions.
+  ///
+  /// If [AnimationStyle.curve] is provided, it will be used to override
+  /// the default popup animation curve. Otherwise, defaults to [Curves.linear].
+  ///
+  /// If [AnimationStyle.reverseCurve] is provided, it will be used to
+  /// override the default popup animation reverse curve. Otherwise, defaults to
+  /// `Interval(0.0, 2.0 / 3.0)`.
+  ///
+  /// If [AnimationStyle.duration] is provided, it will be used to override
+  /// the default popup animation duration. Otherwise, defaults to 300ms.
+  ///
+  /// To disable the theme animation, use [AnimationStyle.noAnimation].
+  ///
+  /// If this is null, then the default animation will be used.
+  final AnimationStyle? popUpAnimationStyle;
+
+  /// Optional route settings for the menu.
+  ///
+  /// See [RouteSettings] for details.
+  final RouteSettings? routeSettings;
+
+  /// Customizes this icon button's appearance.
+  ///
+  /// The [style] is only used for Material 3 [IconButton]s. If [ThemeData.useMaterial3]
+  /// is set to true, [style] is preferred for icon button customization, and any
+  /// parameters defined in [style] will override the same parameters in [IconButton].
+  ///
+  /// Null by default.
+  final ButtonStyle? style;
+
   @override
   PopupMenuButtonState<T> createState() => PopupMenuButtonState<T>();
 }
@@ -1356,6 +1418,8 @@ class PopupMenuButtonState<T> extends State<PopupMenuButton<T>> {
         constraints: widget.constraints,
         clipBehavior: widget.clipBehavior,
         useRootNavigator: widget.useRootNavigator,
+        popUpAnimationStyle: widget.popUpAnimationStyle,
+        routeSettings: widget.routeSettings,
       )
       .then<void>((T? newValue) {
         if (!mounted) {
@@ -1372,12 +1436,10 @@ class PopupMenuButtonState<T> extends State<PopupMenuButton<T>> {
 
   bool get _canRequestFocus {
     final NavigationMode mode = MediaQuery.maybeNavigationModeOf(context) ?? NavigationMode.traditional;
-    switch (mode) {
-      case NavigationMode.traditional:
-        return widget.enabled;
-      case NavigationMode.directional:
-        return true;
-    }
+    return switch (mode) {
+      NavigationMode.traditional => widget.enabled,
+      NavigationMode.directional => true,
+    };
   }
 
   @override
@@ -1412,6 +1474,7 @@ class PopupMenuButtonState<T> extends State<PopupMenuButton<T>> {
       tooltip: widget.tooltip ?? MaterialLocalizations.of(context).showMenuTooltip,
       onPressed: widget.enabled ? showButtonMenu : null,
       enableFeedback: enableFeedback,
+      style: widget.style,
     );
   }
 }
@@ -1445,7 +1508,7 @@ class _PopupMenuDefaultsM2 extends PopupMenuThemeData {
   late final TextTheme _textTheme = _theme.textTheme;
 
   @override
-  TextStyle? get textStyle => _textTheme.subtitle1;
+  TextStyle? get textStyle => _textTheme.titleMedium;
 
   static EdgeInsets menuHorizontalPadding = const EdgeInsets.symmetric(horizontal: 16.0);
 }
@@ -1477,13 +1540,13 @@ class _PopupMenuDefaultsM3 extends PopupMenuThemeData {
   }
 
   @override
-  Color? get color => _colors.surface;
+  Color? get color => _colors.surfaceContainer;
 
   @override
   Color? get shadowColor => _colors.shadow;
 
   @override
-  Color? get surfaceTintColor => _colors.surfaceTint;
+  Color? get surfaceTintColor => Colors.transparent;
 
   @override
   ShapeBorder? get shape => const RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(4.0)));

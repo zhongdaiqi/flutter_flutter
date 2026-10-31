@@ -2,18 +2,15 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import 'context.dart';
+import '../ohos/ohos_sdk.dart';
 import 'platform.dart';
 
-/// Contains messages produced by Flutter tools.
+/// Class containing some message strings that can be produced by Flutter tools.
 //
 // This allows partial reimplementations of the flutter tool to override
 // certain messages.
 // TODO(andrewkolos): It is unclear if this is worth keeping. See
 // https://github.com/flutter/flutter/issues/125155.
-UserMessages get userMessages => context.get<UserMessages>()!;
-
-/// Class containing message strings that can be produced by Flutter tools.
 class UserMessages {
   // Messages used in multiple components.
   String get flutterToolBugInstructions =>
@@ -102,7 +99,7 @@ class UserMessages {
       'Unable to locate Android SDK.\n'
       'Install Android Studio from: https://developer.android.com/studio/index.html\n'
       'On first launch it will assist you in installing the Android SDK components.\n'
-      '(or visit ${_androidSdkInstallUrl(platform)} for detailed instructions).\n'
+      '(or visit ${androidSdkInstallUrl(platform)} for detailed instructions).\n'
       'If the Android SDK has been installed to a custom location, please use\n'
       '`flutter config --android-sdk` to update to that location.\n';
   String androidSdkLocation(String directory) => 'Android SDK at $directory';
@@ -110,7 +107,7 @@ class UserMessages {
       'Platform $platform, build-tools $tools';
   String androidSdkInstallHelp(Platform platform) =>
       'Try re-installing or updating your Android SDK,\n'
-      'visit ${_androidSdkInstallUrl(platform)} for detailed instructions.';
+      'visit ${androidSdkInstallUrl(platform)} for detailed instructions.';
   // Also occurs in AndroidLicenseValidator
   String androidStatusInfo(String version) => 'Android SDK version $version';
 
@@ -126,7 +123,7 @@ class UserMessages {
   String androidLicensesUnknown(Platform platform) =>
       'Android license status unknown.\n'
       'Run `flutter doctor --android-licenses` to accept the SDK licenses.\n'
-      'See ${_androidSdkInstallUrl(platform)} for more details.';
+      'See ${androidSdkInstallUrl(platform)} for more details.';
   String androidSdkManagerOutdated(String managerPath) =>
       'A newer version of the Android SDK is required. To update, run:\n'
       '$managerPath --update\n';
@@ -135,14 +132,14 @@ class UserMessages {
   String androidMissingSdkManager(String sdkManagerPath, Platform platform) =>
       'Android sdkmanager tool not found ($sdkManagerPath).\n'
       'Try re-installing or updating your Android SDK,\n'
-      'visit ${_androidSdkInstallUrl(platform)} for detailed instructions.';
+      'visit ${androidSdkInstallUrl(platform)} for detailed instructions.';
   String androidCannotRunSdkManager(String sdkManagerPath, String error, Platform platform) =>
       'Android sdkmanager tool was found, but failed to run ($sdkManagerPath): "$error".\n'
       'Try re-installing or updating your Android SDK,\n'
-      'visit ${_androidSdkInstallUrl(platform)} for detailed instructions.';
+      'visit ${androidSdkInstallUrl(platform)} for detailed instructions.';
   String androidSdkBuildToolsOutdated(int sdkMinVersion, String buildToolsMinVersion, Platform platform) =>
       'Flutter requires Android SDK $sdkMinVersion and the Android BuildTools $buildToolsMinVersion\n'
-      'To update the Android SDK visit ${_androidSdkInstallUrl(platform)} for detailed instructions.';
+      'To update the Android SDK visit ${androidSdkInstallUrl(platform)} for detailed instructions.';
   String get androidMissingCmdTools => 'cmdline-tools component is missing\n'
       'Run `path/to/sdkmanager --install "cmdline-tools;latest"`\n'
       'See https://developer.android.com/studio/command-line for more details.';
@@ -163,7 +160,59 @@ class UserMessages {
       'but Android Studio not found at this location.';
   String androidStudioInstallation(Platform platform) =>
       'Android Studio not found; download from https://developer.android.com/studio/index.html\n'
-      '(or visit ${_androidSdkInstallUrl(platform)} for detailed instructions).';
+      '(or visit ${androidSdkInstallUrl(platform)} for detailed instructions).';
+
+  // Messages used in NoOhosSdkValidator
+  String ohosSdkMissing(String location) =>
+      'OHOS_SDK_HOME = $location\n'
+          'but OpenHarmony Sdk not found at this location';
+  String hosSdkMissing(String location) =>
+      'HOS_SDK_HOME = $location\n'
+          'but nHarmonyOS Sdk not found at this location';
+  String ohosSdkInstallation() =>
+      'OpenHarmony Sdk not found; \n'
+          'please do that, first: download from https://developer.harmonyos.com/cn/develop/deveco-studio#download_cli ;\n'
+          'second: follow this document: https://developer.harmonyos.com/cn/docs/documentation/doc-guides-V3/ide-command-line-ohsdkmgr-0000001545647965-V3 to install OpenHarmony sdk with ohsdkmgr; \n'
+          'If the Ohos SDK has been installed to a custom location, please use\n'
+          '`flutter config --ohos-sdk` to update to that location.\n';
+  String hosSdkInstallation() =>
+      'HarmonyOS Sdk not found; \n'
+          'please do that, first: download from https://developer.harmonyos.com/cn/develop/deveco-studio#download_cli ;\n'
+          'second: follow this document: https://developer.harmonyos.com/cn/docs/documentation/doc-guides-V3/ide-command-line-ohsdkmgr-0000001545647965-V3 to install OpenHarmony sdk with ohsdkmgr; \n'
+          'If the Ohos SDK has been installed to a custom location, please use\n'
+          '`flutter config --ohos-sdk` to update to that location.\n';
+
+  String ohosSdkVersion(HarmonySdk ohosSdk) =>
+      'OpenHarmony Sdk at ${ohosSdk.sdkPath}, available api versions has ${ohosSdk.apiAvailable}';
+  String hosSdkVersion(HarmonySdk hosSdk) =>
+      'HarmonyOS Sdk at ${hosSdk.sdkPath}, available api versions has ${hosSdk.apiAvailable}';
+
+  String hdcMissing() =>
+      'hdc is missing ,please download from https://developer.harmonyos.com/cn/develop/deveco-studio#download_cli;\n'
+          'and set environment HDC_HOME also set to PATH';
+  String hdcVersion(String ohpmVersion) =>
+      'hdc version $ohpmVersion';
+
+  String ohpmMissing() =>
+      'Ohpm is missing, please configure "ohpm" to the environment variable PATH.';
+  String ohpmVersion(String version) => 'Ohpm version $version';
+
+  String nodeMissing() =>
+      'Node is missing, please configure "node" to the environment variable PATH.';
+  String nodeVersion(String version) => 'Node version $version';
+
+  String hvigorwMissing() =>
+      'Hvigorw is missing, please configure "hvigorw" to the environment variable PATH.';
+  String hvigorwPath(String path) => 'Hvigorw binary at $path';
+
+  String signToolMissing() =>
+      'signTool is missing ,please download from https://gitee.com/openharmony/developtools_hapsigner;\n'
+          'and follow ReadMe to generate hap-sign-tool.jar, set environment SIGN_TOOL_HOME = <parent>/developtools_hapsigner/autosign such as /home/xxx/sdk/developtools_hapsigner/autosign\n'
+          'If the signTool has been installed to a custom location, please use\n'
+          '`flutter config --signTool-home` to update to that location.\n';
+  String signToolVersion(String signToolHome) =>
+      'signTool location:$signToolHome';
+
 
   // Messages used in XcodeValidator
   String xcodeLocation(String location) => 'Xcode at $location';
@@ -210,11 +259,6 @@ class UserMessages {
       'CocoaPods installed but not working.\n'
       '$consequence\n'
       'To re-install $reinstallInstructions';
-
-  // Messages used in VsCodeValidator
-  String vsCodeVersion(String version) => 'version $version';
-  String vsCodeLocation(String location) => 'VS Code at $location';
-  String vsCodeFlutterExtensionMissing(String url) => 'Flutter extension not installed; install from\n$url';
 
   // Messages used in VisualStudioValidator
   String visualStudioVersion(String name, String version) => '$name version $version';
@@ -351,7 +395,7 @@ class UserMessages {
       'Read more about iOS versioning at\n'
       'https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html\n';
 
-  String _androidSdkInstallUrl(Platform platform) {
+  String androidSdkInstallUrl(Platform platform) {
     const String baseUrl = 'https://flutter.dev/docs/get-started/install';
     const String fragment = '#android-setup';
     if (platform.isMacOS) {

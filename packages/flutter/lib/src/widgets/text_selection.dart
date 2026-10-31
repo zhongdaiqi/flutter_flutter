@@ -21,6 +21,7 @@ import 'debug.dart';
 import 'editable_text.dart';
 import 'framework.dart';
 import 'gesture_detector.dart';
+import 'inherited_theme.dart';
 import 'magnifier.dart';
 import 'overlay.dart';
 import 'scrollable.dart';
@@ -332,6 +333,15 @@ class TextSelectionOverlay {
     required TextMagnifierConfiguration magnifierConfiguration,
   }) : _handlesVisible = handlesVisible,
        _value = value {
+    // TODO(polina-c): stop duplicating code across disposables
+    // https://github.com/flutter/flutter/issues/137435
+    if (kFlutterMemoryAllocationsEnabled) {
+      FlutterMemoryAllocations.instance.dispatchObjectCreated(
+        library: 'package:flutter/widgets.dart',
+        className: '$TextSelectionOverlay',
+        object: this,
+      );
+    }
     renderObject.selectionStartInViewport.addListener(_updateTextSelectionOverlayVisibilities);
     renderObject.selectionEndInViewport.addListener(_updateTextSelectionOverlayVisibilities);
     _updateTextSelectionOverlayVisibilities();
@@ -439,7 +449,7 @@ class TextSelectionOverlay {
   void showToolbar() {
     _updateSelectionOverlay();
 
-    if (selectionControls is! TextSelectionHandleControls) {
+    if (selectionControls != null && selectionControls is! TextSelectionHandleControls) {
       _selectionOverlay.showToolbar();
       return;
     }
@@ -585,6 +595,11 @@ class TextSelectionOverlay {
 
   /// {@macro flutter.widgets.SelectionOverlay.dispose}
   void dispose() {
+    // TODO(polina-c): stop duplicating code across disposables
+    // https://github.com/flutter/flutter/issues/137435
+    if (kFlutterMemoryAllocationsEnabled) {
+      FlutterMemoryAllocations.instance.dispatchObjectDisposed(object: this);
+    }
     _selectionOverlay.dispose();
     renderObject.selectionStartInViewport.removeListener(_updateTextSelectionOverlayVisibilities);
     renderObject.selectionEndInViewport.removeListener(_updateTextSelectionOverlayVisibilities);
@@ -750,6 +765,7 @@ class TextSelectionOverlay {
       case TargetPlatform.fuchsia:
       case TargetPlatform.linux:
       case TargetPlatform.windows:
+      case TargetPlatform.ohos:
         newSelection = TextSelection(
           baseOffset: _selection.baseOffset,
           extentOffset: position.offset,
@@ -844,6 +860,7 @@ class TextSelectionOverlay {
       case TargetPlatform.fuchsia:
       case TargetPlatform.linux:
       case TargetPlatform.windows:
+      case TargetPlatform.ohos:
         newSelection = TextSelection(
           baseOffset: position.offset,
           extentOffset: _selection.extentOffset,
@@ -898,12 +915,10 @@ class TextSelectionOverlay {
       return TextSelectionHandleType.collapsed;
     }
 
-    switch (textDirection) {
-      case TextDirection.ltr:
-        return ltrType;
-      case TextDirection.rtl:
-        return rtlType;
-    }
+    return switch (textDirection) {
+      TextDirection.ltr => ltrType,
+      TextDirection.rtl => rtlType,
+    };
   }
 }
 
@@ -956,7 +971,17 @@ class SelectionOverlay {
        _lineHeightAtEnd = lineHeightAtEnd,
        _selectionEndpoints = selectionEndpoints,
        _toolbarLocation = toolbarLocation,
-       assert(debugCheckHasOverlay(context));
+       assert(debugCheckHasOverlay(context)) {
+    // TODO(polina-c): stop duplicating code across disposables
+    // https://github.com/flutter/flutter/issues/137435
+    if (kFlutterMemoryAllocationsEnabled) {
+      FlutterMemoryAllocations.instance.dispatchObjectCreated(
+        library: 'package:flutter/widgets.dart',
+        className: '$SelectionOverlay',
+        object: this,
+      );
+    }
+  }
 
   /// {@macro flutter.widgets.SelectionOverlay.context}
   final BuildContext context;
@@ -964,19 +989,18 @@ class SelectionOverlay {
   final ValueNotifier<MagnifierInfo> _magnifierInfo =
       ValueNotifier<MagnifierInfo>(MagnifierInfo.empty);
 
-  /// [MagnifierController.show] and [MagnifierController.hide] should not be called directly, except
-  /// from inside [showMagnifier] and [hideMagnifier]. If it is desired to show or hide the magnifier,
-  /// call [showMagnifier] or [hideMagnifier]. This is because the magnifier needs to orchestrate
-  /// with other properties in [SelectionOverlay].
+  // [MagnifierController.show] and [MagnifierController.hide] should not be
+  // called directly, except from inside [showMagnifier] and [hideMagnifier]. If
+  // it is desired to show or hide the magnifier, call [showMagnifier] or
+  // [hideMagnifier]. This is because the magnifier needs to orchestrate with
+  // other properties in [SelectionOverlay].
   final MagnifierController _magnifierController = MagnifierController();
 
-  /// {@macro flutter.widgets.magnifier.TextMagnifierConfiguration.intro}
-  ///
-  /// {@macro flutter.widgets.magnifier.intro}
+  /// The configuration for the magnifier.
   ///
   /// By default, [SelectionOverlay]'s [TextMagnifierConfiguration] is disabled.
   ///
-  /// {@macro flutter.widgets.magnifier.TextMagnifierConfiguration.details}
+  /// {@macro flutter.widgets.magnifier.intro}
   final TextMagnifierConfiguration magnifierConfiguration;
 
   /// {@template flutter.widgets.SelectionOverlay.toolbarIsVisible}
@@ -1022,11 +1046,12 @@ class SelectionOverlay {
     }
 
     _magnifierController.show(
-        context: context,
-        below: magnifierConfiguration.shouldDisplayHandlesInMagnifier
-            ? null
-            : _handles?.start,
-        builder: (_) => builtMagnifier);
+      context: context,
+      below: magnifierConfiguration.shouldDisplayHandlesInMagnifier
+          ? null
+          : _handles?.start,
+      builder: (_) => builtMagnifier,
+    );
   }
 
   /// {@template flutter.widgets.SelectionOverlay.hideMagnifier}
@@ -1228,6 +1253,7 @@ class SelectionOverlay {
           case TargetPlatform.linux:
           case TargetPlatform.macOS:
           case TargetPlatform.windows:
+          case TargetPlatform.ohos:
             break;
         }
       }
@@ -1351,12 +1377,22 @@ class SelectionOverlay {
       return;
     }
 
-    _handles = (
-      start: OverlayEntry(builder: _buildStartHandle),
-      end: OverlayEntry(builder: _buildEndHandle),
+    final OverlayState overlay = Overlay.of(context, rootOverlay: true, debugRequiredFor: debugRequiredFor);
+
+    final CapturedThemes capturedThemes = InheritedTheme.capture(
+      from: context,
+      to: overlay.context,
     );
-    Overlay.of(context, rootOverlay: true, debugRequiredFor: debugRequiredFor)
-        .insertAll(<OverlayEntry>[_handles!.start, _handles!.end]);
+
+    _handles = (
+      start: OverlayEntry(builder: (BuildContext context) {
+        return capturedThemes.wrap(_buildStartHandle(context));
+      }),
+      end: OverlayEntry(builder: (BuildContext context) {
+        return capturedThemes.wrap(_buildEndHandle(context));
+      }),
+    );
+    overlay.insertAll(<OverlayEntry>[_handles!.start, _handles!.end]);
   }
 
   /// {@template flutter.widgets.SelectionOverlay.hideHandles}
@@ -1397,6 +1433,7 @@ class SelectionOverlay {
       context: context,
       contextMenuBuilder: (BuildContext context) {
         return _SelectionToolbarWrapper(
+          visibility: toolbarVisible,
           layerLink: toolbarLayerLink,
           offset: -renderBox.localToGlobal(Offset.zero),
           child: contextMenuBuilder(context),
@@ -1474,13 +1511,7 @@ class SelectionOverlay {
   /// {@endtemplate}
   void hide() {
     _magnifierController.hide();
-    if (_handles != null) {
-      _handles!.start.remove();
-      _handles!.start.dispose();
-      _handles!.end.remove();
-      _handles!.end.dispose();
-      _handles = null;
-    }
+    hideHandles();
     if (_toolbar != null || _contextMenuController.isShown || _spellCheckToolbarController.isShown) {
       hideToolbar();
     }
@@ -1506,6 +1537,11 @@ class SelectionOverlay {
   /// Disposes this object and release resources.
   /// {@endtemplate}
   void dispose() {
+    // TODO(polina-c): stop duplicating code across disposables
+    // https://github.com/flutter/flutter/issues/137435
+    if (kFlutterMemoryAllocationsEnabled) {
+      FlutterMemoryAllocations.instance.dispatchObjectDisposed(object: this);
+    }
     hide();
     _magnifierInfo.dispose();
   }
@@ -1942,6 +1978,7 @@ class TextSelectionGestureDetectorBuilder {
       case TargetPlatform.linux:
       case TargetPlatform.macOS:
       case TargetPlatform.windows:
+      case TargetPlatform.ohos:
     }
   }
 
@@ -1955,6 +1992,7 @@ class TextSelectionGestureDetectorBuilder {
       case TargetPlatform.linux:
       case TargetPlatform.macOS:
       case TargetPlatform.windows:
+      case TargetPlatform.ohos:
     }
   }
 
@@ -2102,6 +2140,14 @@ class TextSelectionGestureDetectorBuilder {
         : scrollableState.position.pixels;
   }
 
+  AxisDirection? get _scrollDirection {
+    final ScrollableState? scrollableState =
+        delegate.editableTextKey.currentContext == null
+            ? null
+            : Scrollable.maybeOf(delegate.editableTextKey.currentContext!);
+    return scrollableState?.axisDirection;
+  }
+
   // For a shift + tap + drag gesture, the TextSelection at the point of the
   // tap. Mac uses this value to reset to the original selection when an
   // inversion of the base and offset happens.
@@ -2186,9 +2232,8 @@ class TextSelectionGestureDetectorBuilder {
     switch (defaultTargetPlatform) {
       case TargetPlatform.android:
       case TargetPlatform.fuchsia:
-        // On mobile platforms the selection is set on tap up.
-        editableText.hideToolbar(false);
       case TargetPlatform.iOS:
+      case TargetPlatform.ohos:
         // On mobile platforms the selection is set on tap up.
         break;
       case TargetPlatform.macOS:
@@ -2308,8 +2353,9 @@ class TextSelectionGestureDetectorBuilder {
         case TargetPlatform.macOS:
         case TargetPlatform.windows:
           break;
-          // On desktop platforms the selection is set on tap down.
+        case TargetPlatform.ohos:
         case TargetPlatform.android:
+          editableText.hideToolbar(false);
           if (isShiftPressedValid) {
             _extendSelection(details.globalPosition, SelectionChangedCause.tap);
             return;
@@ -2317,6 +2363,7 @@ class TextSelectionGestureDetectorBuilder {
           renderEditable.selectPosition(cause: SelectionChangedCause.tap);
           editableText.showSpellCheckSuggestionsToolbar();
         case TargetPlatform.fuchsia:
+          editableText.hideToolbar(false);
           if (isShiftPressedValid) {
             _extendSelection(details.globalPosition, SelectionChangedCause.tap);
             return;
@@ -2388,6 +2435,7 @@ class TextSelectionGestureDetectorBuilder {
           }
       }
     }
+    editableText.requestKeyboard();
   }
 
   /// Handler for [TextSelectionGestureDetector.onSingleTapCancel].
@@ -2424,10 +2472,24 @@ class TextSelectionGestureDetectorBuilder {
               from: details.globalPosition,
               cause: SelectionChangedCause.longPress,
             );
+            // Show the floating cursor.
+            final RawFloatingCursorPoint cursorPoint = RawFloatingCursorPoint(
+              state: FloatingCursorDragState.Start,
+              startLocation: (
+                renderEditable.globalToLocal(details.globalPosition),
+                TextPosition(
+                  offset: editableText.textEditingValue.selection.baseOffset,
+                  affinity: editableText.textEditingValue.selection.affinity,
+                ),
+              ),
+              offset: Offset.zero,
+            );
+            editableText.updateFloatingCursor(cursorPoint);
           }
         case TargetPlatform.android:
         case TargetPlatform.fuchsia:
         case TargetPlatform.linux:
+        case TargetPlatform.ohos:
         case TargetPlatform.windows:
           renderEditable.selectWord(cause: SelectionChangedCause.longPress);
       }
@@ -2455,11 +2517,12 @@ class TextSelectionGestureDetectorBuilder {
       final Offset editableOffset = renderEditable.maxLines == 1
           ? Offset(renderEditable.offset.pixels - _dragStartViewportOffset, 0.0)
           : Offset(0.0, renderEditable.offset.pixels - _dragStartViewportOffset);
+      final double effectiveScrollPosition = _scrollPosition - _dragStartScrollOffset;
+      final bool scrollingOnVerticalAxis = _scrollDirection == AxisDirection.up || _scrollDirection == AxisDirection.down;
       final Offset scrollableOffset = Offset(
-        0.0,
-        _scrollPosition - _dragStartScrollOffset,
+        !scrollingOnVerticalAxis ? effectiveScrollPosition : 0.0,
+        scrollingOnVerticalAxis ? effectiveScrollPosition : 0.0,
       );
-
       switch (defaultTargetPlatform) {
         case TargetPlatform.iOS:
         case TargetPlatform.macOS:
@@ -2474,11 +2537,18 @@ class TextSelectionGestureDetectorBuilder {
               from: details.globalPosition,
               cause: SelectionChangedCause.longPress,
             );
+            // Update the floating cursor.
+            final RawFloatingCursorPoint cursorPoint = RawFloatingCursorPoint(
+              state: FloatingCursorDragState.Update,
+              offset: details.offsetFromOrigin,
+            );
+            editableText.updateFloatingCursor(cursorPoint);
           }
         case TargetPlatform.android:
         case TargetPlatform.fuchsia:
         case TargetPlatform.linux:
         case TargetPlatform.windows:
+        case TargetPlatform.ohos:
           renderEditable.selectWordsInRange(
             from: details.globalPosition - details.offsetFromOrigin - editableOffset - scrollableOffset,
             to: details.globalPosition,
@@ -2507,6 +2577,13 @@ class TextSelectionGestureDetectorBuilder {
     _longPressStartedWithoutFocus = false;
     _dragStartViewportOffset = 0.0;
     _dragStartScrollOffset = 0.0;
+    if (defaultTargetPlatform == TargetPlatform.iOS && delegate.selectionEnabled && editableText.textEditingValue.selection.isCollapsed) {
+      // Update the floating cursor.
+      final RawFloatingCursorPoint cursorPoint = RawFloatingCursorPoint(
+        state: FloatingCursorDragState.End
+      );
+      editableText.updateFloatingCursor(cursorPoint);
+    }
   }
 
   /// Handler for [TextSelectionGestureDetector.onSecondaryTap].
@@ -2530,6 +2607,7 @@ class TextSelectionGestureDetectorBuilder {
       case TargetPlatform.android:
       case TargetPlatform.fuchsia:
       case TargetPlatform.linux:
+      case TargetPlatform.ohos:
       case TargetPlatform.windows:
         if (!renderEditable.hasFocus) {
           renderEditable.selectPosition(cause: SelectionChangedCause.tap);
@@ -2654,6 +2732,7 @@ class TextSelectionGestureDetectorBuilder {
         case TargetPlatform.iOS:
         case TargetPlatform.macOS:
         case TargetPlatform.windows:
+        case TargetPlatform.ohos:
           _selectParagraphsInRange(from: details.globalPosition, cause: SelectionChangedCause.tap);
         case TargetPlatform.linux:
           _selectLinesInRange(from: details.globalPosition, cause: SelectionChangedCause.tap);
@@ -2701,6 +2780,7 @@ class TextSelectionGestureDetectorBuilder {
         case TargetPlatform.fuchsia:
         case TargetPlatform.linux:
         case TargetPlatform.windows:
+        case TargetPlatform.ohos:
           _extendSelection(details.globalPosition, SelectionChangedCause.drag);
       }
     } else {
@@ -2731,6 +2811,7 @@ class TextSelectionGestureDetectorBuilder {
           }
         case TargetPlatform.android:
         case TargetPlatform.fuchsia:
+        case TargetPlatform.ohos:
           switch (details.kind) {
             case PointerDeviceKind.mouse:
             case PointerDeviceKind.trackpad:
@@ -2742,7 +2823,7 @@ class TextSelectionGestureDetectorBuilder {
             case PointerDeviceKind.invertedStylus:
             case PointerDeviceKind.touch:
             case PointerDeviceKind.unknown:
-              // For Android, Fucshia, and iOS platforms, a touch drag
+              // For Android, Fuchsia, and iOS platforms, a touch drag
               // does not initiate unless the editable has focus.
               if (renderEditable.hasFocus) {
                 renderEditable.selectPositionAt(
@@ -2784,9 +2865,11 @@ class TextSelectionGestureDetectorBuilder {
       final Offset editableOffset = renderEditable.maxLines == 1
           ? Offset(renderEditable.offset.pixels - _dragStartViewportOffset, 0.0)
           : Offset(0.0, renderEditable.offset.pixels - _dragStartViewportOffset);
+      final double effectiveScrollPosition = _scrollPosition - _dragStartScrollOffset;
+      final bool scrollingOnVerticalAxis = _scrollDirection == AxisDirection.up || _scrollDirection == AxisDirection.down;
       final Offset scrollableOffset = Offset(
-        0.0,
-        _scrollPosition - _dragStartScrollOffset,
+        !scrollingOnVerticalAxis ? effectiveScrollPosition : 0.0,
+        scrollingOnVerticalAxis ? effectiveScrollPosition : 0.0,
       );
       final Offset dragStartGlobalPosition = details.globalPosition - details.offsetFromOrigin;
 
@@ -2817,6 +2900,7 @@ class TextSelectionGestureDetectorBuilder {
           case TargetPlatform.android:
           case TargetPlatform.fuchsia:
           case TargetPlatform.iOS:
+          case TargetPlatform.ohos:
             switch (details.kind) {
               case PointerDeviceKind.mouse:
               case PointerDeviceKind.trackpad:
@@ -2888,6 +2972,7 @@ class TextSelectionGestureDetectorBuilder {
           return;
         case TargetPlatform.android:
         case TargetPlatform.fuchsia:
+        case TargetPlatform.ohos:
           // With a precise pointer device, such as a mouse, trackpad, or stylus,
           // the drag will select the text spanning the origin of the drag to the end of the drag.
           // With a touch device, the cursor should move with the drag.
@@ -3174,6 +3259,7 @@ class _TextSelectionGestureDetectorState extends State<TextSelectionGestureDetec
       case TargetPlatform.android:
       case TargetPlatform.fuchsia:
       case TargetPlatform.linux:
+      case TargetPlatform.ohos:
         // From observation, these platform's reset their tap count to 0 when
         // the number of consecutive taps exceeds 3. For example on Debian Linux
         // with GTK, when going past a triple click, on the fourth click the
@@ -3308,6 +3394,7 @@ class _TextSelectionGestureDetectorState extends State<TextSelectionGestureDetec
         case TargetPlatform.android:
         case TargetPlatform.fuchsia:
         case TargetPlatform.iOS:
+        case TargetPlatform.ohos:
           gestures[TapAndHorizontalDragGestureRecognizer] = GestureRecognizerFactoryWithHandlers<TapAndHorizontalDragGestureRecognizer>(
             () => TapAndHorizontalDragGestureRecognizer(debugOwner: this),
             (TapAndHorizontalDragGestureRecognizer instance) {

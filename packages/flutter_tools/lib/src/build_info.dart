@@ -12,7 +12,6 @@ import 'base/os.dart';
 import 'base/utils.dart';
 import 'convert.dart';
 import 'globals.dart' as globals;
-import 'web/compile.dart';
 
 /// Whether icon font subsetting is enabled by default.
 const bool kIconTreeShakerEnabledDefault = true;
@@ -36,13 +35,13 @@ class BuildInfo {
     List<String>? dartDefines,
     this.bundleSkSLPath,
     List<String>? dartExperiments,
-    this.webRenderer = WebRendererMode.auto,
     required this.treeShakeIcons,
     this.performanceMeasurementFile,
     this.packagesPath = '.dart_tool/package_config.json', // TODO(zanderso): make this required and remove the default.
     this.nullSafetyMode = NullSafetyMode.sound,
     this.codeSizeDirectory,
     this.androidGradleDaemon = true,
+    this.androidSkipBuildDependencyValidation = false,
     this.packageConfig = PackageConfig.empty,
     this.initializeFromDill,
     this.assumeInitializeFromDillUpToDate = false,
@@ -130,9 +129,6 @@ class BuildInfo {
   /// A list of Dart experiments.
   final List<String> dartExperiments;
 
-  /// When compiling to web, which web renderer mode we are using (html, canvaskit, auto)
-  final WebRendererMode webRenderer;
-
   /// The name of a file where flutter assemble will output performance
   /// information in a JSON format.
   ///
@@ -157,6 +153,10 @@ class BuildInfo {
   ///
   /// The Gradle daemon may also be disabled in the Android application's properties file.
   final bool androidGradleDaemon;
+
+  /// Whether to skip checking of individual versions of our Android build time
+  /// dependencies.
+  final bool androidSkipBuildDependencyValidation;
 
   /// Additional key value pairs that are passed directly to the gradle project via the `-P`
   /// flag.
@@ -222,6 +222,10 @@ class BuildInfo {
   /// so the uncapitalized flavor name is used to compute the output file name
   String? get uncapitalizedFlavor => _uncapitalize(flavor);
 
+  /// The module system DDC is targeting, or null if not using DDC.
+  // TODO(markzipan): delete this when DDC's AMD module system is deprecated, https://github.com/flutter/flutter/issues/142060.
+  DdcModuleFormat? get ddcModuleFormat => _ddcModuleFormatFromFrontEndArgs(extraFrontEndOptions);
+
   /// Convert to a structured string encoded structure appropriate for usage
   /// in build system [Environment.defines].
   ///
@@ -286,6 +290,8 @@ class BuildInfo {
       'PACKAGE_CONFIG': packagesPath,
       if (codeSizeDirectory != null)
         'CODE_SIZE_DIRECTORY': codeSizeDirectory!,
+      if (flavor != null)
+        'FLAVOR': flavor!,
     };
   }
 
@@ -330,7 +336,6 @@ class AndroidBuildInfo {
     ],
     this.splitPerAbi = false,
     this.fastStart = false,
-    this.multidexEnabled = false,
   });
 
   // The build info containing the mode and flavor.
@@ -348,10 +353,34 @@ class AndroidBuildInfo {
 
   /// Whether to bootstrap an empty application.
   final bool fastStart;
-
-  /// Whether to enable multidex support for apps with more than 64k methods.
-  final bool multidexEnabled;
 }
+
+/// Information about an Ohos build to be performed or used.
+class OhosBuildInfo {
+  const OhosBuildInfo(
+    this.buildInfo, {
+    this.targetArchs = const <OhosArch>[
+      OhosArch.armeabi_v7a,
+      OhosArch.arm64_v8a,
+      OhosArch.x86_64,
+    ],
+    this.enableImpellerFlag,
+    this.shouldCodesign
+  });
+
+  // The build info containing the mode and flavor.
+  final BuildInfo buildInfo;
+
+  /// The target platforms for the build.
+  final Iterable<OhosArch> targetArchs;
+
+  // enable impeller option, default is true
+  final bool? enableImpellerFlag;
+
+  // Whether check codesign while build hap, default is true
+  final bool? shouldCodesign;
+}
+
 
 /// A summary of the compilation strategy used for Dart.
 enum BuildMode {
@@ -450,6 +479,24 @@ String? validatedBuildNumberForPlatform(TargetPlatform targetPlatform, String? b
     }
     return tmpBuildNumberStr;
   }
+  if (targetPlatform == TargetPlatform.ohos ||
+      targetPlatform == TargetPlatform.ohos_arm ||
+      targetPlatform == TargetPlatform.ohos_arm64 ||
+      targetPlatform == TargetPlatform.ohos_x64) {
+    final RegExp disallowed = RegExp(r'[^\d]');
+    String tmpBuildNumberStr = buildNumber.replaceAll(disallowed, '');
+    int tmpBuildNumberInt = int.tryParse(tmpBuildNumberStr) ?? 0;
+    if (tmpBuildNumberInt < 1) {
+      tmpBuildNumberInt = 1;
+    }
+    tmpBuildNumberStr = tmpBuildNumberInt.toString();
+    if (tmpBuildNumberStr != buildNumber) {
+      logger.printTrace(
+          'Invalid build-number: $buildNumber for Ohos, overridden by $tmpBuildNumberStr.\n'
+          'See versionCode at https://developer.huawei.com/consumer/cn/doc/harmonyos-guides-V5/app-configuration-file-V5');
+    }
+    return tmpBuildNumberStr;
+  }
   return buildNumber;
 }
 
@@ -487,6 +534,29 @@ String? validatedBuildNameForPlatform(TargetPlatform targetPlatform, String? bui
     // See versionName at https://developer.android.com/studio/publish/versioning
     return buildName;
   }
+  if (targetPlatform == TargetPlatform.ohos ||
+      targetPlatform == TargetPlatform.ohos_arm ||
+      targetPlatform == TargetPlatform.ohos_arm64 ||
+      targetPlatform == TargetPlatform.ohos_x64) {
+    final RegExp disallowed = RegExp(r'[^\d\.]');
+    String tmpBuildName = buildName.replaceAll(disallowed, '');
+    if (tmpBuildName.isEmpty) {
+      return null;
+    }
+    final List<String> segments = tmpBuildName
+        .split('.')
+        .where((String segment) => segment.isNotEmpty)
+        .toList();
+    while (segments.length < 3) {
+      segments.add('0');
+    }
+    tmpBuildName = segments.join('.');
+    if (tmpBuildName != buildName) {
+      logger.printTrace('Invalid build-name: $buildName for Ohos, overridden by $tmpBuildName.\n'
+          'See versionName at https://developer.huawei.com/consumer/cn/doc/harmonyos-guides-V5/app-configuration-file-V5');
+    }
+    return tmpBuildName;
+  }
   return buildName;
 }
 
@@ -511,6 +581,7 @@ enum TargetPlatform {
   linux_x64,
   linux_arm64,
   windows_x64,
+  windows_arm64,
   fuchsia_arm64,
   fuchsia_x64,
   tester,
@@ -522,7 +593,12 @@ enum TargetPlatform {
   android_arm,
   android_arm64,
   android_x64,
-  android_x86;
+  android_x86,
+  //ohos platform
+  ohos,
+  ohos_arm,
+  ohos_arm64,
+  ohos_x64;
 
   String get fuchsiaArchForTargetPlatform {
     switch (this) {
@@ -542,6 +618,11 @@ enum TargetPlatform {
       case TargetPlatform.tester:
       case TargetPlatform.web_javascript:
       case TargetPlatform.windows_x64:
+      case TargetPlatform.windows_arm64:
+      case TargetPlatform.ohos:
+      case TargetPlatform.ohos_arm:
+      case TargetPlatform.ohos_arm64:
+      case TargetPlatform.ohos_x64:
         throw UnsupportedError('Unexpected Fuchsia platform $this');
     }
   }
@@ -553,6 +634,7 @@ enum TargetPlatform {
       case TargetPlatform.windows_x64:
         return 'x64';
       case TargetPlatform.linux_arm64:
+      case TargetPlatform.windows_arm64:
         return 'arm64';
       case TargetPlatform.android:
       case TargetPlatform.android_arm:
@@ -564,8 +646,22 @@ enum TargetPlatform {
       case TargetPlatform.ios:
       case TargetPlatform.tester:
       case TargetPlatform.web_javascript:
+      case TargetPlatform.ohos:
+      case TargetPlatform.ohos_arm:
+      case TargetPlatform.ohos_arm64:
+      case TargetPlatform.ohos_x64:
         throw UnsupportedError('Unexpected target platform $this');
     }
+  }
+
+  bool get isOhos {
+    if (this == TargetPlatform.ohos ||
+        this == TargetPlatform.ohos_arm ||
+        this == TargetPlatform.ohos_arm64 ||
+        this == TargetPlatform.ohos_x64) {
+      return true;
+    }
+    return false;
   }
 }
 
@@ -616,6 +712,23 @@ enum AndroidArch {
       AndroidArch.x86 => 'android-x86'
     };
   }
+}
+
+enum OhosArch {
+  armeabi_v7a,
+  arm64_v8a,
+  x86_64,
+}
+
+
+bool isOhosPlatform(TargetPlatform? targetPlatform) {
+  if (targetPlatform == TargetPlatform.ohos ||
+      targetPlatform == TargetPlatform.ohos_arm ||
+      targetPlatform == TargetPlatform.ohos_arm64 ||
+      targetPlatform == TargetPlatform.ohos_x64) {
+    return true;
+  }
+  return false;
 }
 
 /// The default set of iOS device architectures to build for.
@@ -711,6 +824,8 @@ String getNameForTargetPlatform(TargetPlatform platform, {DarwinArch? darwinArch
       return 'linux-arm64';
     case TargetPlatform.windows_x64:
       return 'windows-x64';
+    case TargetPlatform.windows_arm64:
+      return 'windows-arm64';
     case TargetPlatform.fuchsia_arm64:
       return 'fuchsia-arm64';
     case TargetPlatform.fuchsia_x64:
@@ -721,6 +836,14 @@ String getNameForTargetPlatform(TargetPlatform platform, {DarwinArch? darwinArch
       return 'web-javascript';
     case TargetPlatform.android:
       return 'android';
+    case TargetPlatform.ohos:
+      return 'ohos';
+    case TargetPlatform.ohos_arm:
+      return 'ohos-arm';
+    case TargetPlatform.ohos_arm64:
+      return 'ohos-arm64';
+    case TargetPlatform.ohos_x64:
+      return 'ohos-x64';
   }
 }
 
@@ -750,12 +873,22 @@ TargetPlatform getTargetPlatformForName(String platform) {
       return TargetPlatform.darwin;
     case 'linux-x64':
       return TargetPlatform.linux_x64;
-   case 'linux-arm64':
+    case 'linux-arm64':
       return TargetPlatform.linux_arm64;
     case 'windows-x64':
       return TargetPlatform.windows_x64;
+    case 'windows-arm64':
+      return TargetPlatform.windows_arm64;
     case 'web-javascript':
       return TargetPlatform.web_javascript;
+    case 'ohos':
+      return TargetPlatform.ohos;
+    case 'ohos-arm':
+      return TargetPlatform.ohos_arm;
+    case 'ohos-arm64':
+      return TargetPlatform.ohos_arm64;
+    case 'ohos-x64':
+      return TargetPlatform.ohos_x64;
     case 'flutter-tester':
       return TargetPlatform.tester;
   }
@@ -776,11 +909,42 @@ AndroidArch getAndroidArchForName(String platform) {
   throw Exception('Unsupported Android arch name "$platform"');
 }
 
-HostPlatform getCurrentHostPlatform() {
-  if (globals.platform.isMacOS) {
-    return HostPlatform.darwin_x64;
+OhosArch getOhosArchForName(String platform) {
+  switch (platform) {
+    case 'ohos-arm':
+      return OhosArch.armeabi_v7a;
+    case 'ohos-arm64':
+      return OhosArch.arm64_v8a;
+    case 'ohos-x64':
+      return OhosArch.x86_64;
   }
-  if (globals.platform.isLinux) {
+  throw Exception('Unsupported Ohos arch name "$platform"');
+}
+
+String getNameForOhosArch(OhosArch arch) {
+  switch (arch) {
+    case OhosArch.armeabi_v7a:
+      return 'armeabi-v7a';
+    case OhosArch.arm64_v8a:
+      return 'arm64-v8a';
+    case OhosArch.x86_64:
+      return 'x86_64';
+  }
+}
+
+String getPlatformNameForOhosArch(OhosArch arch) {
+  switch (arch) {
+    case OhosArch.armeabi_v7a:
+      return 'ohos-arm';
+    case OhosArch.arm64_v8a:
+      return 'ohos-arm64';
+    case OhosArch.x86_64:
+      return 'ohos-x64';
+  }
+}
+
+HostPlatform getCurrentHostPlatform() {
+  if (globals.platform.isLinux || globals.platform.isMacOS) {
     // support x64 and arm64 architecture.
     return globals.os.hostPlatform;
   }
@@ -793,12 +957,9 @@ HostPlatform getCurrentHostPlatform() {
   return HostPlatform.linux_x64;
 }
 
-FileSystemEntity getWebPlatformBinariesDirectory(Artifacts artifacts, WebRendererMode webRenderer) {
-  return artifacts.getHostArtifact(HostArtifact.webPlatformKernelFolder);
-}
-
 /// Returns the top-level build output directory.
 String getBuildDirectory([Config? config, FileSystem? fileSystem]) {
+  // TODO(andrewkolos): Prefer required parameters instead of falling back to globals.
   // TODO(johnmccutchan): Stop calling this function as part of setting
   // up command line argument processing.
   final Config localConfig = config ?? globals.config;
@@ -824,8 +985,9 @@ String getAotBuildDirectory() {
 }
 
 /// Returns the asset build output directory.
-String getAssetBuildDirectory() {
-  return globals.fs.path.join(getBuildDirectory(), 'flutter_assets');
+String getAssetBuildDirectory([Config? config, FileSystem? fileSystem]) {
+  return (fileSystem ?? globals.fs)
+    .path.join(getBuildDirectory(config, fileSystem), 'flutter_assets');
 }
 
 /// Returns the iOS build output directory.
@@ -839,8 +1001,13 @@ String getMacOSBuildDirectory() {
 }
 
 /// Returns the web build output directory.
-String getWebBuildDirectory([bool isWasm = false]) {
-  return globals.fs.path.join(getBuildDirectory(), isWasm ? 'web_wasm' : 'web');
+String getWebBuildDirectory() {
+  return globals.fs.path.join(getBuildDirectory(), 'web');
+}
+
+/// Returns the ohos build output directory.
+String getOhosBuildDirectory(){
+  return globals.fs.path.join(getBuildDirectory(), 'ohos');
 }
 
 /// Returns the Linux build output directory.
@@ -925,6 +1092,30 @@ const String kIosArchs = 'IosArchs';
 /// Supported values are x86_64 and arm64.
 const String kDarwinArchs = 'DarwinArchs';
 
+/// The define to control what Android architectures are built for.
+///
+/// This is expected to be a space-delimited list of architectures.
+const String kAndroidArchs = 'AndroidArchs';
+
+/// The define to control what OHOS architectures are built for.
+///
+/// This is expected to be a space-delimited list of architectures. If not
+/// provided, defaults to arm64.
+const String kOhosArchs = 'OhosArchs';
+
+/// The define to control what min Android SDK version is built for.
+///
+/// This is expected to be int.
+///
+/// If not provided, defaults to `minSdkVersion` from gradle_utils.dart.
+///
+/// This is passed in by flutter.groovy's invocation of `flutter assemble`.
+///
+/// For more info, see:
+/// https://developer.android.com/ndk/guides/sdk-versions#minsdkversion
+/// https://developer.android.com/ndk/guides/other_build_systems#overview
+const String kMinSdkVersion = 'MinSdkVersion';
+
 /// Path to the SDK root to be used as the isysroot.
 const String kSdkRoot = 'SdkRoot';
 
@@ -963,6 +1154,9 @@ const String kBundleSkSLPath = 'BundleSkSLPath';
 
 /// The define to pass build name
 const String kBuildName = 'BuildName';
+
+/// The app flavor to build.
+const String kFlavor = 'Flavor';
 
 /// The define to pass build number
 const String kBuildNumber = 'BuildNumber';
@@ -1018,6 +1212,28 @@ enum NullSafetyMode {
   unsound,
   /// The null safety mode was not detected. Only supported for 'flutter test'.
   autodetect,
+}
+
+/// Indicates the module system DDC is targeting.
+enum DdcModuleFormat {
+  amd,
+  ddc,
+}
+
+// TODO(markzipan): delete this when DDC's AMD module system is deprecated, https://github.com/flutter/flutter/issues/142060.
+DdcModuleFormat? _ddcModuleFormatFromFrontEndArgs(List<String>? extraFrontEndArgs) {
+  if (extraFrontEndArgs == null) {
+    return null;
+  }
+  const String ddcModuleFormatString = '--dartdevc-module-format=';
+  for (final String flag in extraFrontEndArgs) {
+    if (flag.startsWith(ddcModuleFormatString)) {
+      final String moduleFormatString = flag
+          .substring(ddcModuleFormatString.length, flag.length);
+      return DdcModuleFormat.values.byName(moduleFormatString);
+    }
+  }
+  return null;
 }
 
 String _getCurrentHostPlatformArchName() {

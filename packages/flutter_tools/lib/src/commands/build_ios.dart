@@ -5,14 +5,16 @@
 import 'dart:typed_data';
 
 import 'package:crypto/crypto.dart';
-import 'package:file/file.dart';
 import 'package:meta/meta.dart';
 import 'package:unified_analytics/unified_analytics.dart';
 
 import '../base/analyze_size.dart';
 import '../base/common.dart';
+import '../base/error_handling_io.dart';
+import '../base/file_system.dart';
 import '../base/logger.dart';
 import '../base/process.dart';
+import '../base/terminal.dart';
 import '../base/utils.dart';
 import '../build_info.dart';
 import '../convert.dart';
@@ -462,13 +464,15 @@ class BuildIOSArchiveCommand extends _BuildIOSSubCommand {
     final String relativeOutputPath = app.ipaOutputPath;
     final String absoluteOutputPath = globals.fs.path.absolute(relativeOutputPath);
     final String absoluteArchivePath = globals.fs.path.absolute(app.archiveBundleOutputPath);
-    final String exportMethod = stringArg('export-method')!;
-    final bool isAppStoreUpload = exportMethod  == 'app-store';
+    String? exportOptions = exportOptionsPlist;
+    String? exportMethod = exportOptions != null ?
+        globals.plistParser.getValueFromFile<String?>(exportOptions, 'method') : null;
+    exportMethod ??= stringArg('export-method')!;
+    final bool isAppStoreUpload = exportMethod == 'app-store';
     File? generatedExportPlist;
     try {
       final String exportMethodDisplayName = isAppStoreUpload ? 'App Store' : exportMethod;
       status = globals.logger.startProgress('Building $exportMethodDisplayName IPA...');
-      String? exportOptions = exportOptionsPlist;
       if (exportOptions == null) {
         generatedExportPlist = _createExportPlist();
         exportOptions = generatedExportPlist.path;
@@ -492,7 +496,9 @@ class BuildIOSArchiveCommand extends _BuildIOSSubCommand {
         ],
       );
     } finally {
-      generatedExportPlist?.deleteSync();
+      if (generatedExportPlist != null) {
+        ErrorHandlingFileSystem.deleteIfExists(generatedExportPlist);
+      }
       status?.stop();
     }
 
@@ -518,7 +524,17 @@ class BuildIOSArchiveCommand extends _BuildIOSSubCommand {
       return FlutterCommandResult.success();
     }
 
-    globals.printStatus('Built IPA to $absoluteOutputPath.');
+    final Directory outputDirectory = globals.fs.directory(absoluteOutputPath);
+    final int? directorySize = globals.os.getDirectorySize(outputDirectory);
+    final String appSize = (buildInfo.mode == BuildMode.debug || directorySize == null)
+      ? '' // Don't display the size when building a debug variant.
+        : ' (${getSizeAsPlatformMB(directorySize)})';
+
+    globals.printStatus(
+      '${globals.terminal.successMark} '
+      'Built IPA to ${globals.fs.path.relative(outputDirectory.path)}$appSize',
+      color: TerminalColor.green,
+    );
 
     if (isAppStoreUpload) {
       globals.printStatus('To upload to the App Store either:');
@@ -732,7 +748,17 @@ abstract class _BuildIOSSubCommand extends BuildSubCommand {
     }
 
     if (result.output != null) {
-      globals.printStatus('Built ${result.output}.');
+      final Directory outputDirectory = globals.fs.directory(result.output);
+      final int? directorySize = globals.os.getDirectorySize(outputDirectory);
+      final String appSize = (buildInfo.mode == BuildMode.debug || directorySize == null)
+        ? '' // Don't display the size when building a debug variant.
+          : ' (${getSizeAsPlatformMB(directorySize)})';
+
+      globals.printStatus(
+        '${globals.terminal.successMark} '
+        'Built ${globals.fs.path.relative(outputDirectory.path)}$appSize',
+        color: TerminalColor.green,
+      );
 
       // When an app is successfully built, record to analytics whether Impeller
       // is enabled or disabled.
