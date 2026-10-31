@@ -19,7 +19,7 @@ import { DVModel, DVModelParameters, DVModelEvents, DVModelChildren } from '../.
 import Any from '../../../../../main/ets/plugin/common/Any';
 import PlatformView, { Params } from '../../../../../main/ets/plugin/platform/PlatformView';
 
-function sleep(time: number) {
+function sleep(time: number): Promise<void> {
   return new Promise<void>((resolve: Function) => setTimeout(resolve, time));
 }
 

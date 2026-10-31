@@ -18,7 +18,7 @@ import { FlutterPlugin, FlutterPluginBinding } from '../../../../../main/ets/emb
 import Any from '../../../../../main/ets/plugin/common/Any';
 import FlutterEntry from '../../../../../main/ets/embedding/ohos/FlutterEntry';
 
-function sleep(time: number) {
+function sleep(time: number): Promise<void> {
   return new Promise<void>((resolve: Function) => setTimeout(resolve, time));
 }
 
@@ -220,10 +220,8 @@ export default function FlutterEntryTest() {
     })
 
     it('TestShouldDestroyEngineWithHost', 0, async (done: Function) => {
-      // Skipped: implementation reads launchWant.parameters and throws NPE
-      // in unit-test environment.
       const flutterEntry: FlutterEntry = new FlutterEntry(getContext());
-      expect(flutterEntry).not().assertNull();
+      expect(flutterEntry.shouldDestroyEngineWithHost()).assertEqual(true);
       done();
     })
 
@@ -337,11 +335,11 @@ export default function FlutterEntryTest() {
     });
   });
 
-    it('shouldDestroyEngineWithHost tolerates errors without delegate', 0, () => {
-      const entry = new FlutterEntry(getContext());
-      let threw = false;
-      try { entry.shouldDestroyEngineWithHost(); } catch (e) { threw = true; }
-      expect(threw).assertEqual(true);
+    it('shouldDestroyEngineWithHost returns false with cached engine id', 0, () => {
+      const params: Record<string, Object> = {};
+      params['cached_engine_id'] = 'my_engine';
+      const entry = new FlutterEntry(getContext(), params);
+      expect(entry.shouldDestroyEngineWithHost()).assertEqual(false);
     });
 
     it('shouldRestoreAndSaveState does not throw without delegate', 0, () => {
@@ -425,14 +423,11 @@ export default function FlutterEntryTest() {
   })
 
   describe('FlutterEntry.lifecycleMethods', () => {
-    it('shouldDestroyEngineWithHost throws with null delegate and no cached engine', 0, () => {
+    it('shouldDestroyEngineWithHost returns true with null delegate and no cached engine', 0, () => {
       const entry = new FlutterEntry(getContext());
       const e: Any = entry;
       e['delegate'] = null;
-      // getCachedEngineId is empty so the delegate non-null assertion throws
-      let threw = false;
-      try { entry.shouldDestroyEngineWithHost(); } catch (err) { threw = true; }
-      expect(threw).assertEqual(true);
+      expect(entry.shouldDestroyEngineWithHost()).assertEqual(true);
     });
 
     it('shouldAttachEngineToAbility returns a boolean', 0, () => {
