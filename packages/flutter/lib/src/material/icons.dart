@@ -19,6 +19,7 @@ final class PlatformAdaptiveIcons implements Icons {
       case TargetPlatform.fuchsia:
       case TargetPlatform.linux:
       case TargetPlatform.windows:
+      case TargetPlatform.ohos:
         return false;
       case TargetPlatform.iOS:
       case TargetPlatform.macOS:
@@ -149,7 +150,6 @@ final class PlatformAdaptiveIcons implements Icons {
 ///  * [IconButton]
 ///  * <https://material.io/resources/icons>
 ///  * [AnimatedIcons], for the list of available animated Material Icons.
-/// {@hideConstantImplementations}
 @staticIconProvider
 abstract final class Icons {
   /// A set of platform-adaptive Material Design icons.

@@ -65,6 +65,7 @@ abstract final class KeyEventSimulator {
       case 'web':
       case 'ios':
       case 'windows':
+      case 'ohos':
         return true;
     }
     return false;
@@ -74,6 +75,9 @@ abstract final class KeyEventSimulator {
     assert(_osIsSupported(platform), 'Platform $platform not supported for key simulation');
     late Map<int, PhysicalKeyboardKey> map;
     switch (platform) {
+      case 'ohos':
+        map = kOhosToPhysicalKey;
+        break;
       case 'android':
         map = kAndroidToPhysicalKey;
       case 'fuchsia':
@@ -110,6 +114,9 @@ abstract final class KeyEventSimulator {
     } else {
       late Map<int, LogicalKeyboardKey> map;
       switch (platform) {
+        case 'ohos':
+          map = kOhosToLogicalKey;
+          break;
         case 'android':
           map = kAndroidToLogicalKey;
         case 'fuchsia':
@@ -196,6 +203,9 @@ abstract final class KeyEventSimulator {
       map = kWebToPhysicalKey;
     } else {
       switch (platform) {
+        case 'ohos':
+          map = kOhosToPhysicalKey;
+          break;
         case 'android':
           map = kAndroidToPhysicalKey;
         case 'fuchsia':
@@ -262,6 +272,15 @@ abstract final class KeyEventSimulator {
     final int scanCode = _getScanCode(physicalKey, platform);
 
     switch (platform) {
+      case 'ohos':
+        result['keyCode'] = keyCode;
+        result['deviceId'] = 1;
+        if (resultCharacter.isNotEmpty) {
+          result['character'] = resultCharacter;
+        }else {
+          result['character'] = '';
+        }
+        break;
       case 'android':
         result['keyCode'] = keyCode;
         if (resultCharacter.isNotEmpty) {
@@ -684,7 +703,7 @@ abstract final class KeyEventSimulator {
     return result!;
   }
 
-  static const KeyDataTransitMode _defaultTransitMode = KeyDataTransitMode.rawKeyData;
+  static const KeyDataTransitMode _defaultTransitMode = KeyDataTransitMode.keyDataThenRawKeyData;
 
   // The simulation transit mode for [simulateKeyDownEvent], [simulateKeyUpEvent],
   // and [simulateKeyRepeatEvent].
@@ -693,8 +712,8 @@ abstract final class KeyEventSimulator {
   // and delivered. For detailed introduction, see [KeyDataTransitMode] and
   // its values.
   //
-  // The `_transitMode` defaults to [KeyDataTransitMode.rawKeyEvent], and can be
-  // overridden with [debugKeyEventSimulatorTransitModeOverride]. In widget tests, it
+  // The `_transitMode` defaults to [KeyDataTransitMode.keyDataThenRawKeyData], and can
+  // be overridden with [debugKeyEventSimulatorTransitModeOverride]. In widget tests, it
   // is often set with [KeySimulationModeVariant].
   static KeyDataTransitMode get _transitMode {
     KeyDataTransitMode? result;
@@ -705,7 +724,13 @@ abstract final class KeyEventSimulator {
     return result ?? _defaultTransitMode;
   }
 
-  static String get _defaultPlatform => kIsWeb ? 'web' : Platform.operatingSystem;
+  /// Returns the transit mode that simulated key events are constructed
+  /// and delivered. For detailed introduction, see [KeyDataTransitMode]
+  /// and its values.
+  @visibleForTesting
+  static KeyDataTransitMode get transitMode => _transitMode;
+
+  static String get _defaultPlatform => kIsWeb ? 'web' : defaultTargetPlatform.name.toLowerCase();
 
   /// Simulates sending a hardware key down event.
   ///
@@ -714,7 +739,8 @@ abstract final class KeyEventSimulator {
   ///
   /// Specify `platform` as one of the platforms allowed in
   /// [Platform.operatingSystem] to make the event appear to be from that type of
-  /// system. Defaults to the operating system that the test is running on.
+  /// system. Defaults to "web" on web, and the operating system name based on
+  /// [defaultTargetPlatform] everywhere else.
   ///
   /// Keys that are down when the test completes are cleared after each test.
   ///
@@ -761,7 +787,8 @@ abstract final class KeyEventSimulator {
   ///
   /// Specify `platform` as one of the platforms allowed in
   /// [Platform.operatingSystem] to make the event appear to be from that type of
-  /// system. Defaults to the operating system that the test is running on.
+  /// system. Defaults to "web" on web, and the operating system name based on
+  /// [defaultTargetPlatform] everywhere else.
   ///
   /// Returns true if the key event was handled by the framework.
   ///
@@ -805,7 +832,8 @@ abstract final class KeyEventSimulator {
   ///
   /// Specify `platform` as one of the platforms allowed in
   /// [Platform.operatingSystem] to make the event appear to be from that type of
-  /// system. Defaults to the operating system that the test is running on.
+  /// system. Defaults to "web" on web, and the operating system name based on
+  /// [defaultTargetPlatform] everywhere else.
   ///
   /// Returns true if the key event was handled by the framework.
   ///
@@ -854,7 +882,8 @@ abstract final class KeyEventSimulator {
 ///
 /// Specify `platform` as one of the platforms allowed in
 /// [Platform.operatingSystem] to make the event appear to be from that type of
-/// system. Defaults to the operating system that the test is running on.
+/// system. Defaults to "web" on web, and the operating system name based on
+/// [defaultTargetPlatform] everywhere else.
 ///
 /// Keys that are down when the test completes are cleared after each test.
 ///
@@ -888,7 +917,8 @@ Future<bool> simulateKeyDownEvent(
 ///
 /// Specify `platform` as one of the platforms allowed in
 /// [Platform.operatingSystem] to make the event appear to be from that type of
-/// system. Defaults to the operating system that the test is running on.
+/// system. Defaults to "web" on web, and the operating system name based on
+/// [defaultTargetPlatform] everywhere else.
 ///
 /// Returns true if the key event was handled by the framework.
 ///
@@ -916,7 +946,8 @@ Future<bool> simulateKeyUpEvent(
 ///
 /// Specify `platform` as one of the platforms allowed in
 /// [Platform.operatingSystem] to make the event appear to be from that type of
-/// system. Defaults to the operating system that the test is running on.
+/// system. Defaults to "web" on web, and the operating system name based on
+/// [defaultTargetPlatform] everywhere else.
 ///
 /// Returns true if the key event was handled by the framework.
 ///
@@ -935,19 +966,44 @@ Future<bool> simulateKeyRepeatEvent(
 
 /// A [TestVariant] that runs tests with transit modes set to different values
 /// of [KeyDataTransitMode].
+@Deprecated(
+  'No longer supported. Transit mode is always key data only. '
+  'This feature was deprecated after v3.18.0-2.0.pre.',
+)
 class KeySimulatorTransitModeVariant extends TestVariant<KeyDataTransitMode> {
   /// Creates a [KeySimulatorTransitModeVariant] that tests the given [values].
+  @Deprecated(
+    'No longer supported. Transit mode is always key data only. '
+    'This feature was deprecated after v3.18.0-2.0.pre.',
+  )
   const KeySimulatorTransitModeVariant(this.values);
 
   /// Creates a [KeySimulatorTransitModeVariant] for each value option of
   /// [KeyDataTransitMode].
+  @Deprecated(
+    'No longer supported. Transit mode is always key data only. '
+    'This feature was deprecated after v3.18.0-2.0.pre.',
+  )
   KeySimulatorTransitModeVariant.all()
     : this(KeyDataTransitMode.values.toSet());
 
   /// Creates a [KeySimulatorTransitModeVariant] that only contains
   /// [KeyDataTransitMode.keyDataThenRawKeyData].
+  @Deprecated(
+    'No longer supported. Transit mode is always key data only. '
+    'This feature was deprecated after v3.18.0-2.0.pre.',
+  )
   KeySimulatorTransitModeVariant.keyDataThenRawKeyData()
     : this(<KeyDataTransitMode>{KeyDataTransitMode.keyDataThenRawKeyData});
+
+  /// Creates a [KeySimulatorTransitModeVariant] that only contains
+  /// [KeyDataTransitMode.rawKeyData].
+  @Deprecated(
+    'No longer supported. Transit mode is always key data only. '
+    'This feature was deprecated after v3.18.0-2.0.pre.',
+  )
+  KeySimulatorTransitModeVariant.rawKeyData()
+    : this(<KeyDataTransitMode>{KeyDataTransitMode.rawKeyData});
 
   @override
   final Set<KeyDataTransitMode> values;

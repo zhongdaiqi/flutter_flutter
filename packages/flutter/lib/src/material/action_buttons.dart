@@ -110,6 +110,7 @@ class _ActionIcon extends StatelessWidget {
       case TargetPlatform.windows:
       case TargetPlatform.iOS:
       case TargetPlatform.macOS:
+      case TargetPlatform.ohos:
         semanticsLabel = null;
     }
 
@@ -150,10 +151,11 @@ class BackButtonIcon extends StatelessWidget {
           case TargetPlatform.fuchsia:
           case TargetPlatform.linux:
           case TargetPlatform.windows:
+          case TargetPlatform.ohos:
             return Icons.arrow_back;
           case TargetPlatform.iOS:
           case TargetPlatform.macOS:
-            return Icons.arrow_back_ios;
+            return Icons.arrow_back_ios_new_rounded;
         }
       },
       getAndroidSemanticsLabel: (MaterialLocalizations materialLocalization) {
@@ -337,6 +339,7 @@ class DrawerButton extends _ActionButton {
   /// Creates a Material Design drawer icon button.
   const DrawerButton({
     super.key,
+    super.color,
     super.style,
     super.onPressed,
   }) : super(icon: const DrawerButtonIcon());
@@ -402,6 +405,7 @@ class EndDrawerButton extends _ActionButton {
   /// Creates a Material Design end drawer icon button.
   const EndDrawerButton({
     super.key,
+    super.color,
     super.style,
     super.onPressed,
   }) : super(icon: const EndDrawerButtonIcon());

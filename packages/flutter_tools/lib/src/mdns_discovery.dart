@@ -6,6 +6,7 @@ import 'dart:async';
 
 import 'package:meta/meta.dart';
 import 'package:multicast_dns/multicast_dns.dart';
+import 'package:unified_analytics/unified_analytics.dart';
 
 import 'base/common.dart';
 import 'base/context.dart';
@@ -26,10 +27,12 @@ class MDnsVmServiceDiscovery {
     MDnsClient? preliminaryMDnsClient,
     required Logger logger,
     required Usage flutterUsage,
+    required Analytics analytics,
   })  : _client = mdnsClient ?? MDnsClient(),
         _preliminaryClient = preliminaryMDnsClient,
         _logger = logger,
-        _flutterUsage = flutterUsage;
+        _flutterUsage = flutterUsage,
+        _analytics = analytics;
 
   final MDnsClient _client;
 
@@ -39,6 +42,7 @@ class MDnsVmServiceDiscovery {
 
   final Logger _logger;
   final Usage _flutterUsage;
+  final Analytics _analytics;
 
   @visibleForTesting
   static const String dartVmServiceName = '_dartVmService._tcp.local';
@@ -504,6 +508,7 @@ class MDnsVmServiceDiscovery {
     switch (targetPlatform) {
       case TargetPlatform.ios:
         UsageEvent('ios-mdns', 'no-ipv4-link-local', flutterUsage: _flutterUsage).send();
+        _analytics.send(Event.appleUsageEvent(workflow: 'ios-mdns', parameter: 'no-ipv4-link-local'));
         _logger.printError(
           'The mDNS query for an attached iOS device failed. It may '
           'be necessary to disable the "Personal Hotspot" on the device, and '
@@ -511,6 +516,11 @@ class MDnsVmServiceDiscovery {
           'under System Preferences > Network > iPhone USB. '
           'See https://github.com/flutter/flutter/issues/46698 for details.'
         );
+        break;
+      case TargetPlatform.ohos:
+      case TargetPlatform.ohos_arm:
+      case TargetPlatform.ohos_arm64:
+      case TargetPlatform.ohos_x64:
       case TargetPlatform.android:
       case TargetPlatform.android_arm:
       case TargetPlatform.android_arm64:
@@ -524,6 +534,7 @@ class MDnsVmServiceDiscovery {
       case TargetPlatform.tester:
       case TargetPlatform.web_javascript:
       case TargetPlatform.windows_x64:
+      case TargetPlatform.windows_arm64:
         _logger.printTrace('No interface with an ipv4 link local address was found.');
     }
   }

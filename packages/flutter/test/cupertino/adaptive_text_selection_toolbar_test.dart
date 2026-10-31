@@ -6,10 +6,10 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:leak_tracker_flutter_testing/leak_tracker_flutter_testing.dart';
 
 import '../widgets/clipboard_utils.dart';
 import '../widgets/live_text_utils.dart';
+import '../widgets/text_selection_toolbar_utils.dart';
 
 void main() {
   final MockClipboard mockClipboard = MockClipboard();
@@ -31,14 +31,7 @@ void main() {
     );
   });
 
-  Finder findOverflowNextButton() {
-    return find.byWidgetPredicate((Widget widget) =>
-      widget is CustomPaint &&
-          '${widget.painter?.runtimeType}' == '_RightCupertinoChevronPainter',
-      );
-  }
-
-  testWidgetsWithLeakTracking('Builds the right toolbar on each platform, including web, and shows buttonItems', (WidgetTester tester) async {
+  testWidgets('Builds the right toolbar on each platform, including web, and shows buttonItems', (WidgetTester tester) async {
     const String buttonText = 'Click me';
 
     await tester.pumpWidget(
@@ -66,6 +59,7 @@ void main() {
       case TargetPlatform.android:
       case TargetPlatform.fuchsia:
       case TargetPlatform.iOS:
+      case TargetPlatform.ohos:
         expect(find.byType(CupertinoTextSelectionToolbar), findsOneWidget);
         expect(find.byType(CupertinoDesktopTextSelectionToolbar), findsNothing);
       case TargetPlatform.macOS:
@@ -79,7 +73,7 @@ void main() {
     skip: isBrowser, // [intended] see https://github.com/flutter/flutter/issues/108382
   );
 
-  testWidgetsWithLeakTracking('Can build children directly as well', (WidgetTester tester) async {
+  testWidgets('Can build children directly as well', (WidgetTester tester) async {
     final GlobalKey key = GlobalKey();
 
     await tester.pumpWidget(
@@ -102,7 +96,7 @@ void main() {
     skip: isBrowser, // [intended] see https://github.com/flutter/flutter/issues/108382
   );
 
-  testWidgetsWithLeakTracking('Can build from EditableTextState', (WidgetTester tester) async {
+  testWidgets('Can build from EditableTextState', (WidgetTester tester) async {
     final GlobalKey key = GlobalKey();
     final FocusNode focusNode = FocusNode();
     addTearDown(focusNode.dispose);
@@ -154,6 +148,7 @@ void main() {
       case TargetPlatform.android:
       case TargetPlatform.fuchsia:
       case TargetPlatform.iOS:
+      case TargetPlatform.ohos:
         expect(find.byType(CupertinoTextSelectionToolbarButton), findsOneWidget);
       case TargetPlatform.macOS:
       case TargetPlatform.linux:
@@ -165,7 +160,7 @@ void main() {
     variant: TargetPlatformVariant.all(),
   );
 
-  testWidgetsWithLeakTracking('Can build for editable text from raw parameters', (WidgetTester tester) async {
+  testWidgets('Can build for editable text from raw parameters', (WidgetTester tester) async {
     final GlobalKey key = GlobalKey();
     await tester.pumpWidget(CupertinoApp(
       home: Center(
@@ -188,34 +183,63 @@ void main() {
     ));
 
     expect(find.byKey(key), findsOneWidget);
-    expect(find.text('Copy'), findsOneWidget);
-    expect(find.text('Cut'), findsOneWidget);
-    expect(find.text('Select All'), findsOneWidget);
-    expect(find.text('Paste'), findsOneWidget);
-    expect(find.text('Look Up'), findsOneWidget);
 
     switch (defaultTargetPlatform) {
       case TargetPlatform.android:
         expect(find.byType(CupertinoTextSelectionToolbarButton), findsNWidgets(6));
-      case TargetPlatform.fuchsia:
-        expect(find.byType(CupertinoTextSelectionToolbarButton), findsNWidgets(6));
-      case TargetPlatform.iOS:
-        expect(find.byType(CupertinoTextSelectionToolbarButton), findsNWidgets(6));
-        expect(findOverflowNextButton(), findsOneWidget);
-        await tester.tapAt(tester.getCenter(findOverflowNextButton()));
-        await tester.pumpAndSettle();
+        expect(find.text('Cut'), findsOneWidget);
+        expect(find.text('Copy'), findsOneWidget);
+        expect(find.text('Paste'), findsOneWidget);
+        expect(find.text('Select All'), findsOneWidget);
+        expect(find.text('Share...'), findsOneWidget);
+        expect(findCupertinoOverflowNextButton(), findsOneWidget);
+
+        await tapCupertinoOverflowNextButton(tester);
+
+        expect(find.byType(CupertinoTextSelectionToolbarButton), findsNWidgets(4));
+        expect(findCupertinoOverflowBackButton(), findsOneWidget);
+        expect(find.text('Look Up'), findsOneWidget);
+        expect(find.text('Search Web'), findsOneWidget);
         expect(findLiveTextButton(), findsOneWidget);
+
+      case TargetPlatform.fuchsia:
+      case TargetPlatform.iOS:
+      case TargetPlatform.ohos:
+        expect(find.byType(CupertinoTextSelectionToolbarButton), findsNWidgets(6));
+        expect(find.text('Cut'), findsOneWidget);
+        expect(find.text('Copy'), findsOneWidget);
+        expect(find.text('Paste'), findsOneWidget);
+        expect(find.text('Select All'), findsOneWidget);
+        expect(find.text('Look Up'), findsOneWidget);
+        expect(findCupertinoOverflowNextButton(), findsOneWidget);
+
+        await tapCupertinoOverflowNextButton(tester);
+
+        expect(find.byType(CupertinoTextSelectionToolbarButton), findsNWidgets(4));
+        expect(findCupertinoOverflowBackButton(), findsOneWidget);
+        expect(find.text('Search Web'), findsOneWidget);
+        expect(find.text('Share...'), findsOneWidget);
+        expect(findLiveTextButton(), findsOneWidget);
+
       case TargetPlatform.macOS:
       case TargetPlatform.linux:
       case TargetPlatform.windows:
         expect(find.byType(CupertinoDesktopTextSelectionToolbarButton), findsNWidgets(8));
+        expect(find.text('Cut'), findsOneWidget);
+        expect(find.text('Copy'), findsOneWidget);
+        expect(find.text('Paste'), findsOneWidget);
+        expect(find.text('Select All'), findsOneWidget);
+        expect(find.text('Share...'), findsOneWidget);
+        expect(find.text('Look Up'), findsOneWidget);
+        expect(find.text('Search Web'), findsOneWidget);
+        expect(findLiveTextButton(), findsOneWidget);
     }
   },
     skip: kIsWeb, // [intended] on web the browser handles the context menu.
     variant: TargetPlatformVariant.all(),
   );
 
-  testWidgetsWithLeakTracking('Builds the correct button per-platform', (WidgetTester tester) async {
+  testWidgets('Builds the correct button per-platform', (WidgetTester tester) async {
     const String buttonText = 'Click me';
 
     await tester.pumpWidget(
@@ -247,6 +271,7 @@ void main() {
       case TargetPlatform.android:
       case TargetPlatform.fuchsia:
       case TargetPlatform.iOS:
+      case TargetPlatform.ohos:
         expect(find.byType(CupertinoTextSelectionToolbarButton), findsOneWidget);
         expect(find.byType(CupertinoDesktopTextSelectionToolbarButton), findsNothing);
       case TargetPlatform.macOS:

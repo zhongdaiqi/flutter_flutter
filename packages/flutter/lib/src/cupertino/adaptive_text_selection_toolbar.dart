@@ -152,6 +152,7 @@ class CupertinoAdaptiveTextSelectionToolbar extends StatelessWidget {
          selectionGeometry: selectionGeometry,
          onCopy: onCopy,
          onSelectAll: onSelectAll,
+         onShare: null, // See https://github.com/flutter/flutter/issues/141775.
        );
 
   /// {@macro flutter.material.AdaptiveTextSelectionToolbar.anchors}
@@ -187,6 +188,7 @@ class CupertinoAdaptiveTextSelectionToolbar extends StatelessWidget {
       case TargetPlatform.android:
       case TargetPlatform.fuchsia:
       case TargetPlatform.iOS:
+      case TargetPlatform.ohos:
         return buttonItems.map((ContextMenuButtonItem buttonItem) {
           return CupertinoTextSelectionToolbarButton.buttonItem(
             buttonItem: buttonItem,
@@ -217,6 +219,7 @@ class CupertinoAdaptiveTextSelectionToolbar extends StatelessWidget {
       case TargetPlatform.android:
       case TargetPlatform.iOS:
       case TargetPlatform.fuchsia:
+      case TargetPlatform.ohos:
         return CupertinoTextSelectionToolbar(
           anchorAbove: anchors.primaryAnchor,
           anchorBelow: anchors.secondaryAnchor ?? anchors.primaryAnchor,

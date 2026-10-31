@@ -27,6 +27,7 @@ import 'base/terminal.dart';
 import 'base/time.dart';
 import 'base/user_messages.dart';
 import 'build_system/build_system.dart';
+import 'build_system/build_targets.dart';
 import 'cache.dart';
 import 'custom_devices/custom_devices_config.dart';
 import 'device.dart';
@@ -40,6 +41,8 @@ import 'macos/cocoapods.dart';
 import 'macos/cocoapods_validator.dart';
 import 'macos/xcdevice.dart';
 import 'macos/xcode.dart';
+import 'ohos/hvigor_utils.dart';
+import 'ohos/ohos_sdk.dart';
 import 'persistent_tool_state.dart';
 import 'pre_run_validator.dart';
 import 'project.dart';
@@ -49,8 +52,12 @@ import 'runner/flutter_command.dart';
 import 'runner/local_engine.dart';
 import 'version.dart';
 
+// TODO(ianh): We should remove all the global variables and replace them with
+// arguments (to constructors, methods, etc, as appropriate).
+
 Artifacts? get artifacts => context.get<Artifacts>();
 BuildSystem get buildSystem => context.get<BuildSystem>()!;
+BuildTargets get buildTargets => context.get<BuildTargets>()!;
 Cache get cache => context.get<Cache>()!;
 CocoaPodsValidator? get cocoapodsValidator => context.get<CocoaPodsValidator>();
 Config get config => context.get<Config>()!;
@@ -64,6 +71,9 @@ OperatingSystemUtils get os => context.get<OperatingSystemUtils>()!;
 Signals get signals => context.get<Signals>() ?? LocalSignals.instance;
 AndroidStudio? get androidStudio => context.get<AndroidStudio>();
 AndroidSdk? get androidSdk => context.get<AndroidSdk>();
+OhosSdk? get ohosSdk => context.get<OhosSdk>();
+HmosSdk? get hmosSdk => context.get<HmosSdk>();
+HarmonySdk? get harmonySdk => context.get<HarmonySdk>();
 FlutterVersion get flutterVersion => context.get<FlutterVersion>()!;
 FuchsiaArtifacts? get fuchsiaArtifacts => context.get<FuchsiaArtifacts>();
 FuchsiaSdk? get fuchsiaSdk => context.get<FuchsiaSdk>();
@@ -273,6 +283,8 @@ LocalFileSystem get localFileSystem => _instance ??= LocalFileSystem(
 
 /// Gradle utils in the current [AppContext].
 GradleUtils? get gradleUtils => context.get<GradleUtils>();
+
+HvigorUtils? get hvigorUtils => context.get<HvigorUtils>();
 
 CocoaPods? get cocoaPods => context.get<CocoaPods>();
 

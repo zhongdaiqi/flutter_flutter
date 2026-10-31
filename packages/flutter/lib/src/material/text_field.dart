@@ -66,17 +66,17 @@ class _TextFieldSelectionGestureDetectorBuilder extends TextSelectionGestureDete
   }
 
   @override
-  void onSingleTapUp(TapDragUpDetails details) {
-    super.onSingleTapUp(details);
-    _state._requestKeyboard();
-  }
-
-  @override
   bool get onUserTapAlwaysCalled => _state.widget.onTapAlwaysCalled;
 
   @override
   void onUserTap() {
     _state.widget.onTap?.call();
+  }
+
+  @override
+  void onSingleTapUp(TapDragUpDetails details) {
+    _state._deviceKind = details.kind;
+    super.onSingleTapUp(details);
   }
 
   @override
@@ -91,6 +91,7 @@ class _TextFieldSelectionGestureDetectorBuilder extends TextSelectionGestureDete
         case TargetPlatform.fuchsia:
         case TargetPlatform.linux:
         case TargetPlatform.windows:
+        case TargetPlatform.ohos:
           Feedback.forLongPress(_state.context);
       }
     }
@@ -192,6 +193,14 @@ class _TextFieldSelectionGestureDetectorBuilder extends TextSelectionGestureDete
 /// ** See code in examples/api/lib/material/text_field/text_field.2.dart **
 /// {@end-tool}
 ///
+/// ## Scrolling Considerations
+///
+/// If this [TextField] is not a descendant of [Scaffold] and is being used
+/// within a [Scrollable] or nested [Scrollable]s, consider placing a
+/// [ScrollNotificationObserver] above the root [Scrollable] that contains this
+/// [TextField] to ensure proper scroll coordination for [TextField] and its
+/// components like [TextSelectionOverlay].
+///
 /// See also:
 ///
 ///  * [TextFormField], which integrates with the [Form] widget.
@@ -273,6 +282,7 @@ class TextField extends StatefulWidget {
     this.toolbarOptions,
     this.showCursor,
     this.autofocus = false,
+    this.statesController,
     this.obscuringCharacter = '•',
     this.obscureText = false,
     this.autocorrect = true,
@@ -290,6 +300,7 @@ class TextField extends StatefulWidget {
     this.onAppPrivateCommand,
     this.inputFormatters,
     this.enabled,
+    this.ignorePointers,
     this.cursorWidth = 2.0,
     this.cursorHeight,
     this.cursorRadius,
@@ -345,15 +356,13 @@ class TextField extends StatefulWidget {
        keyboardType = keyboardType ?? (maxLines == 1 ? TextInputType.text : TextInputType.multiline),
        enableInteractiveSelection = enableInteractiveSelection ?? (!readOnly || !obscureText);
 
-  /// {@macro flutter.widgets.magnifier.TextMagnifierConfiguration.intro}
-  ///
-  /// {@macro flutter.widgets.magnifier.intro}
-  ///
-  /// {@macro flutter.widgets.magnifier.TextMagnifierConfiguration.details}
+  /// The configuration for the magnifier of this text field.
   ///
   /// By default, builds a [CupertinoTextMagnifier] on iOS and [TextMagnifier]
-  /// on Android, and builds nothing on all other platforms. If it is desired to
-  /// suppress the magnifier, consider passing [TextMagnifierConfiguration.disabled].
+  /// on Android, and builds nothing on all other platforms. To suppress the
+  /// magnifier, consider passing [TextMagnifierConfiguration.disabled].
+  ///
+  /// {@macro flutter.widgets.magnifier.intro}
   ///
   /// {@tool dartpad}
   /// This sample demonstrates how to customize the magnifier that this text field uses.
@@ -419,10 +428,12 @@ class TextField extends StatefulWidget {
   /// {@macro flutter.widgets.editableText.keyboardType}
   final TextInputType keyboardType;
 
+  /// {@template flutter.widgets.TextField.textInputAction}
   /// The type of action button to use for the keyboard.
   ///
   /// Defaults to [TextInputAction.newline] if [keyboardType] is
   /// [TextInputType.multiline] and [TextInputAction.done] otherwise.
+  /// {@endtemplate}
   final TextInputAction? textInputAction;
 
   /// {@macro flutter.widgets.editableText.textCapitalization}
@@ -454,6 +465,27 @@ class TextField extends StatefulWidget {
 
   /// {@macro flutter.widgets.editableText.autofocus}
   final bool autofocus;
+
+  /// Represents the interactive "state" of this widget in terms of a set of
+  /// [MaterialState]s, including [MaterialState.disabled], [MaterialState.hovered],
+  /// [MaterialState.error], and [MaterialState.focused].
+  ///
+  /// Classes based on this one can provide their own
+  /// [MaterialStatesController] to which they've added listeners.
+  /// They can also update the controller's [MaterialStatesController.value]
+  /// however, this may only be done when it's safe to call
+  /// [State.setState], like in an event handler.
+  ///
+  /// The controller's [MaterialStatesController.value] represents the set of
+  /// states that a widget's visual properties, typically [MaterialStateProperty]
+  /// values, are resolved against. It is _not_ the intrinsic state of the widget.
+  /// The widget is responsible for ensuring that the controller's
+  /// [MaterialStatesController.value] tracks its intrinsic state. For example
+  /// one cannot request the keyboard focus for a widget by adding [MaterialState.focused]
+  /// to its controller. When the widget gains the or loses the focus it will
+  /// [MaterialStatesController.update] its controller's [MaterialStatesController.value]
+  /// and notify listeners of the change.
+  final MaterialStatesController? statesController;
 
   /// {@macro flutter.widgets.editableText.obscuringCharacter}
   final String obscuringCharacter;
@@ -579,6 +611,11 @@ class TextField extends StatefulWidget {
   /// If non-null this property overrides the [decoration]'s
   /// [InputDecoration.enabled] property.
   final bool? enabled;
+
+  /// Determines whether this widget ignores pointer events.
+  ///
+  /// Defaults to null, and when null, does nothing.
+  final bool? ignorePointers;
 
   /// {@macro flutter.widgets.editableText.cursorWidth}
   final double cursorWidth;
@@ -858,6 +895,7 @@ class TextField extends StatefulWidget {
       case TargetPlatform.fuchsia:
       case TargetPlatform.linux:
       case TargetPlatform.windows:
+      case TargetPlatform.ohos:
         return SpellCheckSuggestionsToolbar.editableText(
           editableTextState: editableTextState,
         );
@@ -961,18 +999,22 @@ class _TextFieldState extends State<TextField> with RestorationMixin implements 
   final GlobalKey<EditableTextState> editableTextKey = GlobalKey<EditableTextState>();
 
   @override
-  bool get selectionEnabled => widget.selectionEnabled;
+  bool get selectionEnabled => widget.selectionEnabled && _isEnabled;
   // End of API for TextSelectionGestureDetectorBuilderDelegate.
 
   bool get _isEnabled =>  widget.enabled ?? widget.decoration?.enabled ?? true;
 
   int get _currentLength => _effectiveController.value.text.characters.length;
 
-  bool get _hasIntrinsicError => widget.maxLength != null && widget.maxLength! > 0 && _effectiveController.value.text.characters.length > widget.maxLength!;
+  bool get _hasIntrinsicError => widget.maxLength != null &&
+                                 widget.maxLength! > 0 &&
+                                 (widget.controller == null ?
+                                 !restorePending && _effectiveController.value.text.characters.length > widget.maxLength! :
+                                 _effectiveController.value.text.characters.length > widget.maxLength!);
 
   bool get _hasError => widget.decoration?.errorText != null || widget.decoration?.error != null || _hasIntrinsicError;
 
-  Color get _errorColor => widget.cursorErrorColor ?? widget.decoration?.errorStyle?.color ?? Theme.of(context).colorScheme.error;
+  Color get _errorColor => widget.cursorErrorColor ?? _getEffectiveDecoration().errorStyle?.color ?? Theme.of(context).colorScheme.error;
 
   InputDecoration _getEffectiveDecoration() {
     final MaterialLocalizations localizations = MaterialLocalizations.of(context);
@@ -1024,7 +1066,7 @@ class _TextFieldState extends State<TextField> with RestorationMixin implements 
     if (widget.maxLength! > 0) {
       // Show the maxLength in the counter
       counterText += '/${widget.maxLength}';
-      final int remaining = (widget.maxLength! - currentLength).clamp(0, widget.maxLength!); // ignore_clamp_double_lint
+      final int remaining = (widget.maxLength! - currentLength).clamp(0, widget.maxLength!);
       semanticCounterText = localizations.remainingTextFieldCharacterCount(remaining);
     }
 
@@ -1053,16 +1095,15 @@ class _TextFieldState extends State<TextField> with RestorationMixin implements 
     }
     _effectiveFocusNode.canRequestFocus = widget.canRequestFocus && _isEnabled;
     _effectiveFocusNode.addListener(_handleFocusChanged);
+    _initStatesController();
   }
 
   bool get _canRequestFocus {
     final NavigationMode mode = MediaQuery.maybeNavigationModeOf(context) ?? NavigationMode.traditional;
-    switch (mode) {
-      case NavigationMode.traditional:
-        return widget.canRequestFocus && _isEnabled;
-      case NavigationMode.directional:
-        return true;
-    }
+    return switch (mode) {
+      NavigationMode.traditional => widget.canRequestFocus && _isEnabled,
+      NavigationMode.directional => true,
+    };
   }
 
   @override
@@ -1093,6 +1134,20 @@ class _TextFieldState extends State<TextField> with RestorationMixin implements 
       if (_effectiveController.selection.isCollapsed) {
         _showSelectionHandles = !widget.readOnly;
       }
+    }
+
+    if (widget.statesController == oldWidget.statesController) {
+      _statesController.update(MaterialState.disabled, !_isEnabled);
+      _statesController.update(MaterialState.hovered, _isHovering);
+      _statesController.update(MaterialState.focused, _effectiveFocusNode.hasFocus);
+      _statesController.update(MaterialState.error, _hasError);
+    } else {
+      oldWidget.statesController?.removeListener(_handleStatesControllerChange);
+      if (widget.statesController != null) {
+        _internalStatesController?.dispose();
+        _internalStatesController = null;
+      }
+      _initStatesController();
     }
   }
 
@@ -1126,12 +1181,17 @@ class _TextFieldState extends State<TextField> with RestorationMixin implements 
     _effectiveFocusNode.removeListener(_handleFocusChanged);
     _focusNode?.dispose();
     _controller?.dispose();
+    _statesController.removeListener(_handleStatesControllerChange);
+    _internalStatesController?.dispose();
     super.dispose();
   }
 
   EditableTextState? get _editableText => editableTextKey.currentState;
 
-  void _requestKeyboard() {
+  PointerDeviceKind _deviceKind = PointerDeviceKind.unknown;
+
+  void _requestKeyboard({PointerDeviceKind kind = PointerDeviceKind.unknown}) {
+    _deviceKind = kind;
     _editableText?.requestKeyboard();
   }
 
@@ -1170,6 +1230,7 @@ class _TextFieldState extends State<TextField> with RestorationMixin implements 
       // Rebuild the widget on focus change to show/hide the text selection
       // highlight.
     });
+    _statesController.update(MaterialState.focused, _effectiveFocusNode.hasFocus);
   }
 
   void _handleSelectionChanged(TextSelection selection, SelectionChangedCause? cause) {
@@ -1187,7 +1248,9 @@ class _TextFieldState extends State<TextField> with RestorationMixin implements 
       case TargetPlatform.windows:
       case TargetPlatform.fuchsia:
       case TargetPlatform.android:
-        if (cause == SelectionChangedCause.longPress) {
+      case TargetPlatform.ohos:
+        if (cause == SelectionChangedCause.longPress
+            || cause == SelectionChangedCause.drag) {
           _editableText?.bringIntoView(selection.extent);
         }
     }
@@ -1196,6 +1259,7 @@ class _TextFieldState extends State<TextField> with RestorationMixin implements 
       case TargetPlatform.iOS:
       case TargetPlatform.fuchsia:
       case TargetPlatform.android:
+      case TargetPlatform.ohos:
         break;
       case TargetPlatform.macOS:
       case TargetPlatform.linux:
@@ -1218,7 +1282,29 @@ class _TextFieldState extends State<TextField> with RestorationMixin implements 
       setState(() {
         _isHovering = hovering;
       });
+      _statesController.update(MaterialState.hovered, _isHovering);
     }
+  }
+
+  // Material states controller.
+  MaterialStatesController? _internalStatesController;
+
+  void _handleStatesControllerChange() {
+    // Force a rebuild to resolve MaterialStateProperty properties.
+    setState(() { });
+  }
+
+  MaterialStatesController get _statesController => widget.statesController ?? _internalStatesController!;
+
+  void _initStatesController() {
+    if (widget.statesController == null) {
+      _internalStatesController = MaterialStatesController();
+    }
+    _statesController.update(MaterialState.disabled, !_isEnabled);
+    _statesController.update(MaterialState.hovered, _isHovering);
+    _statesController.update(MaterialState.focused, _effectiveFocusNode.hasFocus);
+    _statesController.update(MaterialState.error, _hasError);
+    _statesController.addListener(_handleStatesControllerChange);
   }
 
   // AutofillClient implementation start.
@@ -1240,23 +1326,15 @@ class _TextFieldState extends State<TextField> with RestorationMixin implements 
         )
       : AutofillConfiguration.disabled;
 
-    return _editableText!.textInputConfiguration.copyWith(autofillConfiguration: autofillConfiguration);
+    return _editableText!.textInputConfiguration.copyWith(
+        autofillConfiguration: autofillConfiguration, deviceKind: _deviceKind);
   }
   // AutofillClient implementation end.
 
-  Set<MaterialState> get _materialState {
-    return <MaterialState>{
-      if (!_isEnabled) MaterialState.disabled,
-      if (_isHovering) MaterialState.hovered,
-      if (_effectiveFocusNode.hasFocus) MaterialState.focused,
-      if (_hasError) MaterialState.error,
-    };
-  }
-
   TextStyle _getInputStyleForState(TextStyle style) {
     final ThemeData theme = Theme.of(context);
-    final TextStyle stateStyle = MaterialStateProperty.resolveAs(theme.useMaterial3 ? _m3StateInputStyle(context)! : _m2StateInputStyle(context)!, _materialState);
-    final TextStyle providedStyle = MaterialStateProperty.resolveAs(style, _materialState);
+    final TextStyle stateStyle = MaterialStateProperty.resolveAs(theme.useMaterial3 ? _m3StateInputStyle(context)! : _m2StateInputStyle(context)!, _statesController.value);
+    final TextStyle providedStyle = MaterialStateProperty.resolveAs(style, _statesController.value);
     return providedStyle.merge(stateStyle);
   }
 
@@ -1273,7 +1351,7 @@ class _TextFieldState extends State<TextField> with RestorationMixin implements 
 
     final ThemeData theme = Theme.of(context);
     final DefaultSelectionStyle selectionStyle = DefaultSelectionStyle.of(context);
-    final TextStyle? providedStyle = MaterialStateProperty.resolveAs(widget.style, _materialState);
+    final TextStyle? providedStyle = MaterialStateProperty.resolveAs(widget.style, _statesController.value);
     final TextStyle style = _getInputStyleForState(theme.useMaterial3 ? _m3InputStyle(context) : theme.textTheme.titleMedium!).merge(providedStyle);
     final Brightness keyboardAppearance = widget.keyboardAppearance ?? theme.brightness;
     final TextEditingController controller = _effectiveController;
@@ -1302,6 +1380,7 @@ class _TextFieldState extends State<TextField> with RestorationMixin implements 
       case TargetPlatform.fuchsia:
       case TargetPlatform.linux:
       case TargetPlatform.windows:
+      case TargetPlatform.ohos:
         spellCheckConfiguration = TextField.inferAndroidSpellCheckConfiguration(
           widget.spellCheckConfiguration,
         );
@@ -1353,13 +1432,14 @@ class _TextFieldState extends State<TextField> with RestorationMixin implements 
 
       case TargetPlatform.android:
       case TargetPlatform.fuchsia:
+      case TargetPlatform.ohos:
         forcePressEnabled = false;
         textSelectionControls ??= materialTextSelectionHandleControls;
         paintCursorAboveText = false;
         cursorOpacityAnimates ??= false;
         cursorColor = _hasError ? _errorColor : widget.cursorColor ?? selectionStyle.cursorColor ?? theme.colorScheme.primary;
         selectionColor = selectionStyle.selectionColor ?? theme.colorScheme.primary.withOpacity(0.40);
-
+        break;
       case TargetPlatform.linux:
         forcePressEnabled = false;
         textSelectionControls ??= desktopTextSelectionHandleControls;
@@ -1488,7 +1568,7 @@ class _TextFieldState extends State<TextField> with RestorationMixin implements 
     }
     final MouseCursor effectiveMouseCursor = MaterialStateProperty.resolveAs<MouseCursor>(
       widget.mouseCursor ?? MaterialStateMouseCursor.textable,
-      _materialState,
+      _statesController.value,
     );
 
     final int? semanticsMaxValueLength;
@@ -1506,11 +1586,12 @@ class _TextFieldState extends State<TextField> with RestorationMixin implements 
       onExit: (PointerExitEvent event) => _handleHover(false),
       child: TextFieldTapRegion(
         child: IgnorePointer(
-          ignoring: !_isEnabled,
+          ignoring: widget.ignorePointers ?? !_isEnabled,
           child: AnimatedBuilder(
             animation: controller, // changes the _currentLength
             builder: (BuildContext context, Widget? child) {
               return Semantics(
+                enabled: _isEnabled,
                 maxValueLength: semanticsMaxValueLength,
                 currentValueLength: _currentLength,
                 onTap: widget.readOnly ? null : () {

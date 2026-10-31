@@ -4,8 +4,7 @@
 
 import 'dart:ui_web' as ui_web;
 
-import 'package:web/web.dart' as web;
-
+import '../web.dart' as web;
 import 'platform.dart' as platform;
 
 export 'platform.dart' show TargetPlatform;
@@ -52,6 +51,9 @@ final platform.TargetPlatform _browserPlatform = () {
   }
   if (navigatorPlatform.contains('android')) {
     return platform.TargetPlatform.android;
+  }
+  if (navigatorPlatform.contains('ohos')) {
+    return platform.TargetPlatform.ohos;
   }
   // Since some phones can report a window.navigator.platform as Linux, fall
   // back to use CSS to disambiguate Android vs Linux desktop. If the CSS

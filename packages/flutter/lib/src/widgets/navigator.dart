@@ -27,6 +27,9 @@ import 'restoration_properties.dart';
 import 'routes.dart';
 import 'ticker_provider.dart';
 
+// Duration for delay before refocusing in android so that the focus won't be interrupted.
+const Duration _kAndroidRefocusingDelayDuration = Duration(milliseconds: 300);
+
 // Examples can assume:
 // typedef MyAppHome = Placeholder;
 // typedef MyHomePage = Placeholder;
@@ -135,14 +138,14 @@ enum RoutePopDisposition {
 /// The type argument `T` is the route's return type, as used by
 /// [currentResult], [popped], and [didPop]. The type `void` may be used if the
 /// route does not return a value.
-abstract class Route<T> {
+abstract class Route<T> extends _RoutePlaceholder {
   /// Initialize the [Route].
   ///
   /// If the [settings] are not provided, an empty [RouteSettings] object is
   /// used instead.
   Route({ RouteSettings? settings }) : _settings = settings ?? const RouteSettings() {
     if (kFlutterMemoryAllocationsEnabled) {
-      MemoryAllocations.instance.dispatchObjectCreated(
+      FlutterMemoryAllocations.instance.dispatchObjectCreated(
         library: 'package:flutter/widgets.dart',
         className: '$Route<$T>',
         object: this,
@@ -372,6 +375,8 @@ abstract class Route<T> {
   Future<T?> get popped => _popCompleter.future;
   final Completer<T?> _popCompleter = Completer<T?>();
 
+  final Completer<T?> _disposeCompleter = Completer<T?>();
+
   /// A request was made to pop this route. If the route can handle it
   /// internally (e.g. because it has its own stack of internal state) then
   /// return false, otherwise return true (by returning the value of calling
@@ -511,8 +516,9 @@ abstract class Route<T> {
   void dispose() {
     _navigator = null;
     _restorationScopeId.dispose();
+    _disposeCompleter.complete();
     if (kFlutterMemoryAllocationsEnabled) {
-      MemoryAllocations.instance.dispatchObjectDisposed(object: this);
+      FlutterMemoryAllocations.instance.dispatchObjectDisposed(object: this);
     }
   }
 
@@ -572,10 +578,7 @@ abstract class Route<T> {
   /// rendered. It is even possible for the route to be active but for the stateful
   /// widgets within the route to not be instantiated. See [ModalRoute.maintainState].
   bool get isActive {
-    if (_navigator == null) {
-      return false;
-    }
-    return _navigator!._firstRouteEntryWhereOrNull(_RouteEntry.isRoutePredicate(this))?.isPresent ?? false;
+    return _navigator?._firstRouteEntryWhereOrNull(_RouteEntry.isRoutePredicate(this))?.isPresent ?? false;
   }
 }
 
@@ -2893,10 +2896,9 @@ enum _RouteLifecycle {
 
 typedef _RouteEntryPredicate = bool Function(_RouteEntry entry);
 
-class _NotAnnounced extends Route<void> {
-  // A placeholder for the lastAnnouncedPreviousRoute, the
-  // lastAnnouncedPoppedNextRoute, and the lastAnnouncedNextRoute before any
-  // change has been announced.
+/// Placeholder for a route.
+class _RoutePlaceholder {
+  const _RoutePlaceholder();
 }
 
 class _RouteEntry extends RouteTransitionRecord {
@@ -2913,11 +2915,11 @@ class _RouteEntry extends RouteTransitionRecord {
            initialState == _RouteLifecycle.pushReplace ||
            initialState == _RouteLifecycle.replace,
          ),
-        currentState = initialState {
+         currentState = initialState {
     // TODO(polina-c): stop duplicating code across disposables
     // https://github.com/flutter/flutter/issues/137435
     if (kFlutterMemoryAllocationsEnabled) {
-      MemoryAllocations.instance.dispatchObjectCreated(
+      FlutterMemoryAllocations.instance.dispatchObjectCreated(
         library: 'package:flutter/widgets.dart',
         className: '$_RouteEntry',
         object: this,
@@ -2934,12 +2936,13 @@ class _RouteEntry extends RouteTransitionRecord {
   /// remove as a result of a page update.
   static const int kDebugPopAttemptLimit = 100;
 
-  static final Route<dynamic> notAnnounced = _NotAnnounced();
+  static const _RoutePlaceholder notAnnounced = _RoutePlaceholder();
 
   _RouteLifecycle currentState;
-  Route<dynamic>? lastAnnouncedPreviousRoute = notAnnounced; // last argument to Route.didChangePrevious
-  WeakReference<Route<dynamic>> lastAnnouncedPoppedNextRoute = WeakReference<Route<dynamic>>(notAnnounced); // last argument to Route.didPopNext
-  Route<dynamic>? lastAnnouncedNextRoute = notAnnounced; // last argument to Route.didChangeNext
+  _RoutePlaceholder? lastAnnouncedPreviousRoute = notAnnounced; // last argument to Route.didChangePrevious
+  WeakReference<_RoutePlaceholder> lastAnnouncedPoppedNextRoute = WeakReference<_RoutePlaceholder>(notAnnounced); // last argument to Route.didPopNext
+  _RoutePlaceholder? lastAnnouncedNextRoute = notAnnounced; // last argument to Route.didChangeNext
+  int? lastFocusNode; // The last focused semantic node for the route entry.
 
   /// Restoration ID to be used for the encapsulating route when restoration is
   /// enabled for it or null if restoration cannot be enabled for it.
@@ -2993,6 +2996,10 @@ class _RouteEntry extends RouteTransitionRecord {
     route.install();
     assert(route.overlayEntries.isNotEmpty);
     if (currentState == _RouteLifecycle.push || currentState == _RouteLifecycle.pushReplace) {
+      if (defaultTargetPlatform == TargetPlatform.ohos) {
+        ServicesBinding.instance.reportNavigatorActivity('push', 'start', route.settings.name);
+      }
+
       final TickerFuture routeFuture = route.didPush();
       currentState = _RouteLifecycle.pushing;
       routeFuture.whenCompleteOrCancel(() {
@@ -3002,6 +3009,10 @@ class _RouteEntry extends RouteTransitionRecord {
           assert(() { navigator._debugLocked = true; return true; }());
           navigator._flushHistoryUpdates();
           assert(() { navigator._debugLocked = false; return true; }());
+
+          if (defaultTargetPlatform == TargetPlatform.ohos) {
+            ServicesBinding.instance.reportNavigatorActivity('push', 'finish');
+          }
         }
       });
     } else {
@@ -3028,6 +3039,24 @@ class _RouteEntry extends RouteTransitionRecord {
   void handleDidPopNext(Route<dynamic> poppedRoute) {
     route.didPopNext(poppedRoute);
     lastAnnouncedPoppedNextRoute = WeakReference<Route<dynamic>>(poppedRoute);
+    if (lastFocusNode != null) {
+      // Move focus back to the last focused node.
+      poppedRoute._disposeCompleter.future.then((dynamic result) async {
+        switch (defaultTargetPlatform) {
+          case TargetPlatform.android:
+            // In the Android platform, we have to wait for the system refocus to complete before
+            // sending the refocus message. Otherwise, the refocus message will be ignored.
+            // TODO(hangyujin): update this logic if Android provide a better way to do so.
+            final int? reFocusNode = lastFocusNode;
+            await Future<void>.delayed(_kAndroidRefocusingDelayDuration);
+            SystemChannels.accessibility.send(const FocusSemanticEvent().toMap(nodeId: reFocusNode));
+          case TargetPlatform.iOS:
+            SystemChannels.accessibility.send(const FocusSemanticEvent().toMap(nodeId: lastFocusNode));
+          case _:
+            break ;
+        }
+      });
+    }
   }
 
   /// Process the to-be-popped route.
@@ -3138,7 +3167,7 @@ class _RouteEntry extends RouteTransitionRecord {
     // TODO(polina-c): stop duplicating code across disposables
     // https://github.com/flutter/flutter/issues/137435
     if (kFlutterMemoryAllocationsEnabled) {
-      MemoryAllocations.instance.dispatchObjectDisposed(object: this);
+      FlutterMemoryAllocations.instance.dispatchObjectDisposed(object: this);
     }
     currentState = _RouteLifecycle.disposed;
     route.dispose();
@@ -3480,13 +3509,6 @@ class NavigatorState extends State<Navigator> with TickerProviderStateMixin, Res
   final Queue<_NavigatorObservation> _observedRouteAdditions = Queue<_NavigatorObservation>();
   final Queue<_NavigatorObservation> _observedRouteDeletions = Queue<_NavigatorObservation>();
 
-  /// The [FocusScopeNode] for the [FocusScope] that encloses the topmost navigator.
-  @Deprecated(
-    'Use focusNode.enclosingScope! instead. '
-    'This feature was deprecated after v3.1.0-0.0.pre.'
-  )
-  FocusScopeNode get focusScopeNode => focusNode.enclosingScope!;
-
   /// The [FocusNode] for the [Focus] that encloses the routes.
   final FocusNode focusNode = FocusNode(debugLabel: 'Navigator');
 
@@ -3576,7 +3598,14 @@ class NavigatorState extends State<Navigator> with TickerProviderStateMixin, Res
       SystemNavigator.selectSingleEntryHistory();
     }
 
+    ServicesBinding.instance.accessibilityFocus.addListener(_recordLastFocus);
     _history.addListener(_handleHistoryChanged);
+  }
+
+  // Record the last focused node in route entry.
+  void _recordLastFocus(){
+    final _RouteEntry? entry = _history.where(_RouteEntry.isPresentPredicate).lastOrNull;
+    entry?.lastFocusNode = ServicesBinding.instance.accessibilityFocus.value;
   }
 
   // Use [_nextPagelessRestorationScopeId] to get the next id.
@@ -3871,6 +3900,7 @@ class NavigatorState extends State<Navigator> with TickerProviderStateMixin, Res
     _rawNextPagelessRestorationScopeId.dispose();
     _serializableHistory.dispose();
     userGestureInProgressNotifier.dispose();
+    ServicesBinding.instance.accessibilityFocus.removeListener(_recordLastFocus);
     _history.removeListener(_handleHistoryChanged);
     _history.dispose();
     super.dispose();
@@ -4263,6 +4293,10 @@ class NavigatorState extends State<Navigator> with TickerProviderStateMixin, Res
           }
           assert(entry.currentState == _RouteLifecycle.popping);
           canRemoveOrAdd = true;
+          if (defaultTargetPlatform == TargetPlatform.ohos) {
+            final String? routeName = _getRouteBefore(index, _RouteEntry.willBePresentPredicate)?.route.settings.name;
+            ServicesBinding.instance.reportNavigatorActivity('pop', 'start', routeName);
+          }
         case _RouteLifecycle.popping:
           // Will exit this state when animation completes.
           break;
@@ -5260,6 +5294,7 @@ class NavigatorState extends State<Navigator> with TickerProviderStateMixin, Res
         assert(entry.route._popCompleter.isCompleted);
         entry.currentState = _RouteLifecycle.pop;
       }
+      entry.route.onPopInvoked(true);
     } else {
       entry.pop<T>(result);
       assert (entry.currentState == _RouteLifecycle.pop);
@@ -5387,6 +5422,10 @@ class NavigatorState extends State<Navigator> with TickerProviderStateMixin, Res
     // finishes synchronously.
     if (!_flushingHistory) {
       _flushHistoryUpdates(rearrangeOverlay: false);
+    }
+
+    if (defaultTargetPlatform == TargetPlatform.ohos) {
+      ServicesBinding.instance.reportNavigatorActivity('pop', 'finish');
     }
 
     assert(() { _debugLocked = wasDebugLocked!; return true; }());
@@ -5624,14 +5663,12 @@ class _NamedRestorationInformation extends _RestorationInformation {
     required this.restorationScopeId,
   }) : super(_RouteRestorationType.named);
 
-  factory _NamedRestorationInformation.fromSerializableData(List<Object?> data) {
-    assert(data.length >= 2);
-    return _NamedRestorationInformation(
-      restorationScopeId: data[0]! as int,
-      name: data[1]! as String,
-      arguments: data.length > 2 ? data[2] : null,
-    );
-  }
+  _NamedRestorationInformation.fromSerializableData(List<Object?> data)
+      : assert(data.length > 1),
+        restorationScopeId = data[0]! as int,
+        name = data[1]! as String,
+        arguments = data.elementAtOrNull(2),
+        super(_RouteRestorationType.named);
 
   @override
   List<Object> computeSerializableData() {
@@ -5662,15 +5699,12 @@ class _AnonymousRestorationInformation extends _RestorationInformation {
     required this.restorationScopeId,
   }) : super(_RouteRestorationType.anonymous);
 
-  factory _AnonymousRestorationInformation.fromSerializableData(List<Object?> data) {
-    assert(data.length > 1);
-    final RestorableRouteBuilder<Object?> routeBuilder = ui.PluginUtilities.getCallbackFromHandle(ui.CallbackHandle.fromRawHandle(data[1]! as int))! as RestorableRouteBuilder;
-    return _AnonymousRestorationInformation(
-      restorationScopeId: data[0]! as int,
-      routeBuilder: routeBuilder,
-      arguments: data.length > 2 ? data[2] : null,
-    );
-  }
+  _AnonymousRestorationInformation.fromSerializableData(List<Object?> data)
+      : assert(data.length > 1),
+        restorationScopeId = data[0]! as int,
+        routeBuilder = ui.PluginUtilities.getCallbackFromHandle(ui.CallbackHandle.fromRawHandle(data[1]! as int))! as RestorableRouteBuilder,
+        arguments = data.elementAtOrNull(2),
+        super(_RouteRestorationType.anonymous);
 
   @override
   // TODO(goderbauer): remove the kIsWeb check when https://github.com/flutter/flutter/issues/33615 is resolved.

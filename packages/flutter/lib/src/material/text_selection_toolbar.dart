@@ -17,6 +17,8 @@ import 'material_localizations.dart';
 import 'theme.dart';
 
 const double _kToolbarHeight = 44.0;
+
+// Padding between the toolbar and the anchor.
 const double _kToolbarContentDistance = 8.0;
 
 /// A fully-functional Material-style text selection toolbar.
@@ -569,6 +571,40 @@ class _RenderTextSelectionToolbarItemsLayout extends RenderBox with ContainerRen
     size = nextSize;
   }
 
+  // Horizontally expand the children when the menu overflows so they can react to
+  // pointer events into their whole area.
+  void _resizeChildrenWhenOverflow() {
+    if (!overflowOpen) {
+      return;
+    }
+
+    final RenderBox navButton = firstChild!;
+    int i = -1;
+
+    visitChildren((RenderObject renderObjectChild) {
+      final RenderBox child = renderObjectChild as RenderBox;
+      final ToolbarItemsParentData childParentData = child.parentData! as ToolbarItemsParentData;
+
+      i++;
+
+      // Ignore the navigation button.
+      if (renderObjectChild == navButton) {
+        return;
+      }
+
+      // There is no need to update children that won't be painted.
+      if (!_shouldPaintChild(renderObjectChild, i)) {
+        childParentData.shouldPaint = false;
+        return;
+      }
+
+      child.layout(
+        BoxConstraints.tightFor(width: size.width),
+        parentUsesSize: true,
+      );
+    });
+  }
+
   @override
   void performLayout() {
     _lastIndexThatFits = -1;
@@ -579,6 +615,7 @@ class _RenderTextSelectionToolbarItemsLayout extends RenderBox with ContainerRen
 
     _layoutChildren();
     _placeChildren();
+    _resizeChildrenWhenOverflow();
   }
 
   @override

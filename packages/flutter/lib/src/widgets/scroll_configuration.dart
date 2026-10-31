@@ -77,6 +77,7 @@ class ScrollBehavior {
     bool? scrollbars,
     bool? overscroll,
     Set<PointerDeviceKind>? dragDevices,
+    MultitouchDragStrategy? multitouchDragStrategy,
     Set<LogicalKeyboardKey>? pointerAxisModifiers,
     ScrollPhysics? physics,
     TargetPlatform? platform,
@@ -86,6 +87,7 @@ class ScrollBehavior {
       scrollbars: scrollbars ?? true,
       overscroll: overscroll ?? true,
       dragDevices: dragDevices,
+      multitouchDragStrategy: multitouchDragStrategy,
       pointerAxisModifiers: pointerAxisModifiers,
       physics: physics,
       platform: platform,
@@ -104,6 +106,25 @@ class ScrollBehavior {
   /// Enabling this for [PointerDeviceKind.mouse] will make it difficult or
   /// impossible to select text in scrollable containers and is not recommended.
   Set<PointerDeviceKind> get dragDevices => _kTouchLikeDeviceTypes;
+
+  /// {@macro flutter.gestures.monodrag.DragGestureRecognizer.multitouchDragStrategy}
+  ///
+  /// By default, [MultitouchDragStrategy.latestPointer] is configured to
+  /// create drag gestures for non-Apple platforms, and
+  /// [MultitouchDragStrategy.averageBoundaryPointers] for Apple platforms.
+  MultitouchDragStrategy getMultitouchDragStrategy(BuildContext context) {
+    switch (getPlatform(context)) {
+      case TargetPlatform.macOS:
+      case TargetPlatform.iOS:
+        return MultitouchDragStrategy.averageBoundaryPointers;
+      case TargetPlatform.linux:
+      case TargetPlatform.windows:
+      case TargetPlatform.android:
+      case TargetPlatform.fuchsia:
+      case TargetPlatform.ohos:
+        return MultitouchDragStrategy.latestPointer;
+    }
+  }
 
   /// A set of [LogicalKeyboardKey]s that, when any or all are pressed in
   /// combination with a [PointerDeviceKind.mouse] pointer scroll event, will
@@ -140,6 +161,7 @@ class ScrollBehavior {
       case TargetPlatform.android:
       case TargetPlatform.fuchsia:
       case TargetPlatform.iOS:
+      case TargetPlatform.ohos:
         return child;
     }
   }
@@ -154,6 +176,7 @@ class ScrollBehavior {
       case TargetPlatform.linux:
       case TargetPlatform.macOS:
       case TargetPlatform.windows:
+      case TargetPlatform.ohos:
         return child;
       case TargetPlatform.android:
       case TargetPlatform.fuchsia:
@@ -188,6 +211,7 @@ class ScrollBehavior {
       case TargetPlatform.macOS:
         return (PointerEvent event) => MacOSScrollViewFlingVelocityTracker(event.kind);
       case TargetPlatform.android:
+      case TargetPlatform.ohos:
       case TargetPlatform.fuchsia:
       case TargetPlatform.linux:
       case TargetPlatform.windows:
@@ -219,6 +243,7 @@ class ScrollBehavior {
       case TargetPlatform.fuchsia:
       case TargetPlatform.linux:
       case TargetPlatform.windows:
+      case TargetPlatform.ohos:
         return _clampingPhysics;
     }
   }
@@ -245,6 +270,7 @@ class _WrappedScrollBehavior implements ScrollBehavior {
     this.scrollbars = true,
     this.overscroll = true,
     Set<PointerDeviceKind>? dragDevices,
+    this.multitouchDragStrategy,
     Set<LogicalKeyboardKey>? pointerAxisModifiers,
     this.physics,
     this.platform,
@@ -257,6 +283,7 @@ class _WrappedScrollBehavior implements ScrollBehavior {
   final ScrollPhysics? physics;
   final TargetPlatform? platform;
   final Set<PointerDeviceKind>? _dragDevices;
+  final MultitouchDragStrategy? multitouchDragStrategy;
   final Set<LogicalKeyboardKey>? _pointerAxisModifiers;
 
   @override
@@ -264,6 +291,11 @@ class _WrappedScrollBehavior implements ScrollBehavior {
 
   @override
   Set<LogicalKeyboardKey> get pointerAxisModifiers => _pointerAxisModifiers ?? delegate.pointerAxisModifiers;
+
+  @override
+  MultitouchDragStrategy getMultitouchDragStrategy(BuildContext context) {
+    return multitouchDragStrategy ?? delegate.getMultitouchDragStrategy(context);
+  }
 
   @override
   Widget buildOverscrollIndicator(BuildContext context, Widget child, ScrollableDetails details) {
@@ -286,6 +318,7 @@ class _WrappedScrollBehavior implements ScrollBehavior {
     bool? scrollbars,
     bool? overscroll,
     Set<PointerDeviceKind>? dragDevices,
+    MultitouchDragStrategy? multitouchDragStrategy,
     Set<LogicalKeyboardKey>? pointerAxisModifiers,
     ScrollPhysics? physics,
     TargetPlatform? platform,
@@ -294,6 +327,7 @@ class _WrappedScrollBehavior implements ScrollBehavior {
       scrollbars: scrollbars ?? this.scrollbars,
       overscroll: overscroll ?? this.overscroll,
       dragDevices: dragDevices ?? this.dragDevices,
+      multitouchDragStrategy: multitouchDragStrategy ?? this.multitouchDragStrategy,
       pointerAxisModifiers: pointerAxisModifiers ?? this.pointerAxisModifiers,
       physics: physics ?? this.physics,
       platform: platform ?? this.platform,
@@ -316,6 +350,7 @@ class _WrappedScrollBehavior implements ScrollBehavior {
         || oldDelegate.scrollbars != scrollbars
         || oldDelegate.overscroll != overscroll
         || !setEquals<PointerDeviceKind>(oldDelegate.dragDevices, dragDevices)
+        || oldDelegate.multitouchDragStrategy != multitouchDragStrategy
         || !setEquals<LogicalKeyboardKey>(oldDelegate.pointerAxisModifiers, pointerAxisModifiers)
         || oldDelegate.physics != physics
         || oldDelegate.platform != platform

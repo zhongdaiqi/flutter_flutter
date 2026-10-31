@@ -1122,7 +1122,7 @@ void main() {
       fileSystem = MemoryFileSystem.test(style: FileSystemStyle.windows);
     });
 
-    testUsingContext('choses the install with the latest version', () {
+    testUsingContext('chooses the install with the latest version', () {
       const List<String> versions = <String> [
         '4.0',
         '2022.0',
@@ -1167,7 +1167,7 @@ void main() {
       ProcessManager: () => FakeProcessManager.any(),
     });
 
-    testUsingContext('choses install with lexicographically greatest directory if no installs have known versions', () {
+    testUsingContext('chooses install with lexicographically greatest directory if no installs have known versions', () {
       const List<String> versions = <String> [
         'Apple',
         'Zucchini',
@@ -1190,7 +1190,7 @@ void main() {
       ProcessManager: () => FakeProcessManager.any(),
     });
 
-    testUsingContext('choses install with lexicographically greatest directory if all installs have the same version', () {
+    testUsingContext('chooses install with lexicographically greatest directory if all installs have the same version', () {
       fileSystem.file(r'C:\Users\Dash\AppData\Local\Google\AndroidStudioPreview4.0\.home')
         ..createSync(recursive: true)
         ..writeAsStringSync(r'C:\Program Files\AndroidStudioPreview4.0');
@@ -1299,6 +1299,47 @@ void main() {
       Platform: () => platform,
       FileSystem: () => _FakeFileSystem(),
       FileSystemUtils: () => _FakeFsUtils(),
+      ProcessManager: () => FakeProcessManager.any(),
+    });
+
+    testUsingContext('Can find Android Studio 2020.3 bundled Java version on Linux', () {
+      const String studioHomeFilePath = '$homeLinux/.cache/Google/AndroidStudio2020.3/.home';
+      const String studioInstallPath = '$homeLinux/AndroidStudio';
+
+      globals.fs.file(studioHomeFilePath)
+        ..createSync(recursive: true)
+        ..writeAsStringSync(studioInstallPath);
+
+      globals.fs.directory(studioInstallPath).createSync();
+
+      final AndroidStudio studio = AndroidStudio.allInstalled().single;
+
+      expect(studio.javaPath, equals('$studioInstallPath/jre'));
+    }, overrides: <Type, Generator>{
+      FileSystem: () => fileSystem,
+      FileSystemUtils: () => fsUtils,
+      Platform: () => linuxPlatform,
+      ProcessManager: () => FakeProcessManager.any(),
+    });
+
+    testUsingContext('Can find Android Studio 2022.1 bundled Java version on Linux', () {
+      const String studioHomeFilePath =
+          '$homeLinux/.cache/Google/AndroidStudio2022.1/.home';
+      const String studioInstallPath = '$homeLinux/AndroidStudio';
+
+      globals.fs.file(studioHomeFilePath)
+        ..createSync(recursive: true)
+        ..writeAsStringSync(studioInstallPath);
+
+      globals.fs.directory(studioInstallPath).createSync();
+
+      final AndroidStudio studio = AndroidStudio.allInstalled().single;
+
+      expect(studio.javaPath, equals('$studioInstallPath/jbr'));
+    }, overrides: <Type, Generator>{
+      FileSystem: () => fileSystem,
+      FileSystemUtils: () => fsUtils,
+      Platform: () => linuxPlatform,
       ProcessManager: () => FakeProcessManager.any(),
     });
   });
