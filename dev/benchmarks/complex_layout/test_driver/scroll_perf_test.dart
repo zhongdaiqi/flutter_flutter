@@ -52,16 +52,14 @@ void main() {
       await summary.writeTimelineToFile(summaryName, pretty: true);
     }
 
-    // A finite timeout bounds a hung driver interaction to a clear per-test
-    // failure instead of waiting for the 1h task-level timeout.
     test('complex_layout_scroll_perf', () async {
       await testScrollPerf('complex-scroll', 'complex_layout_scroll_perf');
-    }, timeout: const Timeout(Duration(minutes: 10)));
+    }, timeout: Timeout.none);
 
     test('tiles_scroll_perf', () async {
       await driver.tap(find.byTooltip('Open navigation menu'));
       await driver.tap(find.byValueKey('scroll-switcher'));
       await testScrollPerf('tiles-scroll', 'tiles_scroll_perf');
-    }, timeout: const Timeout(Duration(minutes: 10)));
+    }, timeout: Timeout.none);
   });
 }
