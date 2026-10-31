@@ -135,10 +135,7 @@ void main() {
 
       test('throws when pid not found', () async {
         FakeOhosDevice.outputMap = <String, String>{'pidof com.example.app': ''};
-        await expectLater(
-          device.getMemoryStats('com.example.app'),
-          throwsA(isA<Exception>()),
-        );
+        await expectLater(device.getMemoryStats('com.example.app'), throwsA(isA<Exception>()));
       });
 
       test('throws when Total not found in output', () async {
@@ -146,10 +143,7 @@ void main() {
           'pidof com.example.app': '1234',
           'hidumper --mem 1234': 'no data',
         };
-        await expectLater(
-          device.getMemoryStats('com.example.app'),
-          throwsA(isA<Exception>()),
-        );
+        await expectLater(device.getMemoryStats('com.example.app'), throwsA(isA<Exception>()));
       });
     });
 

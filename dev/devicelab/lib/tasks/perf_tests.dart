@@ -2405,7 +2405,8 @@ class MemoryTest {
       // it here instead of crashing with a null type cast.
       throw Exception(
         'Memory snapshot incomplete: start total_kb=$startKb, end total_kb=$endKb '
-        '(device memory stats unavailable for "$package")');
+        '(device memory stats unavailable for "$package")',
+      );
     }
     _startMemory.add(startKb);
     _endMemory.add(endKb);
@@ -2452,8 +2453,7 @@ class DevToolsMemoryTest {
         if (sample['adb_memoryInfo'] != null) {
           // On OHOS the memoryInfo map may lack 'Total'; skip such samples
           // instead of crashing on a null type cast.
-          final int? adbTotal =
-              (sample['adb_memoryInfo'] as Map<String, dynamic>)['Total'] as int?;
+          final int? adbTotal = (sample['adb_memoryInfo'] as Map<String, dynamic>)['Total'] as int?;
           if (adbTotal != null) {
             maxAdbTotal = math.max(maxAdbTotal, adbTotal);
           }

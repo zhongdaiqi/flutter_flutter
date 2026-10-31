@@ -11,7 +11,8 @@ Future<void> main() => driver.integrationDriver(
     if (data == null || data['performance'] == null) {
       throw StateError(
         'e2e run produced no performance data; the app-side test likely failed. '
-        'data=$data');
+        'data=$data',
+      );
     }
     await driver.writeResponseData(
       data['performance'] as Map<String, dynamic>,

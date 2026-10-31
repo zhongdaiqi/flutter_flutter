@@ -1536,7 +1536,8 @@ class OhosDevice extends Device {
       // MemoryTest.recordEnd. Fail with the actual reason instead.
       throw Exception(
         'getMemoryStats: no pid for "$packageName" (pidof output: "$pidOutput"). '
-        'Is the app installed and still running?');
+        'Is the app installed and still running?',
+      );
     }
     final String output = await hdcShellEval('hidumper', <String>['--mem', pid]);
     final Match? match = RegExp(r'^\s*Total\s+(\d+)\s', multiLine: true).firstMatch(output);
@@ -1545,7 +1546,8 @@ class OhosDevice extends Device {
     }
     throw Exception(
       'getMemoryStats: failed to parse "hidumper --mem $pid" output for '
-      '"$packageName": expected a "Total <number> kB" line. Output:\n$output');
+      '"$packageName": expected a "Total <number> kB" line. Output:\n$output',
+    );
   }
 
   @override
