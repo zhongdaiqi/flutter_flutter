@@ -59,13 +59,13 @@ export default function TextUtilsTest() {
 
     it('getOffsetAfter_returns_next_offset_for_ASCII_text', Level.LEVEL0, () => {
       const text = 'hello';
-      expect(FlutterTextUtils.getOffsetAfter(text, 0) > 0).assertEqual(true);
+      expect(FlutterTextUtils.getOffsetAfter(text, 0)).assertEqual(1);
       expect(FlutterTextUtils.getOffsetAfter(text, 4)).assertEqual(5);
     });
 
     it('getOffsetAfter_handles_emoji_surrogate_pairs', Level.LEVEL1, () => {
       const text = String.fromCodePoint(0x1F600) + 'b';
-      expect(FlutterTextUtils.getOffsetAfter(text, 0) > 0).assertEqual(true);
+      expect(FlutterTextUtils.getOffsetAfter(text, 0)).assertEqual(2);
     });
 
     it('getOffsetAfter_returns_length_at_last_position', Level.LEVEL0, () => {
@@ -81,14 +81,14 @@ export default function TextUtilsTest() {
 
     it('getOffsetAfter_handles_single_character', Level.LEVEL0, () => {
       const text = 'a';
-      expect(FlutterTextUtils.getOffsetAfter(text, 0) > 0).assertEqual(true);
+      expect(FlutterTextUtils.getOffsetAfter(text, 0)).assertEqual(1);
     });
 
     it('getOffsetAfter_handles_multiple_emojis', Level.LEVEL1, () => {
       const emoji1 = String.fromCodePoint(0x1F600);
       const emoji2 = String.fromCodePoint(0x1F601);
       const text = emoji1 + emoji2;
-      expect(FlutterTextUtils.getOffsetAfter(text, 0) > 0).assertEqual(true);
+      expect(FlutterTextUtils.getOffsetAfter(text, 0)).assertEqual(2);
     });
 
     it('getOffsetAfter_handles_emoji_in_middle', Level.LEVEL1, () => {
