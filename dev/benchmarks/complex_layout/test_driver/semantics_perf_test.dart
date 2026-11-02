@@ -50,6 +50,11 @@ void main() {
 
       await driver.forceGC();
 
+      // Normalize the app-side semantics state before measuring: semantics
+      // may already be on (left by an earlier run or enabled by the platform),
+      // which would make the toggle below a no-op and fail the precondition.
+      await driver.setSemantics(false);
+
       final Timeline timeline = await driver.traceAction(() async {
         expect(
           await driver.setSemantics(true),
