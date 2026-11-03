@@ -30,6 +30,9 @@ void main() {
 
       await driver.forceGC();
 
+      // --trace-startup is not delivered on this platform, so nothing useful
+      // is recorded before traceAction; use the default clear + action
+      // window instead of retaining a full bounded ring buffer.
       final Timeline timeline = await driver.traceAction(() async {
         // Find the scrollable stock list
         final SerializableFinder list = find.byValueKey(listKey);
@@ -46,7 +49,7 @@ void main() {
           await driver.scroll(list, 0.0, 300.0, const Duration(milliseconds: 300));
           await Future<void>.delayed(const Duration(milliseconds: 500));
         }
-      }, retainPriorEvents: true);
+      });
 
       final TimelineSummary summary = TimelineSummary.summarize(timeline);
       await summary.writeTimelineToFile(summaryName, pretty: true);
