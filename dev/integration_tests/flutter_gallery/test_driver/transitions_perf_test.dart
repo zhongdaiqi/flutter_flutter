@@ -202,21 +202,31 @@ void main([List<String> args = const <String>[]]) {
 
     test('all demos', () async {
       // Collect timeline data for just a limited set of demos to avoid OOMs.
-      final Timeline timeline = await driver.traceAction(
-        () async {
-          if (hybrid) {
-            await driver.requestData('profileDemos');
-          } else {
-            await runDemos(kProfiledDemos, driver);
-          }
-        },
-        streams: const <TimelineStream>[
-          TimelineStream.dart,
-          TimelineStream.embedder,
-          TimelineStream.gc,
-        ],
-        retainPriorEvents: true,
-      );
+      //
+      // Trace demos one at a time and merge the segments: without
+      // --trace-startup the VM records into a bounded ring buffer, so a
+      // single tracing session over all demos silently evicts early events.
+      final List<Map<String, dynamic>> allEvents = <Map<String, dynamic>>[];
+      for (final String demo in kProfiledDemos) {
+        final Timeline segment = await driver.traceAction(
+          () async {
+            if (hybrid) {
+              await driver.requestData('profileDemo:$demo');
+            } else {
+              await runDemos(<String>[demo], driver);
+            }
+          },
+          streams: const <TimelineStream>[
+            TimelineStream.dart,
+            TimelineStream.embedder,
+            TimelineStream.gc,
+          ],
+        );
+        allEvents.addAll(
+          List<Map<String, dynamic>>.from(segment.json['traceEvents'] as List<dynamic>),
+        );
+      }
+      final Timeline timeline = Timeline.fromJson(<String, dynamic>{'traceEvents': allEvents});
 
       // Save the duration (in microseconds) of the first timeline Frame event
       // that follows a 'Start Transition' event. The Gallery app adds a
