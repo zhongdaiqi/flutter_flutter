@@ -350,6 +350,12 @@ mac_x86_build_steps:
     args: ["engine/src/flutter/testing/testing.gni", "s|enable_unittests = current_toolchain == host_toolchain \\|\\| is_fuchsia \\|\\| is_mac|enable_unittests = false|g"]
     required: true
 
+  - name: Patch Logger.swift (mac-x86)
+    script: ci/scripts/replace_in_file.sh
+    description: Replace vsyslog/getVaList for new Apple Swift toolchains
+    args: ["engine/src/flutter/shell/platform/darwin/common/framework/Source/Logger.swift", "s|message\\.withCString { vsyslog(LOG_ALERT, \"%s\", getVaList(\\[$0\\])) }|fputs(message + \"\\\\n\", stderr)|"]
+    required: true
+
   - name: Build Engine Artifacts (mac-x86)
     script: ci/scripts/mac_x86/mac_x86_build.sh
     description: Build host_release + host_debug + 6 ohos gen_snapshot configs in parallel via ./ohos
