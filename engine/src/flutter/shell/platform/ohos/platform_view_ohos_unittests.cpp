@@ -1203,6 +1203,8 @@ TEST_F(PlatformViewOHOSUt, RestoreObservesEarlierRasterCreation) {
 
 TEST_F(PlatformViewOHOSUt,
        RestoreLifecycleRebuildsMissingResourcesAtRestoreLevel) {
+  constexpr int kInitialCreateCount = 1;
+  constexpr int kExpectedCreateCount = 2;
   FlushTasks();
   auto surface = std::make_shared<ReclaimTestSurface>(
       view()->ohos_context_, view()->ohos_surface_,
@@ -1210,13 +1212,13 @@ TEST_F(PlatformViewOHOSUt,
   view()->ohos_surface_ = surface;
   view()->NotifyCreate(MakePvUtWindow(kPvUtHandleA));
   FlushTasks();
-  ASSERT_EQ(surface->create_count, 1);
+  ASSERT_EQ(surface->create_count, kInitialCreateCount);
 
   view()->RunOnRasterAndWait([&] { surface->TeardownOnScreenContext(); });
   ASSERT_EQ(view()->current_reclaim_level_, GpuReclaimLevel::kRestore);
   SendLifecycle("AppLifecycleState.resumed");
   FlushTasks();
-  EXPECT_EQ(surface->create_count, 2);
+  EXPECT_EQ(surface->create_count, kExpectedCreateCount);
   EXPECT_EQ(delegate().schedule_frame_count(), 1);
   view()->RunOnRasterAndWait(
       [&] { EXPECT_TRUE(surface->HasValidOnscreenContext()); });
@@ -1225,7 +1227,7 @@ TEST_F(PlatformViewOHOSUt,
   SendLifecycle("AppLifecycleState.inactive");
   SendLifecycle("AppLifecycleState.resumed");
   FlushTasks();
-  EXPECT_EQ(surface->create_count, 2);
+  EXPECT_EQ(surface->create_count, kExpectedCreateCount);
   EXPECT_EQ(surface->resize_count, 0);
   EXPECT_EQ(surface->teardown_count, teardown_count);
   EXPECT_EQ(delegate().schedule_frame_count(), 1);
