@@ -21,40 +21,42 @@ void main() {
       driver.close();
     });
 
-    Future<void> testScrollPerf(String listKey, String summaryName) async {
-      // The slight initial delay avoids starting the timing during a
-      // period of increased load on the device. Without this delay, the
-      // benchmark has greater noise.
-      // See: https://github.com/flutter/flutter/issues/19434
-      await Future<void>.delayed(const Duration(milliseconds: 250));
+    Future<void> scrollAction(String listKey) async {
+      final SerializableFinder list = find.byValueKey(listKey);
+      expect(list, isNotNull);
 
-      // --trace-startup is not delivered on this platform, so nothing useful
-      // is recorded before traceAction; use the default clear + action
-      // window instead of retaining a full bounded ring buffer.
-      final Timeline timeline = await driver.traceAction(() async {
-        // Find the scrollable stock list
-        final SerializableFinder list = find.byValueKey(listKey);
-        expect(list, isNotNull);
+      for (int i = 0; i < 5; i += 1) {
+        await driver.scroll(list, 0.0, -300.0, const Duration(milliseconds: 300));
+        await Future<void>.delayed(const Duration(milliseconds: 500));
+      }
 
-        // Scroll down
-        for (int i = 0; i < 5; i += 1) {
-          await driver.scroll(list, 0.0, -300.0, const Duration(milliseconds: 300));
-          await Future<void>.delayed(const Duration(milliseconds: 500));
-        }
-
-        // Scroll up
-        for (int i = 0; i < 5; i += 1) {
-          await driver.scroll(list, 0.0, 300.0, const Duration(milliseconds: 300));
-          await Future<void>.delayed(const Duration(milliseconds: 500));
-        }
-      });
-
-      final TimelineSummary summary = TimelineSummary.summarize(timeline);
-      await summary.writeTimelineToFile(summaryName, pretty: true);
+      for (int i = 0; i < 5; i += 1) {
+        await driver.scroll(list, 0.0, 300.0, const Duration(milliseconds: 300));
+        await Future<void>.delayed(const Duration(milliseconds: 500));
+      }
     }
 
     test('complex_layout_scroll_perf', () async {
-      await testScrollPerf('complex-scroll-bad', 'complex_layout_scroll_perf');
+      await Future<void>.delayed(const Duration(milliseconds: 250));
+
+      // The VM timeline ring buffer holds ~32k events. With every stream
+      // enabled, the API stream alone fills it within the first ~300ms (one
+      // event per C-API string marshaling call), so every Frame and raster
+      // event of the scroll action is dropped and TimelineSummary finds
+      // nothing to summarize. Record only the streams the summary reads.
+      final Timeline timeline = await driver.traceAction(
+        () => scrollAction('complex-scroll-bad'),
+        streams: const <TimelineStream>[
+          TimelineStream.dart,
+          TimelineStream.embedder,
+          TimelineStream.gc,
+          TimelineStream.isolate,
+          TimelineStream.vm,
+        ],
+      );
+
+      final TimelineSummary summary = TimelineSummary.summarize(timeline);
+      await summary.writeTimelineToFile('complex_layout_scroll_perf', pretty: true);
     }, timeout: Timeout.none);
   });
 }
