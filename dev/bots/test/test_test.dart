@@ -51,6 +51,9 @@ void main() {
         '1.2.3-5.0.pre.12',
         '3.35.8-ohos-0.0.3',
         '3.22.1-ohos-1.0.0',
+        '3.41.9+ohos-1.0.2',
+        '3.41.9+ohos-1.0.4-beta',
+        '3.41.10-ohos-1.0.1-beta',
       ];
       for (final version in valid_versions) {
         final fs.File file = fileSystem.file('version');
@@ -76,6 +79,9 @@ void main() {
         '3.35.8-ohos',
         '3.35.8-ohos-1.0',
         '3.35.8-ohos-1.0.0-',
+        '3.41.9+ohos',
+        '3.41.9+ohos-1.0',
+        '3.41.9+ohos-1.0.4-',
       ];
       for (final version in invalid_versions) {
         final fs.File file = fileSystem.file('version');
