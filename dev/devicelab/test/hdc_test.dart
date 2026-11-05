@@ -133,19 +133,17 @@ void main() {
         expect(stats, <String, dynamic>{'total_kb': 169407});
       });
 
-      test('returns empty when pid not found', () async {
+      test('throws when pid not found', () async {
         FakeOhosDevice.outputMap = <String, String>{'pidof com.example.app': ''};
-        final Map<String, dynamic> stats = await device.getMemoryStats('com.example.app');
-        expect(stats, <String, dynamic>{});
+        await expectLater(device.getMemoryStats('com.example.app'), throwsA(isA<Exception>()));
       });
 
-      test('returns empty when Total not found in output', () async {
+      test('throws when Total not found in output', () async {
         FakeOhosDevice.outputMap = <String, String>{
           'pidof com.example.app': '1234',
           'hidumper --mem 1234': 'no data',
         };
-        final Map<String, dynamic> stats = await device.getMemoryStats('com.example.app');
-        expect(stats, <String, dynamic>{});
+        await expectLater(device.getMemoryStats('com.example.app'), throwsA(isA<Exception>()));
       });
     });
 

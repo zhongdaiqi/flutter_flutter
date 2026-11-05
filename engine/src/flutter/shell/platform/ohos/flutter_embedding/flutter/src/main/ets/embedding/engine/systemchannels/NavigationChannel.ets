@@ -131,12 +131,14 @@ class NavigationCallback implements MethodCallHandler {
         let activity: string = args.get("activity");
         if (activity === undefined) {
           Log.e(NavigationCallback.TAG, "reportNavigatorActivity, incorrect parameter activity");
+          result.success(null);
           break;
         }
 
         let status: string = args.get("status");
         if (status === undefined) {
           Log.e(NavigationCallback.TAG, "reportNavigatorActivity, incorrect parameter status");
+          result.success(null);
           break;
         }
         let navigatorStatus: NavigatorStatus = this.getNavigatorStatusFromValue(status);
@@ -156,6 +158,7 @@ class NavigationCallback implements MethodCallHandler {
             this.reportNavigatorPop(navigatorStatus);
             break;
         }
+        result.success(null);
         break;
       }
       case "routeInformationUpdated":

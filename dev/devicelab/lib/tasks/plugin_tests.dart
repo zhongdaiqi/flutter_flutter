@@ -51,7 +51,10 @@ class PluginTest {
   final bool cocoapodsTransitiveFlutterDependency;
 
   Future<TaskResult> call() async {
-    final Directory tempDir = Directory.systemTemp.createTempSync('flutter_devicelab_plugin_test.');
+    // Keep the temp project on the same filesystem as the flutter checkout
+    // (see devicelabTempRoot): hvigor may otherwise fail with a cross-filesystem
+    // configuration error on Windows multi-drive setups.
+    final Directory tempDir = devicelabTempRoot.createTempSync('flutter_devicelab_plugin_test.');
     // FFI plugins do not have support for `flutter test`.
     // `flutter test` does not do a native build.
     // Supporting `flutter test` would require invoking a native build.

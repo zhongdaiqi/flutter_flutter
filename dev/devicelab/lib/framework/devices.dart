@@ -1531,14 +1531,23 @@ class OhosDevice extends Device {
     final String pidOutput = await hdcShellEval('pidof', <String>[packageName]);
     final String? pid = pidOutput.trim().split(' ').firstOrNull;
     if (pid == null || pid.isEmpty) {
-      return <String, dynamic>{};
+      // Returning an empty map here used to surface later as an opaque
+      // "type 'Null' is not a subtype of type 'int' in type cast" in
+      // MemoryTest.recordEnd. Fail with the actual reason instead.
+      throw Exception(
+        'getMemoryStats: no pid for "$packageName" (pidof output: "$pidOutput"). '
+        'Is the app installed and still running?',
+      );
     }
     final String output = await hdcShellEval('hidumper', <String>['--mem', pid]);
     final Match? match = RegExp(r'^\s*Total\s+(\d+)\s', multiLine: true).firstMatch(output);
     if (match != null) {
       return <String, dynamic>{'total_kb': int.parse(match.group(1)!)};
     }
-    return <String, dynamic>{};
+    throw Exception(
+      'getMemoryStats: failed to parse "hidumper --mem $pid" output for '
+      '"$packageName": expected a "Total <number> kB" line. Output:\n$output',
+    );
   }
 
   @override

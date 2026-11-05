@@ -236,9 +236,23 @@ OHOSShellHolder::OHOSShellHolder(
   );
 
 #if (FLUTTER_RUNTIME_MODE != FLUTTER_RUNTIME_MODE_DEBUG)
-  fml::TaskRunner::RunNowOrPostTask(io_runner, [this, &ui_runner]() {
-    watchdogPair_ = fml::OhosWatchdog::MakeWatchdog(ui_runner);
-  });
+  // HiCollie attributes BUSSINESS_THREAD_BLOCK faults to the thread that
+  // registers the watchdog, so register on the UI thread (the monitored
+  // one) instead of the IO thread. Skip whenever the UI task runner is
+  // merged into the platform thread, at construction (kEnabled) or after
+  // root-isolate launch (kMergeAfterLaunch): HiCollie rejects the platform
+  // thread, a pre-merge TID would misattribute faults, and the system
+  // main-thread watchdog already covers that thread.
+  if (settings.merged_platform_ui_thread !=
+      Settings::MergedPlatformUIThread::kDisabled) {
+    FML_LOG(WARNING)
+        << "FlutterWatchdog: UI thread merged into platform thread; skip "
+           "HiCollie registration";
+  } else {
+    fml::TaskRunner::RunNowOrPostTask(ui_runner, [this, ui_runner]() {
+      watchdogPair_ = fml::OhosWatchdog::MakeWatchdog(ui_runner);
+    });
+  }
 #endif
 
   napi_facade_->SetPlatformTaskRunner(platform_runner);
