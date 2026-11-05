@@ -460,7 +460,7 @@ void main() {
       semantics.dispose();
     });
 
-    testWidgets('Dismissible ModalBarrier includes button in semantic tree on iOS, macOS and android', (WidgetTester tester) async {
+    testWidgets('Dismissible ModalBarrier includes button in semantic tree on supported platforms', (WidgetTester tester) async {
       final SemanticsTester semantics = SemanticsTester(tester);
       await tester.pumpWidget(const Directionality(
         textDirection: TextDirection.ltr,
@@ -483,7 +483,12 @@ void main() {
       expect(semantics, hasSemantics(expectedSemantics, ignoreId: true));
 
       semantics.dispose();
-    }, variant: const TargetPlatformVariant(<TargetPlatform>{ TargetPlatform.iOS, TargetPlatform.macOS, TargetPlatform.android}));
+    }, variant: const TargetPlatformVariant(<TargetPlatform>{
+      TargetPlatform.iOS,
+      TargetPlatform.macOS,
+      TargetPlatform.android,
+      TargetPlatform.ohos,
+    }));
   });
   group('AnimatedModalBarrier', () {
     testWidgets('prevents interactions with widgets behind it', (WidgetTester tester) async {
@@ -877,7 +882,7 @@ void main() {
       semantics.dispose();
     });
 
-    testWidgets('Dismissible AnimatedModalBarrier includes button in semantic tree on iOS, macOS and android', (WidgetTester tester) async {
+    testWidgets('Dismissible AnimatedModalBarrier includes button in semantic tree on supported platforms', (WidgetTester tester) async {
       final SemanticsTester semantics = SemanticsTester(tester);
       await tester.pumpWidget(Directionality(
         textDirection: TextDirection.ltr,
@@ -900,7 +905,12 @@ void main() {
       expect(semantics, hasSemantics(expectedSemantics, ignoreId: true));
 
       semantics.dispose();
-    }, variant: const TargetPlatformVariant(<TargetPlatform>{ TargetPlatform.iOS, TargetPlatform.macOS, TargetPlatform.android}));
+    }, variant: const TargetPlatformVariant(<TargetPlatform>{
+      TargetPlatform.iOS,
+      TargetPlatform.macOS,
+      TargetPlatform.android,
+      TargetPlatform.ohos,
+    }));
   });
 
   group('SemanticsClipper', () {
@@ -931,7 +941,12 @@ void main() {
       expect(semantics, hasSemantics(expectedSemantics, ignoreId: true));
 
       semantics.dispose();
-    }, variant: const TargetPlatformVariant(<TargetPlatform>{ TargetPlatform.iOS, TargetPlatform.macOS, TargetPlatform.android}));
+    }, variant: const TargetPlatformVariant(<TargetPlatform>{
+      TargetPlatform.iOS,
+      TargetPlatform.macOS,
+      TargetPlatform.android,
+      TargetPlatform.ohos,
+    }));
   });
 
   testWidgets('uses default mouse cursor', (WidgetTester tester) async {
