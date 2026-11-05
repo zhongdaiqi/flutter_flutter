@@ -78,6 +78,10 @@ TaskFunction createRoutingTest() {
       final Process drive = await startFlutter(
         'drive',
         options: <String>[
+          // Pin the device: with multiple devices attached the drive command
+          // aborts on device selection even when attaching to a running app.
+          '-d',
+          device.deviceId,
           '--use-existing-app',
           'http://127.0.0.1:$vmServicePort/',
           '--no-keep-app-running',

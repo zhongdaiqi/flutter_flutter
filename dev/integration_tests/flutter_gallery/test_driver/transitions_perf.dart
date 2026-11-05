@@ -26,6 +26,14 @@ Set<String> _unTestedDemos = Set<String>.from(_allDemos);
 class _MessageHandler {
   static LiveWidgetController? controller;
   Future<String> call(String message) async {
+    const String profileDemoPrefix = 'profileDemo:';
+    if (message.startsWith(profileDemoPrefix)) {
+      final String demo = message.substring(profileDemoPrefix.length);
+      controller ??= LiveWidgetController(WidgetsBinding.instance);
+      await runDemos(<String>[demo], controller!);
+      _unTestedDemos.remove(demo);
+      return demo;
+    }
     switch (message) {
       case 'demoNames':
         return const JsonEncoder.withIndent('  ').convert(_allDemos);

@@ -20,6 +20,9 @@ void main() {
     });
 
     test('measure', () async {
+      // --trace-startup is not delivered on this platform, so nothing useful
+      // is recorded before traceAction; use the default clear + action
+      // window instead of retaining a full bounded ring buffer.
       final Timeline timeline = await driver.traceAction(() async {
         await driver.tap(find.text('Material'));
 
@@ -35,7 +38,7 @@ void main() {
           await driver.scroll(demoList, 0.0, 300.0, const Duration(milliseconds: 300));
           await Future<void>.delayed(const Duration(milliseconds: 500));
         }
-      }, retainPriorEvents: true);
+      });
 
       final TimelineSummary summary = TimelineSummary.summarize(timeline);
       await summary.writeTimelineToFile('home_scroll_perf', pretty: true);
