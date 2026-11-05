@@ -17,6 +17,13 @@
 #          daily_memory      -> daily_memory
 #          daily_perf        -> daily_perf
 #          customer          -> customer
+#          mac_arm64_build   -> mac arm64 build & package; add --publish to
+#                               also upload to OBS (default: no upload)
+#          mac_x86_build     -> mac x86 build & package; add --publish to
+#                               also upload to OBS (default: no upload)
+#          windows_build     -> windows x64 build & package; add --publish to
+#                               also upload to OBS (default: no upload);
+#                               --no-sync skips the sync step
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 RUNNER="$SCRIPT_DIR/scripts/runner.py"
@@ -25,7 +32,7 @@ STAGE="$1"
 
 if [[ -z "$STAGE" ]]; then
     echo "[ERROR] Stage not provided"
-    echo "Usage: $0 <prepare|compile|test|integration_gate|daily_integration|daily_memory|daily_perf|customer>"
+    echo "Usage: $0 <prepare|compile|test|integration_gate|daily_integration|daily_memory|daily_perf|customer|mac_arm64_build|mac_x86_build|windows_build>"
     exit 1
 fi
 
@@ -54,9 +61,79 @@ case "$STAGE" in
     customer)
         STAGE="customer"
         ;;
+    mac_arm64_build|mac-arm64-build)
+        STAGE="mac_arm64_build"
+        # One shared log dir per pipeline run: every mac_arm64 step writes
+        # its logs into engine/outputs/mac_arm64/<run-id>/
+        MAC_ARM64_RUN_ID="$(date +%Y%m%d-%H%M%S)"
+        export MAC_ARM64_RUN_ID
+        # Publishing is opt-in: only --publish uploads to OBS. Always set the
+        # flag explicitly so a stale value in the environment cannot leak in.
+        MAC_ARM64_PUBLISH=0
+        for arg in "${@:2}"; do
+            case "$arg" in
+                --publish)
+                    MAC_ARM64_PUBLISH=1
+                    ;;
+                *)
+                    echo "[ERROR] Unknown option '$arg' (only --publish is supported)"
+                    exit 1
+                    ;;
+            esac
+        done
+        export MAC_ARM64_PUBLISH
+        ;;
+    mac_x86_build|mac-x86-build)
+        STAGE="mac_x86_build"
+        # One shared log dir per pipeline run: every mac_x86 step writes
+        # its logs into engine/outputs/mac_x86/<run-id>/
+        MAC_X86_RUN_ID="$(date +%Y%m%d-%H%M%S)"
+        export MAC_X86_RUN_ID
+        # Publishing is opt-in: only --publish uploads to OBS. Always set the
+        # flag explicitly so a stale value in the environment cannot leak in.
+        MAC_X86_PUBLISH=0
+        for arg in "${@:2}"; do
+            case "$arg" in
+                --publish)
+                    MAC_X86_PUBLISH=1
+                    ;;
+                *)
+                    echo "[ERROR] Unknown option '$arg' (only --publish is supported)"
+                    exit 1
+                    ;;
+            esac
+        done
+        export MAC_X86_PUBLISH
+        ;;
+    windows_build|windows-build)
+        STAGE="windows_build"
+        # One shared log dir per pipeline run: every windows step writes
+        # its logs into engine/outputs/windows/<run-id>/
+        WINDOWS_RUN_ID="$(date +%Y%m%d-%H%M%S)"
+        export WINDOWS_RUN_ID
+        # Publishing is opt-in: only --publish uploads to OBS. Always set
+        # the flags explicitly so a stale value cannot leak in.
+        WINDOWS_PUBLISH=0
+        WINDOWS_NO_SYNC=0
+        for arg in "${@:2}"; do
+            case "$arg" in
+                --publish)
+                    WINDOWS_PUBLISH=1
+                    ;;
+                --no-sync)
+                    WINDOWS_NO_SYNC=1
+                    ;;
+                *)
+                    echo "[ERROR] Unknown option '$arg' (only --publish and --no-sync are supported)"
+                    exit 1
+                    ;;
+            esac
+        done
+        export WINDOWS_PUBLISH WINDOWS_NO_SYNC
+        ;;
     *)
         echo "[ERROR] Unknown stage: $STAGE"
-        echo "Usage: $0 <prepare|compile|test|integration_gate|daily_integration|daily_memory|daily_perf|customer>"
+        echo "Usage: $0 <prepare|compile|test|integration_gate|daily_integration|daily_memory|daily_perf|customer|mac_arm64_build|mac_x86_build|windows_build>"
         exit 1
         ;;
 esac
