@@ -1264,7 +1264,7 @@ Future<String> _getDiffBaseRevision(ProcessManager processManager, Directory rep
       break;
     }
   }
-  final String baseBranch = Platform.environment['TARGET_BRANCH'] ?? 'oh-3.41.9-dev';
+  final String baseBranch = Platform.environment['TARGET_BRANCH'] ?? 'oh-3.41.9-release';
   await _runGit(<String>['fetch', upstream, baseBranch], processRunner);
   var result = '';
   try {
