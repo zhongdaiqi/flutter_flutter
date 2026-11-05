@@ -87,7 +87,7 @@ class DartFormatChecker {
         upstream = 'origin';
       }
     }
-    await _runGit(<String>['fetch', upstream, 'oh-3.44.9-beta'], processRunner);
+    await _runGit(<String>['fetch', upstream, 'oh-3.44.9-release'], processRunner);
     var result = '';
     try {
       // This is the preferred command to use, but developer checkouts often do
