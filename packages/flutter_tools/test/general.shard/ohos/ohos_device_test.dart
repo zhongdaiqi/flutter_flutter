@@ -149,6 +149,145 @@ void main() {
       ProcessManager: () => FakeProcessManager.any(),
     },
   );
+
+  testUsingContext(
+    'startApp forwards trace-systrace to the ability want',
+    () async {
+      final processManager = FakeProcessManager.list(<FakeCommand>[
+        // targetPlatform: param get (sync)
+        const FakeCommand(
+          command: <String>['hdc', '-t', '123', 'shell', 'param', 'get'],
+          stdout: 'const.product.cpu.abilist=arm64-v8a',
+        ),
+        // stopApp: aa detach (async)
+        const FakeCommand(
+          command: <String>['hdc', '-t', '123', 'shell', 'aa', 'detach', '-b', 'com.example.test'],
+        ),
+        // stopApp: aa force-stop (sync)
+        const FakeCommand(
+          command: <String>['hdc', '-t', '123', 'shell', 'aa', 'force-stop', 'com.example.test'],
+        ),
+        // isAppInstalled: bm dump (sync)
+        const FakeCommand(
+          command: <String>['hdc', '-t', '123', 'shell', '"bm dump -n com.example.test"'],
+          stdout: '/bin/sh: bm dump -n com.example.test: inaccessible or not found',
+        ),
+        // installApp: rm -rf
+        const FakeCommand(
+          command: <String>[
+            'hdc',
+            '-t',
+            '123',
+            'shell',
+            'rm',
+            '-rf',
+            'data/local/tmp/flutterInstallTemp',
+          ],
+        ),
+        // installApp: mkdir
+        const FakeCommand(
+          command: <String>[
+            'hdc',
+            '-t',
+            '123',
+            'shell',
+            'mkdir',
+            'data/local/tmp/flutterInstallTemp',
+          ],
+        ),
+        // installApp: file send
+        const FakeCommand(
+          command: <String>[
+            'hdc',
+            '-t',
+            '123',
+            'file',
+            'send',
+            '/test.hap',
+            'data/local/tmp/flutterInstallTemp',
+          ],
+        ),
+        // installApp: bm install
+        const FakeCommand(
+          command: <String>[
+            'hdc',
+            '-t',
+            '123',
+            'shell',
+            'bm',
+            'install',
+            '-p',
+            'data/local/tmp/flutterInstallTemp',
+          ],
+          stdout: 'install bundle successfully.',
+        ),
+        // installApp: rm -rf cleanup
+        const FakeCommand(
+          command: <String>[
+            'hdc',
+            '-t',
+            '123',
+            'shell',
+            'rm',
+            '-rf',
+            'data/local/tmp/flutterInstallTemp',
+          ],
+        ),
+        // clearLogs before starting the app.
+        const FakeCommand(command: <String>['hdc', '-t', '123', 'shell', 'hilog', '-r']),
+        // HdcLogReader stream; emits nothing so VM service discovery fails.
+        const FakeCommand(command: <String>['hdc', '-t', '123', 'shell', 'hilog', '-v', 'time']),
+        // aa start WITH --pb trace-systrace true.
+        // The --pb trace-systrace argument below is only forwarded when
+        // DebuggingOptions.traceSystrace is set, i.e. `flutter run
+        // --trace-systrace`.
+        const FakeCommand(
+          command: <String>[
+            'hdc',
+            '-t',
+            '123',
+            'shell',
+            'aa',
+            'start',
+            '-a',
+            'EntryAbility',
+            '-b',
+            'com.example.test',
+            '--pb',
+            'trace-systrace',
+            'true',
+          ],
+          stdout: 'start ability successfully.',
+        ),
+      ]);
+
+      final device = OhosDevice(
+        '123',
+        logger: BufferLogger.test(),
+        processManager: processManager,
+        ohosSdk: _FakeHarmonySdk(),
+      );
+
+      final OhosHap hap = _createTestHap();
+
+      final LaunchResult launchResult = await device.startApp(
+        hap,
+        prebuiltApplication: true,
+        debuggingOptions: DebuggingOptions.enabled(BuildInfo.debug, traceSystrace: true),
+        platformArgs: <String, dynamic>{},
+      );
+
+      // The launch fails because the fake hilog reader emits no VM service
+      // URI, but the aa start command above has already been asserted by
+      // matching the exact expected command sequence.
+      expect(launchResult.started, false);
+      expect(processManager, hasNoRemainingExpectations);
+    },
+    overrides: <Type, Generator>{
+      FileSystem: () => MemoryFileSystem.test(),
+      ProcessManager: () => FakeProcessManager.any(),
+    },
+  );
 }
 
 OhosHap _createTestHap() {
