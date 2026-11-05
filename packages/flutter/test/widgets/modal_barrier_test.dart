@@ -467,7 +467,7 @@ void main() {
     });
 
     testWidgets(
-      'Dismissible ModalBarrier includes button in semantic tree on iOS, macOS and android',
+      'Dismissible ModalBarrier includes button in semantic tree on supported platforms',
       (WidgetTester tester) async {
         final semantics = SemanticsTester(tester);
         await tester.pumpWidget(
@@ -496,6 +496,7 @@ void main() {
         TargetPlatform.iOS,
         TargetPlatform.macOS,
         TargetPlatform.android,
+        TargetPlatform.ohos,
       }),
     );
   });
@@ -914,7 +915,7 @@ void main() {
     });
 
     testWidgets(
-      'Dismissible AnimatedModalBarrier includes button in semantic tree on iOS, macOS and android',
+      'Dismissible AnimatedModalBarrier includes button in semantic tree on supported platforms',
       (WidgetTester tester) async {
         final semantics = SemanticsTester(tester);
         await tester.pumpWidget(
@@ -942,6 +943,7 @@ void main() {
         TargetPlatform.iOS,
         TargetPlatform.macOS,
         TargetPlatform.android,
+        TargetPlatform.ohos,
       }),
     );
   });
@@ -984,6 +986,7 @@ void main() {
         TargetPlatform.iOS,
         TargetPlatform.macOS,
         TargetPlatform.android,
+        TargetPlatform.ohos,
       }),
     );
   });

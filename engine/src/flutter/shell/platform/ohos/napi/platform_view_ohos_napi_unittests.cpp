@@ -252,6 +252,31 @@ TEST_F(PlatformViewOHOSNapiTest, PlatformMessageCalloutsComplete) {
   });
 }
 
+// Regression test for the napi_create_int64 failure branch: when encoding the
+// reponse_id (or the first-frame flag) fails, the callout must close the
+// handle scope and return without invoking JS — no napi_call_function at all.
+TEST_F(PlatformViewOHOSNapiTest, CreateInt64FailureSkipsJsCallInViewCallbacks) {
+  PlatformViewOHOSNapi::env_ = FakeNapiEnv();
+  PlatformViewOHOSNapi facade(nullptr);
+  StubNapiFailCreateInt64(kStubFailure);
+  EXPECT_NO_FATAL_FAILURE(
+      { facade.FlutterViewHandlePlatformMessageResponse(9, nullptr); });
+  StubNapiFailCreateInt64(kStubFailure);
+  EXPECT_NO_FATAL_FAILURE(facade.FlutterViewOnFirstFrame(true));
+  EXPECT_EQ(StubNapiCallFunctionCount(), 0u);
+}
+
+// Regression test for the napi_create_string_utf8 failure branch: when
+// encoding the locale fails, SetApplicationLocale must close the handle scope
+// and return without invoking JS — no napi_call_function at all.
+TEST_F(PlatformViewOHOSNapiTest, SetLocaleCreateStringUtf8FailureSkipsJsCall) {
+  PlatformViewOHOSNapi::env_ = FakeNapiEnv();
+  PlatformViewOHOSNapi facade(nullptr);
+  StubNapiFailCreateStringUtf8(kStubFailure, 0);
+  EXPECT_NO_FATAL_FAILURE(facade.FlutterViewSetApplicationLocale("zh-Hans-CN"));
+  EXPECT_EQ(StubNapiCallFunctionCount(), 0u);
+}
+
 TEST_F(PlatformViewOHOSNapiTest, InputEventCalloutsCompleteAndNullPacket) {
   PlatformViewOHOSNapi::env_ = FakeNapiEnv();
   PlatformViewOHOSNapi facade(nullptr);
@@ -272,6 +297,31 @@ TEST_F(PlatformViewOHOSNapiTest, InputEventCalloutsCompleteAndNullPacket) {
     StubNapiFailCallFunction(kStubFailure);
     facade.FlutterViewOnAxisEvent(packets, 2);
   });
+}
+
+// Regression test for the napi_create_array / napi_create_string_utf8 failure
+// branches in the input-event callouts: when building the packet array fails,
+// the callout must close the handle scope and return without invoking JS —
+// no napi_call_function at all.
+TEST_F(PlatformViewOHOSNapiTest, InputEventCreateFailureSkipsJsCall) {
+  PlatformViewOHOSNapi::env_ = FakeNapiEnv();
+  PlatformViewOHOSNapi facade(nullptr);
+  auto packets = std::shared_ptr<std::string[]>(new std::string[2]);
+  packets[0] = "{\"change\":0}";
+  packets[1] = "{\"change\":1}";
+  StubNapiFailCreateArray(kStubFailure);
+  EXPECT_NO_FATAL_FAILURE(facade.FlutterViewOnTouchEvent(packets, 2));
+  StubNapiFailCreateArray(kStubFailure);
+  EXPECT_NO_FATAL_FAILURE(facade.FlutterViewOnMouseEvent(packets, 2));
+  StubNapiFailCreateArray(kStubFailure);
+  EXPECT_NO_FATAL_FAILURE(facade.FlutterViewOnAxisEvent(packets, 2));
+  StubNapiFailCreateStringUtf8(kStubFailure, 0);
+  EXPECT_NO_FATAL_FAILURE(facade.FlutterViewOnTouchEvent(packets, 2));
+  StubNapiFailCreateStringUtf8(kStubFailure, 0);
+  EXPECT_NO_FATAL_FAILURE(facade.FlutterViewOnMouseEvent(packets, 2));
+  StubNapiFailCreateStringUtf8(kStubFailure, 0);
+  EXPECT_NO_FATAL_FAILURE(facade.FlutterViewOnAxisEvent(packets, 2));
+  EXPECT_EQ(StubNapiCallFunctionCount(), 0u);
 }
 
 TEST_F(PlatformViewOHOSNapiTest, CalloutsInvokeJsMethodFailureBranches) {

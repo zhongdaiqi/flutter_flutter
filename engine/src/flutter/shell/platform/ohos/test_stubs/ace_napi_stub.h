@@ -18,6 +18,7 @@ void StubNapiSetValuetype(napi_valuetype t);
 void StubNapiSetString(const char* s);
 void StubNapiFailStringUtf8(napi_status s, int skip);
 void StubNapiFailCreateStringUtf8(napi_status s, int skip);
+void StubNapiFailCreateArray(napi_status s);
 void StubNapiFailCreateInt64(napi_status s);
 void StubNapiSetArrayLength(uint32_t n);
 void StubNapiFailArrayLength(napi_status s);
@@ -48,6 +49,8 @@ void StubNapiFailUvEventLoop(napi_status s);
 void StubNapiRunLastAsyncWork(void);
 void StubNapiFailUnwrap(napi_status s);
 void StubNapiFailCallFunction(napi_status s);
+// Number of napi_call_function invocations since the last StubNapiReset().
+size_t StubNapiCallFunctionCount(void);
 void StubNapiFailNamedProperty(napi_status s);
 void StubNapiFailCbInfo(napi_status s);
 void StubNapiSetLastErrorNull(int enable);
