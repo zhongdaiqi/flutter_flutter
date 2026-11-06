@@ -590,7 +590,7 @@ export default function PlatformViewsControllerTest() {
       const ctl = new PlatformViewsController();
       const params: Record<string, Any> = { 'width': 10, 'height': 20, 'left': 0, 'top': 0 };
       const transform: Array<number> = [0, 1, -1, 0, 100, 50];
-      (ctl as Any).applyTransformOffset(5, 10, params, transform);
+      (ctl as Any).applyTransformOffset(params, transform);
       expect(params['left']).assertEqual(100);
       expect(params['top']).assertEqual(40);
       const at: Array<number> = params['affineTransform'] as Array<number>;
@@ -606,7 +606,7 @@ export default function PlatformViewsControllerTest() {
       const ctl = new PlatformViewsController();
       const params: Record<string, Any> = { 'width': 10, 'height': 20, 'left': 0, 'top': 0 };
       const transform: Array<number> = [1, 0, 0, 1, 30, 60];
-      (ctl as Any).applyTransformOffset(5, 10, params, transform);
+      (ctl as Any).applyTransformOffset(params, transform);
       expect(params['left']).assertEqual(30);
       expect(params['top']).assertEqual(60);
       const at: Array<number> = params['affineTransform'] as Array<number>;
@@ -618,23 +618,23 @@ export default function PlatformViewsControllerTest() {
       expect(at[5]).assertEqual(-60);
     });
 
-    it('non-finite coefficients fall back to plain offset and clear the transform', 0, () => {
+    it('non-finite coefficients keep the current position and clear the transform', 0, () => {
       const ctl = new PlatformViewsController();
-      const params: Record<string, Any> = { 'width': 10, 'height': 20, 'left': 0, 'top': 0 };
+      const params: Record<string, Any> = { 'width': 10, 'height': 20, 'left': 4, 'top': 7 };
       const transform: Array<number> = [Number.NaN, 0, 0, 1, 30, 60];
-      (ctl as Any).applyTransformOffset(8, 9, params, transform);
-      expect(params['left']).assertEqual(9);
-      expect(params['top']).assertEqual(8);
+      (ctl as Any).applyTransformOffset(params, transform);
+      expect(params['left']).assertEqual(4);
+      expect(params['top']).assertEqual(7);
       expect(params['affineTransform']).assertUndefined();
     });
 
-    it('singular matrix falls back to plain offset and clears the transform', 0, () => {
+    it('singular matrix positions by the affine translation and clears the transform', 0, () => {
       const ctl = new PlatformViewsController();
       const params: Record<string, Any> = { 'width': 10, 'height': 20, 'left': 0, 'top': 0 };
       const transform: Array<number> = [1, 2, 2, 4, 30, 60];
-      (ctl as Any).applyTransformOffset(8, 9, params, transform);
-      expect(params['left']).assertEqual(9);
-      expect(params['top']).assertEqual(8);
+      (ctl as Any).applyTransformOffset(params, transform);
+      expect(params['left']).assertEqual(30);
+      expect(params['top']).assertEqual(60);
       expect(params['affineTransform']).assertUndefined();
     });
 
@@ -642,7 +642,7 @@ export default function PlatformViewsControllerTest() {
       const ctl = new PlatformViewsController();
       const params: Record<string, Any> = { 'width': 0, 'height': 0, 'left': 0, 'top': 0 };
       const transform: Array<number> = [-1, 0, 0, 1, 30, 60];
-      (ctl as Any).applyTransformOffset(5, 10, params, transform);
+      (ctl as Any).applyTransformOffset(params, transform);
       expect(params['left']).assertEqual(30);
       expect(params['top']).assertEqual(60);
       const at: Array<number> = params['affineTransform'] as Array<number>;
@@ -656,7 +656,7 @@ export default function PlatformViewsControllerTest() {
       const ctl = new PlatformViewsController();
       const params: Record<string, Any> = { 'width': 10, 'height': 20, 'left': 0, 'top': 0 };
       const transform: Array<number> = [-1, 0, 0, 1, 30, 60];
-      (ctl as Any).applyTransformOffset(5, 10, params, transform);
+      (ctl as Any).applyTransformOffset(params, transform);
       expect(params['left']).assertEqual(20);
       expect(params['top']).assertEqual(60);
     });
@@ -673,12 +673,13 @@ export default function PlatformViewsControllerTest() {
       expect(params['affineTransform']).assertUndefined();
     });
 
-    it('offset with 6-element transform delegates to applyTransformOffset', 0, () => {
+    it('transform with 6-element affine delegates to applyTransformOffset', 0, () => {
       const ctl = new PlatformViewsController();
       const params: Record<string, Any> = { 'width': 10, 'height': 20 };
       (ctl as Any).viewWrappers.set(1, mkWrapperFor(mkDvModel(params, 'NodeContainer')));
       const transform: Array<number> = [1, 0, 0, 1, 30, 60];
-      ctl.offset(1, 5, 10, transform);
+      ctl.offset(1, 5, 10);
+      ctl.transform(1, transform);
       expect(params['left']).assertEqual(30);
       expect(params['top']).assertEqual(60);
       expect(params['affineTransform'] !== undefined).assertEqual(true);
@@ -688,7 +689,8 @@ export default function PlatformViewsControllerTest() {
       const ctl = new PlatformViewsController();
       const params = mkParamsRecord();
       (ctl as Any).viewWrappers.set(1, mkWrapperFor(mkDvModel(params, 'NodeContainer')));
-      ctl.offset(1, 5, 10, [1, 0]);
+      ctl.offset(1, 5, 10);
+      ctl.transform(1, [1, 0]);
       expect(params['left']).assertEqual(10);
       expect(params['top']).assertEqual(5);
       expect(params['affineTransform']).assertUndefined();

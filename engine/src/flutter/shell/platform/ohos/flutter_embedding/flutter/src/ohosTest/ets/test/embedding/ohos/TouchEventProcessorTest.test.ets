@@ -435,6 +435,30 @@ export default function touchEventProcessorTest() {
       expect(evt.type).assertEqual(1);
       expect(Math.abs(evt.touches[0].x - 25) < 1e-6).assertEqual(true);
     });
+
+    // On windowed devices (e.g. desktops) the packet's screenX/screenY
+    // are window-relative (modal title bar origin) while x/y are
+    // XComponent-relative, so the global fields must be derived from the
+    // local x/y plus the view offset instead of the packet screenX/screenY.
+    it('derives global coordinates from local x/y plus the view offset', Level.LEVEL0, () => {
+      const density: number = display.getDefaultDisplaySync().densityPixels;
+      const strings = mkTouchStrings(density, '0');
+      const evt: CustomTouchEvent = TouchEventProcessor.getInstance().constructCustomTouchEvent(strings, 20, 10);
+      // changed point: local (30, 40) + view offset (10, 20) = (40, 60)
+      expect(Math.abs(evt.changedTouches[0].displayX - 40) < 1e-6).assertEqual(true);
+      expect(Math.abs(evt.changedTouches[0].displayY - 60) < 1e-6).assertEqual(true);
+      expect(Math.abs(evt.changedTouches[0].windowX - 40) < 1e-6).assertEqual(true);
+      expect(Math.abs(evt.changedTouches[0].windowY - 60) < 1e-6).assertEqual(true);
+      expect(Math.abs(evt.changedTouches[0].screenX - 40) < 1e-6).assertEqual(true);
+      expect(Math.abs(evt.changedTouches[0].screenY - 60) < 1e-6).assertEqual(true);
+      // touch point: local (25, 35) + view offset (10, 20) = (35, 55)
+      expect(Math.abs(evt.touches[0].displayX - 35) < 1e-6).assertEqual(true);
+      expect(Math.abs(evt.touches[0].displayY - 55) < 1e-6).assertEqual(true);
+      expect(Math.abs(evt.touches[0].windowX - 35) < 1e-6).assertEqual(true);
+      expect(Math.abs(evt.touches[0].windowY - 55) < 1e-6).assertEqual(true);
+      expect(Math.abs(evt.touches[0].screenX - 35) < 1e-6).assertEqual(true);
+      expect(Math.abs(evt.touches[0].screenY - 55) < 1e-6).assertEqual(true);
+    });
   });
 
   describe('TouchEventProcessor.postTouchEvent', () => {
@@ -660,19 +684,21 @@ export default function touchEventProcessorTest() {
   describe('TouchEventProcessor.hitAndTransform', () => {
     it('checkHitPlatformViewByLocal rejects non-positive bounds', Level.LEVEL1, () => {
       const proc: Any = TouchEventProcessor.getInstance();
+      const density: number = display.getDefaultDisplaySync().densityPixels;
       const params: Record<string, Any> = { 'width': 0, 'height': 100 };
       const ev: Any = { x: 1, y: 1 };
-      const hit: boolean = (proc as Any).checkHitPlatformViewByLocal(ev, params) as boolean;
+      const hit: boolean = (proc as Any).checkHitPlatformViewByLocal(ev, params, density) as boolean;
       expect(hit).assertEqual(false);
     });
 
     it('checkHitPlatformViewByLocal accepts inside and rejects outside', Level.LEVEL1, () => {
       const proc: Any = TouchEventProcessor.getInstance();
+      const density: number = display.getDefaultDisplaySync().densityPixels;
       const params: Record<string, Any> = { 'width': 100, 'height': 50 };
       const inside: Any = { x: 1, y: 1 };
       const outside: Any = { x: -5, y: 1 };
-      const hitIn: boolean = (proc as Any).checkHitPlatformViewByLocal(inside, params) as boolean;
-      const hitOut: boolean = (proc as Any).checkHitPlatformViewByLocal(outside, params) as boolean;
+      const hitIn: boolean = (proc as Any).checkHitPlatformViewByLocal(inside, params, density) as boolean;
+      const hitOut: boolean = (proc as Any).checkHitPlatformViewByLocal(outside, params, density) as boolean;
       expect(hitIn).assertEqual(true);
       expect(hitOut).assertEqual(false);
     });

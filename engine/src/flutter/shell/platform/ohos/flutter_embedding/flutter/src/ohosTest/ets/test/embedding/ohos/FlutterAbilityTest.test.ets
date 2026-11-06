@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 import { describe, expect, it } from '@ohos/hypium';
+import Any from '../../../../../main/ets/plugin/common/Any';
 import { abilityDelegatorRegistry } from '@kit.TestKit';
 import { Configuration, Want } from '@kit.AbilityKit';
 import AbilityConstant from '@ohos.app.ability.AbilityConstant';
@@ -27,7 +28,7 @@ const want: Want = {
   abilityName: 'EntryAbility'
 }
 
-function sleep(time: number) {
+function sleep(time: number): Promise<void> {
   return new Promise<void>((resolve: Function) => setTimeout(resolve, time));
 }
 
@@ -387,6 +388,15 @@ export default function FlutterAbilityTest() {
       let threw = false;
       try { ability.getInitialRoute(); } catch (e) { threw = true; }
       expect(threw).assertEqual(true);
+    });
+
+    it('shouldDestroyEngineWithHost returns true without delegate', 0, () => {
+      const ability = new FlutterAbility();
+      const a: Any = ability;
+      const params: Record<string, Object> = {};
+      const want: Any = { parameters: params };
+      a['launchWant'] = want;
+      expect(ability.shouldDestroyEngineWithHost()).assertEqual(true);
     });
 
     it('shouldDestroyEngineWithHost tolerates errors without delegate', 0, () => {

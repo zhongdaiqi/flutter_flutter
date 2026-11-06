@@ -84,6 +84,9 @@ export default class FlutterEntry implements Host {
       //this.flutterView?.preDraw();
       //Log.d(TAG, "XComponent aboutToAppear predraw");
       Log.i(TAG, 'onAttach end');
+      // Sync the system font weight scale on cold start, mirroring onConfigurationUpdated
+      let fontWeightScale: number = this.uiAbility?.context.config.fontWeightScale ?? 0;
+      this.delegate?.getFlutterNapi()?.setFontWeightScale(fontWeightScale);
       this?.delegate?.platformPlugin?.setUIAbilityContext(this.uiAbility!!.context);
       this.delegate?.onWindowStageCreate()
       this.windowStage?.on('windowStageEvent', this.windowStageEventCallback);
@@ -307,7 +310,7 @@ export default class FlutterEntry implements Host {
    */
   shouldDestroyEngineWithHost(): boolean {
     if ((this.getCachedEngineId() != null && this.getCachedEngineId().length > 0) ||
-    this.delegate!!.isFlutterEngineFromHost()) {
+      this.delegate?.isFlutterEngineFromHost() === true) {
       // Only destroy a cached engine if explicitly requested by app developer.
       return false;
     }

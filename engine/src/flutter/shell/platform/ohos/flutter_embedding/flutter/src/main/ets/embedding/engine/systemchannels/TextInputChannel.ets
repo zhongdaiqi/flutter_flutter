@@ -435,6 +435,7 @@ export class Configuration {
    * Creates a Configuration instance from JSON.
    * @param json - The JSON object
    * @returns A new Configuration instance
+   * @throws {Error} if the JSON is missing required properties
    */
   static fromJson(json: Any) {
     const inputActionName: string = json.inputAction;
@@ -574,7 +575,7 @@ export class InputType {
    * Creates an InputType instance from JSON.
    * @param json - The JSON object
    * @returns A new InputType instance
-   * @throws Error if the input type is not recognized
+   * @throws {Error} if the input type is not recognized
    */
   static fromJson(json: Any): InputType {
     if (TextInputType.has(json.name as string)) {
@@ -608,6 +609,7 @@ export class TextEditState {
    * @param selectionEnd - The end of the selection
    * @param composingStart - The start of the composing region
    * @param composingEnd - The end of the composing region
+   * @throws {Error} if the selection or composing range is invalid
    */
   constructor(text: string,
     selectionStart: number,
@@ -938,6 +940,12 @@ class Autofill {
   public readonly editState: TextEditState;
   public readonly hintText: string | null;
 
+  /**
+   * Creates an Autofill instance from JSON.
+   * @param json - The JSON object
+   * @returns A new Autofill instance
+   * @throws {Error} if the JSON is missing required properties
+   */
   static fromJson(json: Any): Autofill {
     const uniqueIdentifier: string = json.uniqueIdentifier;
     if (!uniqueIdentifier) {
