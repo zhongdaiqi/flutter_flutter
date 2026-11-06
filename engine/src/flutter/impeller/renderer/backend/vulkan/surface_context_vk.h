@@ -92,6 +92,9 @@ class SurfaceContextVK : public Context,
 
   void ClearSwapchain();
 
+  // Must be called on the same thread as swapchain creation and teardown.
+  bool HasValidSwapchain() const;
+
   [[nodiscard]] bool SetSwapchain(std::shared_ptr<SwapchainVK> swapchain);
 
   std::unique_ptr<Surface> AcquireNextSurface();
@@ -149,9 +152,7 @@ class SurfaceContextVK : public Context,
     target_color_space_ = color_space;
   }
 
-  ColorSpace GetTargetColorSpace() const {
-    return target_color_space_;
-  }
+  ColorSpace GetTargetColorSpace() const { return target_color_space_; }
 #endif
 
  private:
