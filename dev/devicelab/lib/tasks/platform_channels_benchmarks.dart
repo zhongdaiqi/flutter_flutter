@@ -40,32 +40,33 @@ TaskFunction runTask(adb.DeviceOperatingSystem operatingSystem) {
       );
     }
 
-    final Process flutterProcess = await utils.inDirectory(appDir, () async {
-      final List<String> createArgs = <String>[
-        '--platforms',
-        'ios,android',
-        '--no-overwrite',
-        '-v',
-        '.',
-      ];
-      print('\nExecuting: flutter create $createArgs $appDir');
-      await utils.flutter('create', options: createArgs);
-
-      final List<String> options = <String>[
-        // On OHOS, -v produces excessive output that can block the stdout
-        // pipe between flutter run and readJsonResults, causing benchmark
-        // results to be lost when the app exits. Skip -v on OHOS.
-        if (operatingSystem != adb.DeviceOperatingSystem.ohos) '-v',
-        // --release doesn't work on iOS due to code signing issues
-        '--profile',
-        '--no-publish-port',
-        '-d',
-        device.deviceId,
-      ];
-      return utils.startFlutter('run', options: options);
-    });
-
+    final Process flutterProcess;
     try {
+      flutterProcess = await utils.inDirectory(appDir, () async {
+        final List<String> createArgs = <String>[
+          '--platforms',
+          'ios,android',
+          '--no-overwrite',
+          '-v',
+          '.',
+        ];
+        print('\nExecuting: flutter create $createArgs $appDir');
+        await utils.flutter('create', options: createArgs);
+
+        final List<String> options = <String>[
+          // On OHOS, -v produces excessive output that can block the stdout
+          // pipe between flutter run and readJsonResults, causing benchmark
+          // results to be lost when the app exits. Skip -v on OHOS.
+          if (operatingSystem != adb.DeviceOperatingSystem.ohos) '-v',
+          // --release doesn't work on iOS due to code signing issues
+          '--profile',
+          '--no-publish-port',
+          '-d',
+          device.deviceId,
+        ];
+        return utils.startFlutter('run', options: options);
+      });
+
       final Map<String, double> results = await microbenchmarks.readJsonResults(
         flutterProcess,
         deviceLogStream: deviceLogController?.stream,

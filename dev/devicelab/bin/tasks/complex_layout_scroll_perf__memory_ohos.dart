@@ -14,7 +14,7 @@ class ComplexLayoutScrollPerfOhosMemoryTest extends MemoryTest {
     : super(
         '${flutterDirectory.path}/dev/benchmarks/complex_layout',
         'test_memory/scroll_perf.dart',
-        'com.example.complex_layout',
+        ohosBundleName('${flutterDirectory.path}/dev/benchmarks/complex_layout'),
         requiresTapToStart: true,
       );
 

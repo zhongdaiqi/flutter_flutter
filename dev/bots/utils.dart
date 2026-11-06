@@ -784,9 +784,11 @@ Future<void> _runFromList(
 Future<String?> verifyVersion(File file) async {
   // Upstream Flutter version strings (e.g. 1.2.3, 1.2.3-4.5.pre).
   final RegExp upstreamPattern = RegExp(r'^(\d+)\.(\d+)\.(\d+)((-\d+\.\d+)?\.pre([-\.]\d+)?)?$');
-  // OHOS fork version strings (e.g. 3.35.8-ohos-0.0.3, 3.22.1-ohos-1.0.0).
-  // Requires the -ohos-A.B.C sub-version; bare "X.Y.Z-ohos" is invalid.
-  final RegExp ohosPattern = RegExp(r'^(\d+)\.(\d+)\.(\d+)-ohos-\d+\.\d+\.\d+(-[a-zA-Z0-9.]+)?$');
+  // OHOS fork version strings (e.g. 3.35.8-ohos-0.0.3, 3.35.7+ohos-1.0.7-beta).
+  // Requires the [+-]ohos-A.B.C sub-version; bare "X.Y.Z-ohos" is invalid.
+  final RegExp ohosPattern = RegExp(
+    r'^(\d+)\.(\d+)\.(\d+)[+-]ohos-\d+\.\d+\.\d+(-[a-zA-Z0-9.]+)?$',
+  );
   if (!file.existsSync()) {
     return 'The version logic failed to create the Flutter version file.';
   }

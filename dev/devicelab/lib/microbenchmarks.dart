@@ -117,30 +117,37 @@ Future<Map<String, double>> readJsonResults(Process process, {Stream<String>? de
   if (deviceLogStream != null) {
     bool deviceJsonStarted = false;
     final StringBuffer deviceJsonBuf = StringBuffer();
-    deviceLogSub = deviceLogStream.listen((String line) {
-      if (line.contains(jsonStart)) {
-        deviceJsonStarted = true;
-        return;
-      }
+    deviceLogSub = deviceLogStream.listen(
+      (String line) {
+        if (line.contains(jsonStart)) {
+          deviceJsonStarted = true;
+          return;
+        }
 
-      if (line.contains(testComplete)) {
+        if (line.contains(testComplete)) {
+          if (!deviceLogDone.isCompleted) {
+            deviceLogDone.complete();
+          }
+          handleDoneMarker();
+          return;
+        }
+
+        if (deviceJsonStarted && line.contains(jsonEnd)) {
+          collectedJson.add(deviceJsonBuf.toString().trim());
+          deviceJsonBuf.clear();
+          deviceJsonStarted = false;
+        }
+
+        if (deviceJsonStarted && line.contains(jsonPrefix)) {
+          deviceJsonBuf.writeln(line.substring(line.indexOf(jsonPrefix) + jsonPrefix.length));
+        }
+      },
+      onDone: () {
         if (!deviceLogDone.isCompleted) {
           deviceLogDone.complete();
         }
-        handleDoneMarker();
-        return;
-      }
-
-      if (deviceJsonStarted && line.contains(jsonEnd)) {
-        collectedJson.add(deviceJsonBuf.toString().trim());
-        deviceJsonBuf.clear();
-        deviceJsonStarted = false;
-      }
-
-      if (deviceJsonStarted && line.contains(jsonPrefix)) {
-        deviceJsonBuf.writeln(line.substring(line.indexOf(jsonPrefix) + jsonPrefix.length));
-      }
-    });
+      },
+    );
   }
 
   process.exitCode.then<void>((int code) async {

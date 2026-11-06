@@ -7,14 +7,12 @@ import 'package:flutter_devicelab/framework/framework.dart';
 import 'package:flutter_devicelab/framework/utils.dart';
 import 'package:flutter_devicelab/tasks/perf_tests.dart';
 
-const String kPackageName = 'com.example.macrobenchmarks';
-
 class FastScrollHeavyGridViewOhosMemoryTest extends MemoryTest {
   FastScrollHeavyGridViewOhosMemoryTest()
     : super(
         '${flutterDirectory.path}/dev/benchmarks/macrobenchmarks',
         'test_memory/heavy_gridview.dart',
-        kPackageName,
+        ohosBundleName('${flutterDirectory.path}/dev/benchmarks/macrobenchmarks'),
       );
 
   @override

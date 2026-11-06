@@ -7,14 +7,12 @@ import 'package:flutter_devicelab/framework/framework.dart';
 import 'package:flutter_devicelab/framework/utils.dart';
 import 'package:flutter_devicelab/tasks/perf_tests.dart';
 
-const String kPackageName = 'com.example.macrobenchmarks';
-
 class FastScrollLargeImagesOhosMemoryTest extends MemoryTest {
   FastScrollLargeImagesOhosMemoryTest()
     : super(
         '${flutterDirectory.path}/dev/benchmarks/macrobenchmarks',
         'test_memory/large_images.dart',
-        kPackageName,
+        ohosBundleName('${flutterDirectory.path}/dev/benchmarks/macrobenchmarks'),
       );
 
   @override

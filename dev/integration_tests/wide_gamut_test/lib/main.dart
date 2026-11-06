@@ -250,8 +250,12 @@ Future<ui.Image> _drawImage() async {
       );
       return completer.future;
     }
-  } catch (_) {
+  } catch (error) {
     // rawExtendedRgba128 not supported on this platform; use original image.
+    // ignore: avoid_print
+    print(
+      'rawExtendedRgba128 float32 path unavailable ($error); using original image.',
+    );
   }
   return image;
 }

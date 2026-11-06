@@ -172,7 +172,6 @@ class OhosRunOutputTest extends RunOutputTask {
 
   @override
   Future<void> prepare(String deviceId) async {
-    final List<String> stderr = <String>[];
     print('uninstalling...');
     final Process uninstall = await startFlutter(
       'install',
@@ -187,7 +186,6 @@ class OhosRunOutputTest extends RunOutputTask {
     uninstall.stderr.transform<String>(utf8.decoder).transform<String>(const LineSplitter()).listen(
       (String line) {
         print('uninstall:stderr: $line');
-        stderr.add(line);
       },
     );
     if (await uninstall.exitCode != 0) {

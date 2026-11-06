@@ -321,15 +321,16 @@ Future<TaskResult> _runTaskViaIpc({
 }) async {
   await ipcMessages
       .firstWhere((Map<String, dynamic> m) => m['type'] == 'ready')
-      .timeout(const Duration(seconds: 60));
+      .timeout(const Duration(seconds: 120));
   print('[$taskName] Received ready signal via IPC.');
 
   isolateParams = isolateParams == null
       ? <String, String>{}
       : Map<String, String>.of(isolateParams);
   isolateParams['runProcessCleanup'] = terminateStrayDartProcesses.toString();
-  // IPC mode runs in a separate process; flutter config is handled by the
-  // parent process, so skip it in the child to avoid redundant configuration.
+  // IPC mode runs the task in a separate process; the child skips the
+  // flutter config step (the flag is a no-op in this branch, and the parent
+  // does not run it either).
   isolateParams['runFlutterConfig'] = 'false';
 
   final String runJson = json.encode(<String, dynamic>{'type': 'run', 'args': isolateParams});

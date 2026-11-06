@@ -590,30 +590,32 @@ export default function PlatformViewsControllerTest() {
   });
 
   describe('PlatformViewsController.applyTransformOffset', () => {
-    it('falls back to plain offset for non-finite transform', 0, () => {
+    it('non-finite transform keeps the current position and clears the transform', 0, () => {
       const c: Any = platformViewsController;
       const params = new DVModelParameters();
-      c['applyTransformOffset'](9, 8, params, [1, 0, 0, Number.NaN, 5, 6]);
       const rec = params as Record<string, Any>;
+      rec['left'] = 8;
+      rec['top'] = 9;
+      c['applyTransformOffset'](params, [1, 0, 0, Number.NaN, 5, 6]);
       expect(rec['affineTransform']).assertUndefined();
       expect(rec['left']).assertEqual(8);
       expect(rec['top']).assertEqual(9);
     });
 
-    it('falls back to plain offset for degenerate determinant', 0, () => {
+    it('degenerate determinant positions by the affine translation', 0, () => {
       const c: Any = platformViewsController;
       const params = new DVModelParameters();
-      c['applyTransformOffset'](12, 11, params, [1, 0, 0, 0, 5, 6]);
+      c['applyTransformOffset'](params, [1, 0, 0, 0, 5, 6]);
       const rec = params as Record<string, Any>;
       expect(rec['affineTransform']).assertUndefined();
-      expect(rec['left']).assertEqual(11);
-      expect(rec['top']).assertEqual(12);
+      expect(rec['left']).assertEqual(5);
+      expect(rec['top']).assertEqual(6);
     });
 
     it('uses origin corner when dimensions are unknown', 0, () => {
       const c: Any = platformViewsController;
       const params = new DVModelParameters();
-      c['applyTransformOffset'](0, 0, params, [1, 0.5, 0, 1, 30, 40]);
+      c['applyTransformOffset'](params, [1, 0.5, 0, 1, 30, 40]);
       const rec = params as Record<string, Any>;
       expect(rec['left']).assertEqual(30);
       expect(rec['top']).assertEqual(40);
@@ -626,7 +628,7 @@ export default function PlatformViewsControllerTest() {
       rec['width'] = 100;
       rec['height'] = 50;
       // [scaleX, shearY, shearX, scaleY, translateX, translateY] = [1, 0.5, 0, 1, 10, 20]
-      c['applyTransformOffset'](0, 0, params, [1, 0.5, 0, 1, 10, 20]);
+      c['applyTransformOffset'](params, [1, 0.5, 0, 1, 10, 20]);
       expect(rec['left']).assertEqual(10);
       expect(rec['top']).assertEqual(20);
       const af = rec['affineTransform'] as Array<number>;
@@ -645,7 +647,7 @@ export default function PlatformViewsControllerTest() {
       rec['width'] = 100;
       rec['height'] = 50;
       // 90-degree style rotation: x' = ly, y' = -lx, translated to (200, 100)
-      c['applyTransformOffset'](0, 0, params, [0, 1, -1, 0, 200, 100]);
+      c['applyTransformOffset'](params, [0, 1, -1, 0, 200, 100]);
       // corners: (0,0)->(200,100); (100,0)->(200,0); (0,50)->(250,100); (100,50)->(250,0)
       // min x = 200, min y = 0
       expect(rec['left']).assertEqual(200);

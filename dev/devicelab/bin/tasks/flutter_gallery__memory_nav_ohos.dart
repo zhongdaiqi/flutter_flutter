@@ -10,6 +10,7 @@ import 'package:flutter_devicelab/framework/devices.dart';
 import 'package:flutter_devicelab/framework/framework.dart';
 import 'package:flutter_devicelab/framework/task_result.dart';
 import 'package:flutter_devicelab/framework/utils.dart';
+import 'package:flutter_devicelab/tasks/perf_tests.dart';
 
 const String testFile = 'test_memory/memory_nav.dart';
 
@@ -28,10 +29,7 @@ Future<TaskResult> runMemoryNavTestOhos() async {
   await device.unlock();
 
   final String projectPath = '${flutterDirectory.path}/dev/integration_tests/flutter_gallery';
-  final String appJson5Path = '$projectPath/ohos/AppScope/app.json5';
-  final Map<String, dynamic> appConfig =
-      json.decode(File(appJson5Path).readAsStringSync()) as Map<String, dynamic>;
-  final String bundleName = (appConfig['app'] as Map<String, dynamic>)['bundleName'] as String;
+  final String bundleName = ohosBundleName(projectPath);
 
   final Directory appDir = dir(projectPath);
   return inDirectory<TaskResult>(appDir, () async {

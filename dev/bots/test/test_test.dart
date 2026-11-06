@@ -50,6 +50,9 @@ void main() {
         '1.2.3-5.0.pre.12',
         '3.35.8-ohos-0.0.3',
         '3.22.1-ohos-1.0.0',
+        '3.35.7+ohos-1.0.5',
+        '3.35.7+ohos-1.0.7-beta',
+        '3.35.8-ohos-1.0.4-beta',
       ];
       for (final String version in valid_versions) {
         final File file = fileSystem.file('version');
@@ -75,6 +78,9 @@ void main() {
         '3.35.8-ohos',
         '3.35.8-ohos-1.0',
         '3.35.8-ohos-1.0.0-',
+        '3.35.7+ohos',
+        '3.35.7+ohos-1.0',
+        '3.35.7+ohos-1.0.7-',
       ];
       for (final String version in invalid_versions) {
         final File file = fileSystem.file('version');

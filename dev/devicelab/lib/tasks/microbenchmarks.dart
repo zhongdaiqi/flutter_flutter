@@ -58,25 +58,26 @@ TaskFunction createMicrobenchmarkTask({
           );
         }
 
-        final Process flutterProcess = await inDirectory(appDir, () async {
-          final List<String> options = <String>[
-            // On OHOS, -v produces excessive output that can block the stdout
-            // pipe between flutter run and readJsonResults, causing benchmark
-            // results to be lost when the app exits. Skip -v on OHOS.
-            if (deviceOperatingSystem != DeviceOperatingSystem.ohos) '-v',
-            // --release doesn't work on iOS due to code signing issues
-            '--profile',
-            '--no-publish-port',
-            if (enableImpeller != null && enableImpeller) '--enable-impeller',
-            if (enableImpeller != null && !enableImpeller) '--no-enable-impeller',
-            '-d',
-            device.deviceId,
-            '--dart-define=seed=$seed',
-            benchmarkPath,
-          ];
-          return startFlutter('run', options: options, environment: environment);
-        });
+        final Process flutterProcess;
         try {
+          flutterProcess = await inDirectory(appDir, () async {
+            final List<String> options = <String>[
+              // On OHOS, -v produces excessive output that can block the stdout
+              // pipe between flutter run and readJsonResults, causing benchmark
+              // results to be lost when the app exits. Skip -v on OHOS.
+              if (deviceOperatingSystem != DeviceOperatingSystem.ohos) '-v',
+              // --release doesn't work on iOS due to code signing issues
+              '--profile',
+              '--no-publish-port',
+              if (enableImpeller != null && enableImpeller) '--enable-impeller',
+              if (enableImpeller != null && !enableImpeller) '--no-enable-impeller',
+              '-d',
+              device.deviceId,
+              '--dart-define=seed=$seed',
+              benchmarkPath,
+            ];
+            return startFlutter('run', options: options, environment: environment);
+          });
           return await readJsonResults(
             flutterProcess,
             deviceLogStream: deviceLogController?.stream,
